@@ -1,0 +1,235 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Riepilogo {{.Data.NomeMese}} {{.Data.Anno}}</h1>
+    <div class="page-actions">
+        <button onclick="window.print()" class="btn btn-primary">Stampa</button>
+        <a href="/amministrazione/riepilogo" class="btn btn-secondary">Nuovo Riepilogo</a>
+        <a href="/amministrazione" class="btn btn-secondary">Dashboard</a>
+    </div>
+</div>
+
+<div class="riepilogo-container">
+    <div class="riepilogo-header">
+        <h2>{{.Data.Tecnico.Nome}} {{.Data.Tecnico.Cognome}}</h2>
+        <p class="periodo">Periodo: {{.Data.NomeMese}} {{.Data.Anno}}</p>
+    </div>
+
+    <div class="section">
+        <h3>Trasferte</h3>
+        {{if .Data.Trasferte}}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data Partenza</th>
+                    <th>Data Rientro</th>
+                    <th>Destinazione</th>
+                    <th class="text-right">Km</th>
+                    <th class="text-right">Indennità</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Data.Trasferte}}
+                <tr>
+                    <td>{{.DataPartenza}}</td>
+                    <td>{{.DataRientro}}</td>
+                    <td>{{.Destinazione}}</td>
+                    <td class="text-right">{{printf "%.0f" .Km}}</td>
+                    <td class="text-right">{{printf "%.2f €" .Indennita}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+            <tfoot>
+                <tr class="totale-row">
+                    <td colspan="3"><strong>Totale Trasferte</strong></td>
+                    <td class="text-right"><strong>{{printf "%.0f" .Data.TotKm}} km</strong></td>
+                    <td class="text-right"><strong>{{printf "%.2f €" .Data.TotIndennita}}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+        {{else}}
+        <p class="no-data">Nessuna trasferta nel periodo selezionato.</p>
+        {{end}}
+    </div>
+
+    <div class="section">
+        <h3>Note Spese</h3>
+        {{if .Data.Spese}}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Descrizione</th>
+                    <th class="text-right">Importo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Data.Spese}}
+                <tr>
+                    <td>{{.Data}}</td>
+                    <td>{{.Tipo}}</td>
+                    <td>{{.Descrizione}}</td>
+                    <td class="text-right">{{printf "%.2f €" .Importo}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+            <tfoot>
+                <tr class="totale-row">
+                    <td colspan="3"><strong>Totale Note Spese</strong></td>
+                    <td class="text-right"><strong>{{printf "%.2f €" .Data.TotSpese}}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+        {{else}}
+        <p class="no-data">Nessuna nota spese nel periodo selezionato.</p>
+        {{end}}
+    </div>
+
+    <div class="riepilogo-totale">
+        <div class="totale-finale">
+            <span class="label">TOTALE GENERALE:</span>
+            <span class="value">{{printf "%.2f €" .Data.Totale}}</span>
+        </div>
+        <div class="dettaglio">
+            <span>Indennità trasferte: {{printf "%.2f €" .Data.TotIndennita}}</span>
+            <span>Note spese: {{printf "%.2f €" .Data.TotSpese}}</span>
+        </div>
+    </div>
+
+    <div class="firma-section">
+        <div class="firma-box">
+            <p>Firma Tecnico</p>
+            <div class="linea-firma"></div>
+        </div>
+        <div class="firma-box">
+            <p>Firma Amministrazione</p>
+            <div class="linea-firma"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.riepilogo-container {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.riepilogo-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #eee;
+}
+
+.riepilogo-header h2 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.periodo {
+    color: #666;
+    margin-top: 5px;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+
+.section h3 {
+    color: #2c3e50;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.no-data {
+    color: #666;
+    font-style: italic;
+}
+
+.totale-row {
+    background-color: #f8f9fa;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.riepilogo-totale {
+    background: #e8f4fd;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 30px;
+}
+
+.totale-finale {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.3rem;
+}
+
+.totale-finale .label {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.totale-finale .value {
+    font-weight: bold;
+    color: #27ae60;
+    font-size: 1.5rem;
+}
+
+.dettaglio {
+    display: flex;
+    gap: 30px;
+    margin-top: 10px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.firma-section {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 50px;
+    padding-top: 30px;
+}
+
+.firma-box {
+    width: 200px;
+    text-align: center;
+}
+
+.firma-box p {
+    color: #666;
+    margin-bottom: 40px;
+}
+
+.linea-firma {
+    border-bottom: 1px solid #333;
+}
+
+@media print {
+    .page-header .page-actions {
+        display: none;
+    }
+    
+    .navbar, .footer {
+        display: none;
+    }
+    
+    .container {
+        max-width: 100%;
+        padding: 0;
+    }
+    
+    .riepilogo-container {
+        box-shadow: none;
+    }
+}
+</style>
+{{end}}

@@ -1,0 +1,168 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Configurazione Observium - {{.Data.Nome}}</h1>
+</div>
+
+{{if .Error}}
+<div class="alert alert-error">{{.Error}}</div>
+{{end}}
+
+{{if .Success}}
+<div class="alert alert-success">{{.Success}}</div>
+{{end}}
+
+<div class="form-container">
+    <form method="POST" class="form">
+        <div class="form-section">
+            <h3>Connessione Observium</h3>
+            <p class="form-help">Configura l'IP e le credenziali per accedere ad Observium installato sulla nave. Questo permette di eseguire il discovery automatico degli apparati.</p>
+            
+            <div class="form-row">
+                <div class="form-group flex-2">
+                    <label for="observium_ip">IP Observium</label>
+                    <input type="text" id="observium_ip" name="observium_ip" value="{{.Data.ObserviumIP}}" placeholder="es. 10.101.1.10">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-info" onclick="testConnection()">Test Connessione</button>
+                </div>
+            </div>
+            <div id="test-result" class="test-result" style="display:none"></div>
+        </div>
+
+        <div class="form-section">
+            <h3>Credenziali HTTP (Web Interface)</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="observium_user">Username</label>
+                    <input type="text" id="observium_user" name="observium_user" value="{{.Data.ObserviumUser}}" placeholder="admin" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="observium_pass">Password</label>
+                    <input type="password" id="observium_pass" name="observium_pass" value="{{.Data.ObserviumPass}}" autocomplete="new-password">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Credenziali SSH</h3>
+            <p class="form-help">Necessarie per il discovery automatico tramite query al database Observium.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="observium_ssh_user">Username SSH</label>
+                    <input type="text" id="observium_ssh_user" name="observium_ssh_user" value="{{.Data.ObserviumSSHUser}}" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="observium_ssh_pass">Password SSH</label>
+                    <input type="password" id="observium_ssh_pass" name="observium_ssh_pass" value="{{.Data.ObserviumSSHPass}}" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="observium_ssh_port">Porta SSH</label>
+                    <input type="number" id="observium_ssh_port" name="observium_ssh_port" value="{{if .Data.ObserviumSSHPort}}{{.Data.ObserviumSSHPort}}{{else}}22{{end}}">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>SNMP</h3>
+            <div class="form-group">
+                <label for="snmp_community">Community String Default</label>
+                <input type="text" id="snmp_community" name="snmp_community" value="{{if .Data.SNMPCommunity}}{{.Data.SNMPCommunity}}{{else}}public{{end}}" placeholder="public">
+                <small class="form-help">Usata come default per il discovery SNMP</small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Salva Configurazione</button>
+            <a href="/navi/apparati/{{.Data.ID}}" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function testConnection() {
+    var ip = document.getElementById('observium_ip').value;
+    if (!ip) {
+        alert('Inserisci un IP');
+        return;
+    }
+    
+    var resultDiv = document.getElementById('test-result');
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'test-result testing';
+    resultDiv.innerHTML = 'Test in corso...';
+    
+    // Test ping
+    fetch('/api/test-connection?ip=' + encodeURIComponent(ip) + '&type=ping')
+        .then(r => r.json())
+        .then(pingResult => {
+            var html = '<div class="test-item ' + (pingResult.success ? 'success' : 'fail') + '">';
+            html += '<strong>Ping:</strong> ' + pingResult.message + '</div>';
+            
+            // Test HTTP
+            return fetch('/api/test-connection?ip=' + encodeURIComponent(ip) + '&type=http&port=80')
+                .then(r => r.json())
+                .then(httpResult => {
+                    html += '<div class="test-item ' + (httpResult.success ? 'success' : 'fail') + '">';
+                    html += '<strong>HTTP (80):</strong> ' + httpResult.message + '</div>';
+                    
+                    // Test SSH
+                    var sshPort = document.getElementById('observium_ssh_port').value || '22';
+                    return fetch('/api/test-connection?ip=' + encodeURIComponent(ip) + '&type=ssh&port=' + sshPort)
+                        .then(r => r.json())
+                        .then(sshResult => {
+                            html += '<div class="test-item ' + (sshResult.success ? 'success' : 'fail') + '">';
+                            html += '<strong>SSH (' + sshPort + '):</strong> ' + sshResult.message + '</div>';
+                            
+                            resultDiv.className = 'test-result';
+                            resultDiv.innerHTML = html;
+                        });
+                });
+        })
+        .catch(err => {
+            resultDiv.className = 'test-result fail';
+            resultDiv.innerHTML = 'Errore: ' + err;
+        });
+}
+</script>
+
+<style>
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+.flex-2 {
+    flex: 2;
+}
+.test-result {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    background: #e9ecef;
+}
+.test-result.testing {
+    background: #fff3cd;
+}
+.test-item {
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-radius: 4px;
+}
+.test-item.success {
+    background: #d4edda;
+    color: #155724;
+}
+.test-item.fail {
+    background: #f8d7da;
+    color: #721c24;
+}
+</style>
+{{end}}

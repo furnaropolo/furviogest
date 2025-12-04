@@ -1,0 +1,242 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Dettaglio Richiesta Permesso #{{.Data.ID}}</h1>
+    <div class="header-actions">
+        {{if $.Session.IsTecnico}}
+        <a href="/permessi/modifica/{{.Data.ID}}" class="btn btn-warning">Modifica</a>
+        {{end}}
+        <a href="/permessi" class="btn btn-secondary">Torna alla Lista</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-card">
+        <h3>Informazioni Nave</h3>
+        <dl>
+            <dt>Compagnia</dt>
+            <dd>{{.Data.Compagnia.Nome}}</dd>
+            
+            <dt>Nave</dt>
+            <dd><strong>{{.Data.Nave.Nome}}</strong></dd>
+            
+            {{if .Data.Nave.IMO}}
+            <dt>IMO</dt>
+            <dd>{{.Data.Nave.IMO}}</dd>
+            {{end}}
+        </dl>
+    </div>
+
+    <div class="detail-card">
+        <h3>Porto e Agenzia</h3>
+        <dl>
+            <dt>Porto</dt>
+            <dd><strong>{{.Data.Porto.Nome}}</strong></dd>
+            
+            {{if .Data.Porto.Citta}}
+            <dt>Località</dt>
+            <dd>{{.Data.Porto.Citta}}{{if .Data.Porto.Paese}}, {{.Data.Porto.Paese}}{{end}}</dd>
+            {{end}}
+            
+            {{if .Data.Porto.NomeAgenzia}}
+            <dt>Agenzia</dt>
+            <dd>{{.Data.Porto.NomeAgenzia}}</dd>
+            {{end}}
+            
+            {{if .Data.Porto.EmailAgenzia}}
+            <dt>Email Agenzia</dt>
+            <dd><a href="mailto:{{.Data.Porto.EmailAgenzia}}">{{.Data.Porto.EmailAgenzia}}</a></dd>
+            {{end}}
+            
+            {{if .Data.Porto.TelefonoAgenzia}}
+            <dt>Telefono Agenzia</dt>
+            <dd><a href="tel:{{.Data.Porto.TelefonoAgenzia}}">{{.Data.Porto.TelefonoAgenzia}}</a></dd>
+            {{end}}
+        </dl>
+    </div>
+
+    <div class="detail-card">
+        <h3>Periodo</h3>
+        <dl>
+            <dt>Tipo Durata</dt>
+            <dd>
+                {{if eq (printf "%s" .Data.TipoDurata) "giornaliera"}}
+                    <span class="badge badge-info">Giornaliera</span>
+                {{else if eq (printf "%s" .Data.TipoDurata) "multigiorno"}}
+                    <span class="badge badge-primary">Multigiorno</span>
+                {{else}}
+                    <span class="badge badge-warning">Fino a Fine Lavori</span>
+                {{end}}
+            </dd>
+            
+            <dt>Data Inizio</dt>
+            <dd><strong>{{.Data.DataInizio.Format "02/01/2006"}}</strong></dd>
+            
+            {{if .Data.DataFine}}
+            <dt>Data Fine</dt>
+            <dd><strong>{{.Data.DataFine.Format "02/01/2006"}}</strong></dd>
+            {{end}}
+        </dl>
+    </div>
+
+    <div class="detail-card">
+        <h3>Stato Email</h3>
+        <dl>
+            <dt>Email Inviata</dt>
+            <dd>
+                {{if .Data.EmailInviata}}
+                    <span class="badge badge-success">Sì</span>
+                    {{if .Data.DataInvioEmail}}
+                    <br><small>il {{.Data.DataInvioEmail.Format "02/01/2006 15:04"}}</small>
+                    {{end}}
+                {{else}}
+                    <span class="badge badge-secondary">No</span>
+                {{end}}
+            </dd>
+            
+            <dt>Creato da</dt>
+            <dd>{{.Data.NomeTecnico}}</dd>
+            
+            <dt>Data Creazione</dt>
+            <dd>{{.Data.CreatedAt.Format "02/01/2006 15:04"}}</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="detail-section">
+    <h3>Tecnici Partecipanti</h3>
+    {{if .Data.Tecnici}}
+    <div class="tecnici-list">
+        {{range .Data.Tecnici}}
+        <div class="tecnico-card">
+            <strong>{{.Cognome}} {{.Nome}}</strong>
+            {{if .Email}}<br><a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}
+            {{if .Telefono}}<br><a href="tel:{{.Telefono}}">{{.Telefono}}</a>{{end}}
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <p class="text-muted">Nessun tecnico assegnato</p>
+    {{end}}
+</div>
+
+<div class="detail-section">
+    <h3>Veicolo</h3>
+    {{if .Data.Automezzo}}
+    <p>
+        <strong>Automezzo Aziendale:</strong> {{.Data.Automezzo.Targa}} 
+        ({{.Data.Automezzo.Marca}} {{.Data.Automezzo.Modello}})
+    </p>
+    {{else if .Data.TargaEsterna}}
+    <p>
+        <strong>Veicolo Esterno:</strong> {{.Data.TargaEsterna}}
+    </p>
+    {{else}}
+    <p class="text-muted">Nessun veicolo specificato</p>
+    {{end}}
+</div>
+
+{{if .Data.Note}}
+<div class="detail-section">
+    <h3>Note</h3>
+    <p class="note-text">{{.Data.Note}}</p>
+</div>
+{{end}}
+
+<div class="detail-actions">
+    {{if $.Session.IsTecnico}}
+    {{if not .Data.EmailInviata}}
+    <a href="/permessi/invia-email/{{.Data.ID}}" class="btn btn-success" 
+       onclick="return confirm('Inviare l\'email all\'agenzia portuale?')">
+        Invia Email all'Agenzia
+    </a>
+    {{end}}
+    <a href="/permessi/modifica/{{.Data.ID}}" class="btn btn-warning">Modifica</a>
+    <a href="/permessi/elimina/{{.Data.ID}}" class="btn btn-danger" 
+       onclick="return confirm('Eliminare questa richiesta?')">Elimina</a>
+    {{end}}
+    <a href="/permessi" class="btn btn-secondary">Torna alla Lista</a>
+</div>
+
+<style>
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.detail-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.detail-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--primary-color);
+}
+
+.detail-card dl {
+    margin: 0;
+}
+
+.detail-card dt {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.detail-card dt:first-child {
+    margin-top: 0;
+}
+
+.detail-card dd {
+    margin: 0.25rem 0 0 0;
+}
+
+.detail-section {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.detail-section h3 {
+    margin-top: 0;
+    color: var(--primary-color);
+}
+
+.tecnici-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.tecnico-card {
+    background: var(--bg-light);
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.note-text {
+    white-space: pre-wrap;
+    background: var(--bg-light);
+    padding: 1rem;
+    border-radius: 6px;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+}
+</style>
+{{end}}

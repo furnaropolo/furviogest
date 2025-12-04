@@ -1,0 +1,154 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.Trasferta.ID}}Modifica Trasferta{{else}}Nuova Trasferta{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" class="form">
+        {{if .Session.IsTecnico}}
+        <div class="form-group">
+            <label for="tecnico_id">Tecnico *</label>
+            <select id="tecnico_id" name="tecnico_id" required>
+                <option value="">-- Seleziona Tecnico --</option>
+                {{range .Data.Tecnici}}
+                <option value="{{.ID}}" {{if eq .ID $.Data.Trasferta.TecnicoID}}selected{{end}}>
+                    {{.Cognome}} {{.Nome}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+        {{else}}
+        <input type="hidden" name="tecnico_id" value="{{.Session.UserID}}">
+        {{end}}
+
+        <div class="form-group">
+            <label for="destinazione">Destinazione *</label>
+            <input type="text" id="destinazione" name="destinazione" 
+                   value="{{.Data.Trasferta.Destinazione}}" required
+                   placeholder="es. Napoli - Porto">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="data_partenza">Data Partenza *</label>
+                <input type="date" id="data_partenza" name="data_partenza" 
+                       value="{{.Data.Trasferta.DataPartenza}}" required>
+            </div>
+            <div class="form-group">
+                <label for="data_rientro">Data Rientro *</label>
+                <input type="date" id="data_rientro" name="data_rientro" 
+                       value="{{.Data.Trasferta.DataRientro}}" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="km_percorsi">Km Percorsi</label>
+                <input type="number" id="km_percorsi" name="km_percorsi" 
+                       value="{{.Data.Trasferta.KmPercorsi}}" min="0">
+            </div>
+            <div class="form-group">
+                <label for="automezzo_id">Automezzo</label>
+                <select id="automezzo_id" name="automezzo_id">
+                    <option value="">-- Nessuno --</option>
+                    {{range .Data.Automezzi}}
+                    <option value="{{.ID}}">{{.Nome}} ({{.Targa}})</option>
+                    {{end}}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="pernottamento" value="1" {{if .Data.Trasferta.Pernottamento}}checked{{end}}>
+                    Pernottamento
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="numero_notti">Numero Notti</label>
+                <input type="number" id="numero_notti" name="numero_notti" 
+                       value="{{.Data.Trasferta.NumeroNotti}}" min="0">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="rapporto_id">Collegato a Rapporto (opzionale)</label>
+            <select id="rapporto_id" name="rapporto_id">
+                <option value="">-- Nessuno --</option>
+                {{range .Data.Rapporti}}
+                <option value="{{.ID}}">#{{.ID}} - {{.Data}} - {{.Nave}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note" rows="3">{{.Data.Trasferta.Note}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {{if .Data.Trasferta.ID}}Salva Modifiche{{else}}Crea Trasferta{{end}}
+            </button>
+            <a href="/trasferte" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-container {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 700px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+</style>
+{{end}}

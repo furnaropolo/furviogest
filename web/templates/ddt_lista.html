@@ -1,0 +1,96 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>DDT - Documenti di Trasporto</h1>
+    <div class="page-actions">
+        {{if .Session.IsTecnico}}
+        <a href="/ddt/nuovo" class="btn btn-primary">+ Nuovo DDT</a>
+        {{end}}
+    </div>
+</div>
+
+<div class="filter-form">
+    <form method="GET" class="form-inline">
+        <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select name="tipo" id="tipo">
+                <option value="">Tutti</option>
+                <option value="intervento" {{if eq .Data.TipoFilter "intervento"}}selected{{end}}>Intervento</option>
+                <option value="spedizione" {{if eq .Data.TipoFilter "spedizione"}}selected{{end}}>Spedizione</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="mese">Mese</label>
+            <select name="mese" id="mese">
+                <option value="">Tutti</option>
+                <option value="01" {{if eq .Data.MeseFilter "01"}}selected{{end}}>Gennaio</option>
+                <option value="02" {{if eq .Data.MeseFilter "02"}}selected{{end}}>Febbraio</option>
+                <option value="03" {{if eq .Data.MeseFilter "03"}}selected{{end}}>Marzo</option>
+                <option value="04" {{if eq .Data.MeseFilter "04"}}selected{{end}}>Aprile</option>
+                <option value="05" {{if eq .Data.MeseFilter "05"}}selected{{end}}>Maggio</option>
+                <option value="06" {{if eq .Data.MeseFilter "06"}}selected{{end}}>Giugno</option>
+                <option value="07" {{if eq .Data.MeseFilter "07"}}selected{{end}}>Luglio</option>
+                <option value="08" {{if eq .Data.MeseFilter "08"}}selected{{end}}>Agosto</option>
+                <option value="09" {{if eq .Data.MeseFilter "09"}}selected{{end}}>Settembre</option>
+                <option value="10" {{if eq .Data.MeseFilter "10"}}selected{{end}}>Ottobre</option>
+                <option value="11" {{if eq .Data.MeseFilter "11"}}selected{{end}}>Novembre</option>
+                <option value="12" {{if eq .Data.MeseFilter "12"}}selected{{end}}>Dicembre</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="anno">Anno</label>
+            <select name="anno" id="anno">
+                <option value="">Tutti</option>
+                <option value="2024" {{if eq .Data.AnnoFilter "2024"}}selected{{end}}>2024</option>
+                <option value="2025" {{if eq .Data.AnnoFilter "2025"}}selected{{end}}>2025</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filtra</button>
+        <a href="/ddt" class="btn btn-secondary">Reset</a>
+    </form>
+</div>
+
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Numero</th>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>Nave</th>
+                <th>Compagnia</th>
+                <th>Porto</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.DDTs}}
+            <tr>
+                <td><strong>{{.Numero}}</strong></td>
+                <td>
+                    {{if eq .TipoDDT "intervento"}}<span class="badge badge-primary">Intervento</span>
+                    {{else}}<span class="badge badge-info">Spedizione</span>
+                    {{end}}
+                </td>
+                <td>{{.DataEmissione}}</td>
+                <td>{{.NomeNave}}</td>
+                <td>{{.NomeCompagnia}}</td>
+                <td>{{.NomePorto}}</td>
+                <td>
+                    <a href="/ddt/dettaglio/{{.ID}}" class="btn btn-small">Dettaglio</a>
+                    {{if $.Session.IsTecnico}}
+                    <a href="/ddt/modifica/{{.ID}}" class="btn btn-small">Modifica</a>
+                    <a href="/ddt/elimina/{{.ID}}" class="btn btn-small btn-danger" onclick="return confirm('Eliminare questo DDT?')">Elimina</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="7" class="text-center">Nessun DDT trovato</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

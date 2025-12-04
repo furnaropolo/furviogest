@@ -1,0 +1,67 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Riepilogo Mensile</h1>
+    <div class="page-actions">
+        <a href="/amministrazione" class="btn btn-secondary">Torna alla Dashboard</a>
+    </div>
+</div>
+
+<div class="form-container">
+    <form method="GET" action="/amministrazione/riepilogo" class="form">
+        <p class="form-intro">Seleziona il tecnico e il periodo per generare il riepilogo mensile.</p>
+        
+        <div class="form-group">
+            <label for="tecnico">Tecnico *</label>
+            <select name="tecnico" id="tecnico" required>
+                <option value="">-- Seleziona Tecnico --</option>
+                {{range .Data.Tecnici}}
+                <option value="{{.ID}}">{{.Cognome}} {{.Nome}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mese">Mese *</label>
+                <select name="mese" id="mese" required>
+                    <option value="">-- Seleziona --</option>
+                    <option value="01">Gennaio</option>
+                    <option value="02">Febbraio</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Aprile</option>
+                    <option value="05">Maggio</option>
+                    <option value="06">Giugno</option>
+                    <option value="07">Luglio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Settembre</option>
+                    <option value="10">Ottobre</option>
+                    <option value="11">Novembre</option>
+                    <option value="12">Dicembre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="anno">Anno *</label>
+                <select name="anno" id="anno" required>
+                    <option value="">-- Seleziona --</option>
+                    <option value="2024">2024</option>
+                    <option value="2025" selected>2025</option>
+                    <option value="2026">2026</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Genera Riepilogo</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-intro {
+    color: #666;
+    margin-bottom: 20px;
+}
+</style>
+{{end}}

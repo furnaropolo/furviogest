@@ -1,0 +1,110 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.Attrezzo.ID}}Modifica Attrezzo{{else}}Nuovo Attrezzo{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="categoria">Categoria *</label>
+                <select id="categoria" name="categoria" required>
+                    <option value="">-- Seleziona --</option>
+                    <option value="attrezzo" {{if eq .Data.Attrezzo.Categoria "attrezzo"}}selected{{end}}>Attrezzo</option>
+                    <option value="consumabile" {{if eq .Data.Attrezzo.Categoria "consumabile"}}selected{{end}}>Consumabile</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="codice">Codice</label>
+                <input type="text" id="codice" name="codice" value="{{.Data.Attrezzo.Codice}}" placeholder="es. ATT-001">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group flex-2">
+                <label for="nome">Nome *</label>
+                <input type="text" id="nome" name="nome" value="{{.Data.Attrezzo.Nome}}" required placeholder="es. Avvitatore elettrico">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="descrizione">Descrizione</label>
+            <textarea id="descrizione" name="descrizione" rows="2">{{.Data.Attrezzo.Descrizione}}</textarea>
+        </div>
+
+        <h3 class="section-title">Dettagli Prodotto</h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="marca">Marca</label>
+                <input type="text" id="marca" name="marca" value="{{.Data.Attrezzo.Marca}}" placeholder="es. Bosch">
+            </div>
+            <div class="form-group">
+                <label for="modello">Modello</label>
+                <input type="text" id="modello" name="modello" value="{{.Data.Attrezzo.Modello}}" placeholder="es. GSR 18V-50">
+            </div>
+            <div class="form-group">
+                <label for="numero_serie">Numero Serie</label>
+                <input type="text" id="numero_serie" name="numero_serie" value="{{.Data.Attrezzo.NumeroSerie}}">
+            </div>
+        </div>
+
+        <h3 class="section-title">Acquisto</h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="data_acquisto">Data Acquisto</label>
+                <input type="date" id="data_acquisto" name="data_acquisto" value="{{.Data.Attrezzo.DataAcquisto}}">
+            </div>
+            <div class="form-group">
+                <label for="prezzo_acquisto">Prezzo Acquisto (€)</label>
+                <input type="number" id="prezzo_acquisto" name="prezzo_acquisto" step="0.01" min="0" value="{{if .Data.Attrezzo.PrezzoAcquisto}}{{printf "%.2f" .Data.Attrezzo.PrezzoAcquisto}}{{end}}">
+            </div>
+            <div class="form-group">
+                <label for="fornitore_id">Fornitore</label>
+                <select id="fornitore_id" name="fornitore_id">
+                    <option value="">-- Nessuno --</option>
+                    {{range .Data.Fornitori}}
+                    <option value="{{.ID}}" {{if and $.Data.Attrezzo.FornitoreID (eq .ID (index $.Data.Attrezzo.FornitoreID 0))}}selected{{end}}>{{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+        </div>
+
+        {{if not .Data.Attrezzo.ID}}
+        <div class="form-group">
+            <label for="documento">Documento Acquisto (PDF)</label>
+            <input type="file" id="documento" name="documento" accept=".pdf">
+            <small>Fattura o scontrino di acquisto</small>
+        </div>
+        {{end}}
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note" rows="2">{{.Data.Attrezzo.Note}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.Attrezzo.ID}}Salva Modifiche{{else}}Crea Attrezzo{{end}}</button>
+            <a href="/attrezzi" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.section-title {
+    margin-top: 25px;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ddd;
+    color: #555;
+    font-size: 1rem;
+}
+
+.flex-2 {
+    flex: 2;
+}
+</style>
+{{end}}

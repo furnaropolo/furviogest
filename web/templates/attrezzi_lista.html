@@ -1,0 +1,198 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Attrezzi e Consumabili</h1>
+    <div class="page-actions">
+        <a href="/attrezzi/nuovo" class="btn btn-primary">+ Nuovo</a>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="GET" class="filter-form">
+        <div class="form-group">
+            <label>Categoria</label>
+            <select name="categoria" onchange="this.form.submit()">
+                <option value="">Tutte</option>
+                <option value="attrezzo" {{if eq .Data.FiltroCategoria "attrezzo"}}selected{{end}}>Attrezzi</option>
+                <option value="consumabile" {{if eq .Data.FiltroCategoria "consumabile"}}selected{{end}}>Consumabili</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Stato</label>
+            <select name="stato" onchange="this.form.submit()">
+                <option value="">Tutti</option>
+                <option value="disponibile" {{if eq .Data.FiltroStato "disponibile"}}selected{{end}}>Disponibile</option>
+                <option value="in_uso" {{if eq .Data.FiltroStato "in_uso"}}selected{{end}}>In Uso</option>
+                <option value="perso" {{if eq .Data.FiltroStato "perso"}}selected{{end}}>Perso</option>
+                <option value="usurato" {{if eq .Data.FiltroStato "usurato"}}selected{{end}}>Usurato</option>
+                <option value="dismesso" {{if eq .Data.FiltroStato "dismesso"}}selected{{end}}>Dismesso</option>
+            </select>
+        </div>
+        <a href="/attrezzi" class="btn btn-secondary btn-sm">Reset</a>
+    </form>
+</div>
+
+<div class="attrezzi-grid">
+    {{range .Data.Attrezzi}}
+    <div class="attrezzo-card stato-{{.Stato}}">
+        <div class="attrezzo-header">
+            <span class="categoria-badge {{.Categoria}}">
+                {{if eq .Categoria "attrezzo"}}🔧 Attrezzo{{else}}📦 Consumabile{{end}}
+            </span>
+            <span class="stato-badge {{.Stato}}">
+                {{if eq .Stato "disponibile"}}Disponibile
+                {{else if eq .Stato "in_uso"}}In Uso
+                {{else if eq .Stato "perso"}}Perso
+                {{else if eq .Stato "usurato"}}Usurato
+                {{else}}Dismesso{{end}}
+            </span>
+        </div>
+        <div class="attrezzo-body">
+            <h3>{{.Nome}}</h3>
+            {{if .Codice}}<p class="codice">Cod: {{.Codice}}</p>{{end}}
+            {{if .Marca}}<p class="marca">{{.Marca}} {{.Modello}}</p>{{end}}
+            {{if .NumeroSerie}}<p class="serie">S/N: {{.NumeroSerie}}</p>{{end}}
+            {{if .AssegnatoNome}}
+            <p class="assegnato">Assegnato a: <strong>{{.AssegnatoNome}}</strong></p>
+            {{end}}
+            {{if .Descrizione}}<p class="descrizione">{{.Descrizione}}</p>{{end}}
+        </div>
+        <div class="attrezzo-footer">
+            {{if .DocumentoAcquistoPath}}
+            <a href="{{.DocumentoAcquistoPath}}" target="_blank" class="btn btn-link btn-sm" title="Documento acquisto">📄</a>
+            {{end}}
+            <a href="/attrezzi/movimento/{{.ID}}" class="btn btn-primary btn-sm">Movimento</a>
+            <a href="/attrezzi/modifica/{{.ID}}" class="btn btn-secondary btn-sm">Modifica</a>
+            {{if .Session.IsTecnico}}
+            <a href="/attrezzi/elimina/{{.ID}}" class="btn btn-danger btn-sm" onclick="return confirm('Eliminare questo attrezzo?')">Elimina</a>
+            {{end}}
+        </div>
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <p>Nessun attrezzo trovato</p>
+        <a href="/attrezzi/nuovo" class="btn btn-primary">Aggiungi il primo attrezzo</a>
+    </div>
+    {{end}}
+</div>
+
+<style>
+.filter-bar {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filter-form {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-form label {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.filter-form select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.attrezzi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.attrezzo-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid #ddd;
+}
+
+.attrezzo-card.stato-disponibile { border-left-color: #28a745; }
+.attrezzo-card.stato-in_uso { border-left-color: #007bff; }
+.attrezzo-card.stato-perso { border-left-color: #dc3545; }
+.attrezzo-card.stato-usurato { border-left-color: #ffc107; }
+.attrezzo-card.stato-dismesso { border-left-color: #6c757d; }
+
+.attrezzo-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.categoria-badge {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #f0f0f0;
+}
+
+.categoria-badge.attrezzo { background: #e3f2fd; color: #1976d2; }
+.categoria-badge.consumabile { background: #fff3e0; color: #ef6c00; }
+
+.stato-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: white;
+}
+
+.stato-badge.disponibile { background: #28a745; }
+.stato-badge.in_uso { background: #007bff; }
+.stato-badge.perso { background: #dc3545; }
+.stato-badge.usurato { background: #ffc107; color: #333; }
+.stato-badge.dismesso { background: #6c757d; }
+
+.attrezzo-body h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1rem;
+}
+
+.attrezzo-body p {
+    margin: 3px 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.attrezzo-body .assegnato {
+    color: #007bff;
+}
+
+.attrezzo-footer {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 8px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+</style>
+{{end}}

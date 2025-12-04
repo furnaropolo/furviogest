@@ -1,0 +1,137 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Nuovo Movimento</h1>
+</div>
+
+<div class="product-info">
+    <div class="info-card">
+        <span class="info-label">Prodotto:</span>
+        <span class="info-value">{{.Data.Prodotto.Nome}}</span>
+    </div>
+    <div class="info-card">
+        <span class="info-label">Codice:</span>
+        <span class="info-value">{{.Data.Prodotto.Codice}}</span>
+    </div>
+    <div class="info-card">
+        <span class="info-label">Categoria:</span>
+        <span class="info-value">{{if eq .Data.Prodotto.Categoria "cavo"}}Cavo{{else}}Materiale{{end}}</span>
+    </div>
+    <div class="info-card">
+        <span class="info-label">Giacenza Attuale:</span>
+        <span class="info-value giacenza">{{printf "%.2f" .Data.Prodotto.Giacenza}} {{.Data.Prodotto.UnitaMisura}}</span>
+    </div>
+</div>
+
+<div class="form-container">
+    <form method="POST" class="form" enctype="multipart/form-data">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tipo">Tipo Movimento *</label>
+                <select id="tipo" name="tipo" required onchange="updateFormFields()">
+                    <option value="">Seleziona...</option>
+                    <option value="carico">Carico (aggiunge)</option>
+                    <option value="scarico">Scarico (sottrae)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantita">Quantita * <small>({{.Data.Prodotto.UnitaMisura}})</small></label>
+                <input type="number" id="quantita" name="quantita" min="0.01" step="{{if eq .Data.Prodotto.Categoria "cavo"}}0.1{{else}}1{{end}}" value="1" required>
+                <small id="max-hint" style="display: none;">Massimo disponibile: <span id="max-value">{{printf "%.2f" .Data.Prodotto.Giacenza}}</span> {{.Data.Prodotto.UnitaMisura}}</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="motivo">Motivo</label>
+            <input type="text" id="motivo" name="motivo" placeholder="Es: Intervento su M/N XXXX, Acquisto da fornitore, Spedizione a nave, ecc.">
+        </div>
+
+        <!-- Sezione upload documento (visibile solo per carico) -->
+        <div id="documento-section" class="form-section" style="display: none;">
+            <h3>Documento di Acquisto</h3>
+            <div class="form-group">
+                <label for="documento">Fattura o Scontrino (PDF)</label>
+                <input type="file" id="documento" name="documento" accept=".pdf">
+                <small>Opzionale - Carica il PDF della fattura o dello scontrino di acquisto</small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Registra Movimento</button>
+            <a href="/magazzino/movimenti/{{.Data.Prodotto.ID}}" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.product-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+}
+.info-card {
+    display: flex;
+    flex-direction: column;
+}
+.info-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.info-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+.info-value.giacenza {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+small {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+}
+.form-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px dashed #ddd;
+}
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: #555;
+}
+</style>
+
+<script>
+var giacenzaAttuale = {{.Data.Prodotto.Giacenza}};
+
+function updateFormFields() {
+    var tipo = document.getElementById('tipo').value;
+    var quantitaInput = document.getElementById('quantita');
+    var maxHint = document.getElementById('max-hint');
+    var documentoSection = document.getElementById('documento-section');
+
+    if (tipo === 'scarico') {
+        quantitaInput.max = giacenzaAttuale;
+        maxHint.style.display = 'block';
+        documentoSection.style.display = 'none';
+    } else if (tipo === 'carico') {
+        quantitaInput.removeAttribute('max');
+        maxHint.style.display = 'none';
+        documentoSection.style.display = 'block';
+    } else {
+        quantitaInput.removeAttribute('max');
+        maxHint.style.display = 'none';
+        documentoSection.style.display = 'none';
+    }
+}
+</script>
+{{end}}

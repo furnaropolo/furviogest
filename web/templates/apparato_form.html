@@ -1,0 +1,173 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.Apparato.ID}}Modifica{{else}}Nuovo{{end}} Apparato - {{.Data.Nave.Nome}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" class="form">
+        <div class="form-section">
+            <h3>Informazioni Base</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nome">Nome Dispositivo *</label>
+                    <input type="text" id="nome" name="nome" value="{{.Data.Apparato.Nome}}" required placeholder="es. SW-NAVE-01">
+                </div>
+                <div class="form-group">
+                    <label for="tipo">Tipo</label>
+                    <select id="tipo" name="tipo">
+                        <option value="">-- Seleziona Tipo --</option>
+                        {{range .Data.Tipi}}
+                        <option value="{{.Nome}}" {{if eq .Nome $.Data.Apparato.Tipo}}selected{{end}}>{{.Nome}}</option>
+                        {{end}}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="ip">Indirizzo IP</label>
+                    <input type="text" id="ip" name="ip" value="{{.Data.Apparato.IP}}" placeholder="es. 10.101.1.1">
+                </div>
+                <div class="form-group">
+                    <label for="mac">MAC Address</label>
+                    <input type="text" id="mac" name="mac" value="{{.Data.Apparato.MAC}}" placeholder="es. AA:BB:CC:DD:EE:FF">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="vendor">Vendor/Produttore</label>
+                    <input type="text" id="vendor" name="vendor" value="{{.Data.Apparato.Vendor}}" placeholder="es. Cisco, Huawei, Ubiquiti">
+                </div>
+                <div class="form-group">
+                    <label for="modello">Modello</label>
+                    <input type="text" id="modello" name="modello" value="{{.Data.Apparato.Modello}}" placeholder="es. C9300-24P">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="firmware">Firmware/Versione</label>
+                    <input type="text" id="firmware" name="firmware" value="{{.Data.Apparato.Firmware}}" placeholder="es. 17.3.4">
+                </div>
+                <div class="form-group">
+                    <label for="location">Posizione sulla nave</label>
+                    <input type="text" id="location" name="location" value="{{.Data.Apparato.Location}}" placeholder="es. Deck 9 - Sala Server">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section credentials-section">
+            <h3>Credenziali di Accesso</h3>
+            <p class="form-help">Le credenziali sono memorizzate in modo sicuro e usate solo per l'accesso diretto ai dispositivi.</p>
+            
+            <div class="credentials-grid">
+                <div class="cred-box">
+                    <h4>SSH</h4>
+                    <div class="form-group">
+                        <label for="ssh_user">Username SSH</label>
+                        <input type="text" id="ssh_user" name="ssh_user" value="{{.Data.Apparato.SSHUser}}" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="ssh_pass">Password SSH</label>
+                        <input type="password" id="ssh_pass" name="ssh_pass" value="{{.Data.Apparato.SSHPass}}" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="ssh_port">Porta SSH</label>
+                        <input type="number" id="ssh_port" name="ssh_port" value="{{if .Data.Apparato.SSHPort}}{{.Data.Apparato.SSHPort}}{{else}}22{{end}}">
+                    </div>
+                </div>
+                
+                <div class="cred-box">
+                    <h4>HTTP/HTTPS</h4>
+                    <div class="form-group">
+                        <label for="http_user">Username Web</label>
+                        <input type="text" id="http_user" name="http_user" value="{{.Data.Apparato.HTTPUser}}" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="http_pass">Password Web</label>
+                        <input type="password" id="http_pass" name="http_pass" value="{{.Data.Apparato.HTTPPass}}" autocomplete="new-password">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="http_port">Porta</label>
+                            <input type="number" id="http_port" name="http_port" value="{{if .Data.Apparato.HTTPPort}}{{.Data.Apparato.HTTPPort}}{{else}}80{{end}}">
+                        </div>
+                        <div class="form-group checkbox-inline">
+                            <label>
+                                <input type="checkbox" name="https_enabled" {{if .Data.Apparato.HTTPSEnabled}}checked{{end}}>
+                                HTTPS
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cred-box">
+                    <h4>SNMP</h4>
+                    <div class="form-group">
+                        <label for="snmp_community">Community String</label>
+                        <input type="text" id="snmp_community" name="snmp_community" value="{{.Data.Apparato.SNMPCommunity}}" placeholder="public">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note" rows="3">{{.Data.Apparato.Note}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.Apparato.ID}}Salva Modifiche{{else}}Crea Apparato{{end}}</button>
+            <a href="/navi/apparati/{{.Data.Nave.ID}}" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+.credentials-section {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+}
+.credentials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+.cred-box {
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+.cred-box h4 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: #495057;
+}
+.checkbox-inline {
+    display: flex;
+    align-items: center;
+}
+.checkbox-inline label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+</style>
+{{end}}

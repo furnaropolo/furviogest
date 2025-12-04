@@ -1,0 +1,59 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Automezzi</h1>
+    {{if .Session.IsTecnico}}
+    <a href="/automezzi/nuovo" class="btn btn-primary">Nuovo Automezzo</a>
+    {{end}}
+</div>
+
+{{if .Data}}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Targa</th>
+                <th>Marca</th>
+                <th>Modello</th>
+                <th>Libretto</th>
+                <th>Note</th>
+                {{if .Session.IsTecnico}}
+                <th>Azioni</th>
+                {{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr>
+                <td><strong>{{.Targa}}</strong></td>
+                <td>{{.Marca}}</td>
+                <td>{{.Modello}}</td>
+                <td>
+                    {{if .LibrettoPath}}
+                    <a href="/static/{{.LibrettoPath}}" target="_blank" class="btn btn-sm btn-secondary">Visualizza</a>
+                    {{else}}
+                    <span class="text-muted">Non caricato</span>
+                    {{end}}
+                </td>
+                <td>{{.Note}}</td>
+                {{if $.Session.IsTecnico}}
+                <td class="table-actions">
+                    <a href="/automezzi/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    <a href="/automezzi/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro?')">Elimina</a>
+                </td>
+                {{end}}
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessun automezzo trovato</h3>
+    {{if .Session.IsTecnico}}
+    <a href="/automezzi/nuovo" class="btn btn-primary mt-2">Aggiungi il primo automezzo</a>
+    {{end}}
+</div>
+{{end}}
+{{end}}

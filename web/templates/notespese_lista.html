@@ -1,0 +1,118 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Note Spese</h1>
+    <div class="page-actions">
+        <a href="/note-spese/nuovo" class="btn btn-primary">+ Nuova Nota Spesa</a>
+    </div>
+</div>
+
+<div class="filter-form">
+    <form method="GET" class="form-inline">
+        {{if .Session.IsTecnico}}
+        <div class="form-group">
+            <label for="tecnico">Tecnico</label>
+            <select name="tecnico" id="tecnico">
+                <option value="">Tutti</option>
+                {{range .Data.Tecnici}}
+                <option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.TecnicoFilter}}selected{{end}}>
+                    {{.Cognome}} {{.Nome}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+        {{end}}
+        <div class="form-group">
+            <label for="mese">Mese</label>
+            <select name="mese" id="mese">
+                <option value="">Tutti</option>
+                <option value="01" {{if eq .Data.MeseFilter "01"}}selected{{end}}>Gennaio</option>
+                <option value="02" {{if eq .Data.MeseFilter "02"}}selected{{end}}>Febbraio</option>
+                <option value="03" {{if eq .Data.MeseFilter "03"}}selected{{end}}>Marzo</option>
+                <option value="04" {{if eq .Data.MeseFilter "04"}}selected{{end}}>Aprile</option>
+                <option value="05" {{if eq .Data.MeseFilter "05"}}selected{{end}}>Maggio</option>
+                <option value="06" {{if eq .Data.MeseFilter "06"}}selected{{end}}>Giugno</option>
+                <option value="07" {{if eq .Data.MeseFilter "07"}}selected{{end}}>Luglio</option>
+                <option value="08" {{if eq .Data.MeseFilter "08"}}selected{{end}}>Agosto</option>
+                <option value="09" {{if eq .Data.MeseFilter "09"}}selected{{end}}>Settembre</option>
+                <option value="10" {{if eq .Data.MeseFilter "10"}}selected{{end}}>Ottobre</option>
+                <option value="11" {{if eq .Data.MeseFilter "11"}}selected{{end}}>Novembre</option>
+                <option value="12" {{if eq .Data.MeseFilter "12"}}selected{{end}}>Dicembre</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="anno">Anno</label>
+            <select name="anno" id="anno">
+                <option value="">Tutti</option>
+                <option value="2024" {{if eq .Data.AnnoFilter "2024"}}selected{{end}}>2024</option>
+                <option value="2025" {{if eq .Data.AnnoFilter "2025"}}selected{{end}}>2025</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filtra</button>
+        <a href="/note-spese" class="btn btn-secondary">Reset</a>
+    </form>
+</div>
+
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                {{if .Session.IsTecnico}}<th>Tecnico</th>{{end}}
+                <th>Tipo</th>
+                <th>Descrizione</th>
+                <th>Importo</th>
+                <th>Pagamento</th>
+                <th>Ricevuta</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.NoteSpese}}
+            <tr>
+                <td>{{.Data}}</td>
+                {{if $.Session.IsTecnico}}<td>{{.NomeTecnico}}</td>{{end}}
+                <td>
+                    {{if eq .TipoSpesa "carburante"}}<span class="badge badge-info">Carburante</span>
+                    {{else if eq .TipoSpesa "pedaggio"}}<span class="badge badge-secondary">Pedaggio</span>
+                    {{else if eq .TipoSpesa "parcheggio"}}<span class="badge badge-secondary">Parcheggio</span>
+                    {{else if eq .TipoSpesa "vitto"}}<span class="badge badge-success">Vitto</span>
+                    {{else if eq .TipoSpesa "alloggio"}}<span class="badge badge-primary">Alloggio</span>
+                    {{else if eq .TipoSpesa "trasporto"}}<span class="badge badge-warning">Trasporto</span>
+                    {{else if eq .TipoSpesa "materiale"}}<span class="badge badge-danger">Materiale</span>
+                    {{else}}<span class="badge">{{.TipoSpesa}}</span>
+                    {{end}}
+                </td>
+                <td>{{.Descrizione}}</td>
+                <td class="text-right">{{printf "%.2f" .Importo}} &euro;</td>
+                <td>
+                    {{if eq .MetodoPagamento "contanti"}}Contanti
+                    {{else if eq .MetodoPagamento "carta_aziendale"}}Carta Az.
+                    {{else if eq .MetodoPagamento "carta_personale"}}Carta Pers.
+                    {{else}}{{.MetodoPagamento}}
+                    {{end}}
+                </td>
+                <td>
+                    {{if .RicevutaPath}}
+                    <a href="{{.RicevutaPath}}" target="_blank" class="btn btn-small">Vedi</a>
+                    {{else}}
+                    -
+                    {{end}}
+                </td>
+                <td>
+                    <a href="/note-spese/modifica/{{.ID}}" class="btn btn-small">Modifica</a>
+                    {{if $.Session.IsTecnico}}
+                    <a href="/note-spese/elimina/{{.ID}}" class="btn btn-small btn-danger" onclick="return confirm('Eliminare questa nota spesa?')">Elimina</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="8" class="text-center">Nessuna nota spesa trovata</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

@@ -1,0 +1,138 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Dashboard Amministrazione</h1>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-value">{{.Data.TotProdotti}}</div>
+        <div class="stat-label">Prodotti in Magazzino</div>
+        <a href="/amministrazione/magazzino" class="stat-link">Visualizza Giacenza</a>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value">{{.Data.TotRapporti}}</div>
+        <div class="stat-label">Rapporti Intervento</div>
+        <a href="/amministrazione/rapporti" class="stat-link">Visualizza Rapporti</a>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value">{{.Data.TotNoteSpese}}</div>
+        <div class="stat-label">Note Spese</div>
+        <a href="/amministrazione/note-spese" class="stat-link">Visualizza Note Spese</a>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🚗</div>
+        <div class="stat-value">{{.Data.TotTrasferte}}</div>
+        <div class="stat-label">Trasferte</div>
+        <a href="/amministrazione/trasferte" class="stat-link">Visualizza Trasferte</a>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📄</div>
+        <div class="stat-value">{{.Data.TotDDT}}</div>
+        <div class="stat-label">DDT Uscita Merce</div>
+        <a href="/amministrazione/ddt" class="stat-link">Visualizza DDT</a>
+    </div>
+</div>
+
+<div class="dashboard-sections">
+    <div class="section-card">
+        <h3>Riepilogo Mensile</h3>
+        <p>Genera il riepilogo mensile per tecnico con trasferte e note spese.</p>
+        <a href="/amministrazione/riepilogo" class="btn btn-primary">Genera Riepilogo</a>
+    </div>
+
+    <div class="section-card">
+        <h3>Export Rapidi</h3>
+        <div class="export-buttons">
+            <a href="/amministrazione/magazzino/export" class="btn btn-secondary">
+                Scarica Giacenza CSV
+            </a>
+            <a href="/amministrazione/note-spese/export" class="btn btn-secondary">
+                Scarica Note Spese CSV
+            </a>
+            <a href="/amministrazione/trasferte/export" class="btn btn-secondary">
+                Scarica Trasferte CSV
+            </a>
+            <a href="/amministrazione/ddt/export" class="btn btn-secondary">
+                Scarica DDT CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.stat-label {
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.stat-link {
+    color: #3498db;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.stat-link:hover {
+    text-decoration: underline;
+}
+
+.dashboard-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.section-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.section-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.export-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.export-buttons .btn {
+    text-align: center;
+}
+</style>
+{{end}}

@@ -1,0 +1,352 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{.Data.Nave.Nome}}</h1>
+    <div class="header-actions">
+        {{if $.Session.IsTecnico}}
+        <a href="/navi/apparati/{{.Data.Nave.ID}}" class="btn btn-info">Gestione Apparati</a>
+        <a href="/navi/modifica/{{.Data.Nave.ID}}" class="btn btn-warning">Modifica Nave</a>
+        {{end}}
+        <a href="/navi" class="btn btn-secondary">Torna alla Lista</a>
+    </div>
+</div>
+
+<div class="nave-info-grid">
+    <div class="info-card">
+        <h3>Informazioni Nave</h3>
+        <dl>
+            <dt>Compagnia</dt>
+            <dd>{{.Data.Nave.NomeCompagnia}}</dd>
+            {{if .Data.Nave.IMO}}
+            <dt>IMO</dt>
+            <dd>{{.Data.Nave.IMO}}</dd>
+            {{end}}
+            <dt>Email Master</dt>
+            <dd>{{if .Data.Nave.EmailMaster}}<a href="mailto:{{.Data.Nave.EmailMaster}}">{{.Data.Nave.EmailMaster}}</a>{{else}}-{{end}}</dd>
+            <dt>Email DDM</dt>
+            <dd>{{if .Data.Nave.EmailDirettoreMacchina}}<a href="mailto:{{.Data.Nave.EmailDirettoreMacchina}}">{{.Data.Nave.EmailDirettoreMacchina}}</a>{{else}}-{{end}}</dd>
+            <dt>Email Ispettore</dt>
+            <dd>{{if .Data.Nave.EmailIspettore}}<a href="mailto:{{.Data.Nave.EmailIspettore}}">{{.Data.Nave.EmailIspettore}}</a>{{else}}-{{end}}</dd>
+        </dl>
+    </div>
+
+    <div class="info-card {{if .Data.Nave.FermaPerLavori}}stato-lavori{{end}}">
+        <h3>Stato Operativo</h3>
+        {{if .Data.Nave.FermaPerLavori}}
+        <div class="alert alert-warning">
+            <strong>FERMA PER LAVORI</strong><br>
+            Gli apparati non sono raggiungibili da remoto
+        </div>
+        <dl>
+            {{if .Data.Nave.DataInizioLavori}}
+            <dt>Inizio Lavori</dt>
+            <dd>{{.Data.Nave.DataInizioLavori.Format "02/01/2006"}}</dd>
+            {{end}}
+            {{if .Data.Nave.DataFineLavoriPrev}}
+            <dt>Fine Prevista</dt>
+            <dd>{{.Data.Nave.DataFineLavoriPrev.Format "02/01/2006"}}</dd>
+            {{end}}
+            {{if .Data.Nave.NomePortoLavori}}
+            <dt>Porto Lavori</dt>
+            <dd>{{.Data.Nave.NomePortoLavori}}</dd>
+            {{end}}
+        </dl>
+        {{else}}
+        <span class="badge badge-success badge-lg">OPERATIVA</span>
+        {{end}}
+    </div>
+</div>
+
+<!-- Sezione Orari/Rotte -->
+<div class="section-card">
+    <div class="section-header">
+        <h2>Orari e Rotte</h2>
+        {{if $.Session.IsTecnico}}
+        <button class="btn btn-primary btn-sm" onclick="toggleForm('formOrario')">+ Aggiungi Tratta</button>
+        {{end}}
+    </div>
+
+    {{if $.Session.IsTecnico}}
+    <div id="formOrario" class="form-inline-section" style="display:none;">
+        <form method="POST" action="/navi/orario/nuovo/{{.Data.Nave.ID}}" class="form-inline">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" name="data" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Porto Partenza</label>
+                    <input type="text" name="porto_partenza" class="form-control" placeholder="es. Livorno">
+                </div>
+                <div class="form-group">
+                    <label>Ora Partenza</label>
+                    <input type="time" name="ora_partenza" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Porto Arrivo</label>
+                    <input type="text" name="porto_arrivo" class="form-control" placeholder="es. Bastia">
+                </div>
+                <div class="form-group">
+                    <label>Ora Arrivo</label>
+                    <input type="time" name="ora_arrivo" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Note</label>
+                    <input type="text" name="note" class="form-control" placeholder="Note opzionali">
+                </div>
+                <div class="form-group form-actions-inline">
+                    <button type="submit" class="btn btn-success">Salva</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleForm('formOrario')">Annulla</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {{end}}
+
+    {{if .Data.Orari}}
+    <div class="table-responsive">
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Partenza</th>
+                    <th>Ora Part.</th>
+                    <th>Arrivo</th>
+                    <th>Ora Arr.</th>
+                    <th>Note</th>
+                    <th>Fonte</th>
+                    {{if $.Session.IsTecnico}}<th>Azioni</th>{{end}}
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Data.Orari}}
+                <tr>
+                    <td>{{.Data.Format "02/01/2006"}}</td>
+                    <td><strong>{{.PortoPartenzaNome}}</strong></td>
+                    <td>{{.OraPartenza}}</td>
+                    <td><strong>{{.PortoArrivoNome}}</strong></td>
+                    <td>{{.OraArrivo}}</td>
+                    <td>{{.Note}}</td>
+                    <td><span class="badge badge-{{if eq .Fonte "manuale"}}secondary{{else}}info{{end}}">{{.Fonte}}</span></td>
+                    {{if $.Session.IsTecnico}}
+                    <td>
+                        <a href="/navi/orario/elimina/{{.ID}}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminare?')">Elimina</a>
+                    </td>
+                    {{end}}
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <p class="text-muted">Nessun orario programmato. {{if $.Session.IsTecnico}}Aggiungi una tratta manualmente o carica il file orari.{{end}}</p>
+    {{end}}
+</div>
+
+<!-- Sezione Soste Programmate -->
+<div class="section-card">
+    <div class="section-header">
+        <h2>Soste Programmate</h2>
+        {{if $.Session.IsTecnico}}
+        <button class="btn btn-primary btn-sm" onclick="toggleForm('formSosta')">+ Aggiungi Sosta</button>
+        {{end}}
+    </div>
+
+    {{if $.Session.IsTecnico}}
+    <div id="formSosta" class="form-inline-section" style="display:none;">
+        <form method="POST" action="/navi/sosta/nuova/{{.Data.Nave.ID}}" class="form-inline">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Porto</label>
+                    <select name="porto_id" class="form-control" onchange="updatePortoNome(this)">
+                        <option value="">-- Seleziona o scrivi --</option>
+                        {{range .Data.Porti}}
+                        <option value="{{.ID}}" data-nome="{{.Nome}}">{{.Nome}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nome Porto (se non in lista)</label>
+                    <input type="text" name="porto_nome" id="porto_nome" class="form-control" placeholder="Nome porto">
+                </div>
+                <div class="form-group">
+                    <label>Data Inizio</label>
+                    <input type="date" name="data_inizio" required class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Data Fine</label>
+                    <input type="date" name="data_fine" class="form-control">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ora Arrivo</label>
+                    <input type="time" name="ora_arrivo" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Ora Partenza</label>
+                    <input type="time" name="ora_partenza" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Motivo</label>
+                    <input type="text" name="motivo" class="form-control" placeholder="es. Sosta tecnica, imbarco">
+                </div>
+                <div class="form-group">
+                    <label>Note</label>
+                    <input type="text" name="note" class="form-control">
+                </div>
+                <div class="form-group form-actions-inline">
+                    <button type="submit" class="btn btn-success">Salva</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleForm('formSosta')">Annulla</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {{end}}
+
+    {{if .Data.Soste}}
+    <div class="soste-grid">
+        {{range .Data.Soste}}
+        <div class="sosta-card">
+            <div class="sosta-header">
+                <strong>{{if .NomePorto}}{{.NomePorto}}{{else}}{{.PortoNome}}{{end}}</strong>
+                {{if $.Session.IsTecnico}}
+                <a href="/navi/sosta/elimina/{{.ID}}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminare?')">X</a>
+                {{end}}
+            </div>
+            <div class="sosta-body">
+                <p><strong>Dal:</strong> {{.DataInizio.Format "02/01/2006"}} {{if .OraArrivo}}ore {{.OraArrivo}}{{end}}</p>
+                {{if .DataFine}}
+                <p><strong>Al:</strong> {{.DataFine.Format "02/01/2006"}} {{if .OraPartenza}}ore {{.OraPartenza}}{{end}}</p>
+                {{end}}
+                {{if .Motivo}}<p><strong>Motivo:</strong> {{.Motivo}}</p>{{end}}
+                {{if .Note}}<p class="text-muted">{{.Note}}</p>{{end}}
+            </div>
+            <div class="sosta-footer">
+                <span class="badge badge-{{if eq .Fonte "manuale"}}secondary{{else}}info{{end}}">{{.Fonte}}</span>
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <p class="text-muted">Nessuna sosta programmata.</p>
+    {{end}}
+</div>
+
+<script>
+function toggleForm(id) {
+    var form = document.getElementById(id);
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function updatePortoNome(select) {
+    var option = select.options[select.selectedIndex];
+    if (option.value) {
+        document.getElementById('porto_nome').value = option.getAttribute('data-nome');
+    }
+}
+</script>
+
+<style>
+.nave-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+.info-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.info-card h3 {
+    margin-top: 0;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 0.5rem;
+}
+.info-card.stato-lavori {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+}
+.section-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+.section-header h2 {
+    margin: 0;
+}
+.form-inline-section {
+    background: var(--bg-light);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+.form-inline .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+.form-inline .form-group {
+    flex: 1;
+    min-width: 120px;
+}
+.form-inline .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+.form-actions-inline {
+    display: flex;
+    gap: 0.5rem;
+}
+.soste-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+.sosta-card {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.sosta-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sosta-body {
+    padding: 1rem;
+}
+.sosta-body p {
+    margin: 0.25rem 0;
+}
+.sosta-footer {
+    padding: 0.5rem 1rem;
+    background: var(--bg-light);
+}
+.badge-lg {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+}
+.table-compact td, .table-compact th {
+    padding: 0.5rem;
+}
+</style>
+{{end}}

@@ -1,0 +1,75 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="dashboard">
+    <h1>Dashboard</h1>
+    <p class="welcome-message">Benvenuto, {{.Session.Nome}} {{.Session.Cognome}}!</p>
+
+    <div class="dashboard-cards">
+        <div class="card">
+            <div class="card-header">
+                <h3>Anagrafiche</h3>
+            </div>
+            <div class="card-body">
+                <ul class="quick-links">
+                    <li><a href="/tecnici">Tecnici</a></li>
+                    <li><a href="/fornitori">Fornitori</a></li>
+                    <li><a href="/porti">Porti</a></li>
+                    <li><a href="/automezzi">Automezzi</a></li>
+                    <li><a href="/compagnie">Compagnie</a></li>
+                    <li><a href="/navi">Navi</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Magazzino</h3>
+            </div>
+            <div class="card-body">
+                <ul class="quick-links">
+                    <li><a href="/prodotti">Prodotti</a></li>
+                    <li><a href="/movimenti">Movimenti</a></li>
+                    {{if .Session.IsTecnico}}
+                    <li><a href="/prodotti/nuovo">Nuovo Prodotto</a></li>
+                    {{end}}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Operazioni</h3>
+            </div>
+            <div class="card-body">
+                <ul class="quick-links">
+                    <li><a href="/permessi">Richieste Permessi</a></li>
+                    <li><a href="/rapporti">Rapporti Intervento</a></li>
+                    <li><a href="/ddt">DDT</a></li>
+                    {{if .Session.IsTecnico}}
+                    <li><a href="/permessi/nuovo">Nuova Richiesta Permesso</a></li>
+                    <li><a href="/rapporti/nuovo">Nuovo Rapporto</a></li>
+                    {{end}}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Trasferte e Spese</h3>
+            </div>
+            <div class="card-body">
+                <ul class="quick-links">
+                    <li><a href="/trasferte">Lista Trasferte</a></li>
+                    <li><a href="/note-spese">Note Spese</a></li>
+                    <li><a href="/foglio-mensile">Foglio Mensile</a></li>
+                    {{if .Session.IsTecnico}}
+                    <li><a href="/trasferte/nuova">Nuova Trasferta</a></li>
+                    <li><a href="/note-spese/nuova">Nuova Nota Spesa</a></li>
+                    {{end}}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

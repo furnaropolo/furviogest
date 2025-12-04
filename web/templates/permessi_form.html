@@ -1,0 +1,183 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.Permesso}}Modifica{{else}}Nuova{{end}} Richiesta Permesso</h1>
+    <a href="/permessi" class="btn btn-secondary">Torna alla Lista</a>
+</div>
+
+<form method="POST" class="form-card">
+    <div class="form-section">
+        <h3>Dati Intervento</h3>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="nave_id">Nave *</label>
+                <select name="nave_id" id="nave_id" required class="form-control">
+                    <option value="">-- Seleziona Nave --</option>
+                    {{$permesso := .Data.Permesso}}
+                    {{range .Data.Navi}}
+                    <option value="{{.ID}}" {{if $permesso}}{{if eq $permesso.NaveID .ID}}selected{{end}}{{end}}>
+                        {{.NomeCompagnia}} - {{.Nome}} {{if .IMO}}(IMO: {{.IMO}}){{end}}
+                    </option>
+                    {{end}}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="porto_id">Porto *</label>
+                <select name="porto_id" id="porto_id" required class="form-control">
+                    <option value="">-- Seleziona Porto --</option>
+                    {{range .Data.Porti}}
+                    <option value="{{.ID}}" {{if $permesso}}{{if eq $permesso.PortoID .ID}}selected{{end}}{{end}}
+                            data-agenzia="{{.NomeAgenzia}}" data-email="{{.EmailAgenzia}}">
+                        {{.Nome}}{{if .Citta}} - {{.Citta}}{{end}}{{if .Paese}} ({{.Paese}}){{end}}
+                    </option>
+                    {{end}}
+                </select>
+                <small class="form-help" id="portoInfo"></small>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Periodo e Durata</h3>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tipo_durata">Tipo Durata *</label>
+                <select name="tipo_durata" id="tipo_durata" required class="form-control">
+                    <option value="giornaliera" {{if $permesso}}{{if eq (printf "%s" $permesso.TipoDurata) "giornaliera"}}selected{{end}}{{end}}>
+                        Giornaliera (1 giorno)
+                    </option>
+                    <option value="multigiorno" {{if $permesso}}{{if eq (printf "%s" $permesso.TipoDurata) "multigiorno"}}selected{{end}}{{end}}>
+                        Multigiorno
+                    </option>
+                    <option value="fine_lavori" {{if $permesso}}{{if eq (printf "%s" $permesso.TipoDurata) "fine_lavori"}}selected{{end}}{{end}}>
+                        Fino a Fine Lavori
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="data_inizio">Data Inizio *</label>
+                <input type="date" name="data_inizio" id="data_inizio" required class="form-control"
+                       value="{{if $permesso}}{{$permesso.DataInizio.Format "2006-01-02"}}{{end}}">
+            </div>
+
+            <div class="form-group" id="dataFineGroup">
+                <label for="data_fine">Data Fine</label>
+                <input type="date" name="data_fine" id="data_fine" class="form-control"
+                       value="{{if $permesso}}{{if $permesso.DataFine}}{{$permesso.DataFine.Format "2006-01-02"}}{{end}}{{end}}">
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Tecnici *</h3>
+        <p class="form-help">Seleziona i tecnici che parteciperanno all'intervento</p>
+        
+        <div class="checkbox-grid">
+            {{$tecniciSel := .Data.TecniciSelezionati}}
+            {{range .Data.Tecnici}}
+            <label class="checkbox-item">
+                <input type="checkbox" name="tecnici" value="{{.ID}}"
+                       {{range $tecniciSel}}{{if eq . $.ID}}checked{{end}}{{end}}>
+                <span>{{.Cognome}} {{.Nome}}</span>
+            </label>
+            {{end}}
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Veicolo</h3>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="automezzo_id">Automezzo Aziendale</label>
+                <select name="automezzo_id" id="automezzo_id" class="form-control">
+                    <option value="">-- Nessun automezzo aziendale --</option>
+                    {{range .Data.Automezzi}}
+                    <option value="{{.ID}}" {{if $permesso}}{{if $permesso.AutomezzoID}}{{if eq $permesso.AutomezzoID .ID}}selected{{end}}{{end}}{{end}}>
+                        {{.Targa}} - {{.Marca}} {{.Modello}}
+                    </option>
+                    {{end}}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="targa_esterna">Targa Esterna (noleggio/privata)</label>
+                <input type="text" name="targa_esterna" id="targa_esterna" class="form-control"
+                       placeholder="Es. AB123CD" maxlength="10"
+                       value="{{if $permesso}}{{$permesso.TargaEsterna}}{{end}}">
+                <small class="form-help">Compila se utilizzi un'auto a noleggio o privata</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h3>Note</h3>
+        <div class="form-group">
+            <textarea name="note" id="note" class="form-control" rows="4" 
+                      placeholder="Note aggiuntive per la richiesta...">{{if $permesso}}{{$permesso.Note}}{{end}}</textarea>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+            {{if $permesso}}Salva Modifiche{{else}}Crea Richiesta{{end}}
+        </button>
+        <a href="/permessi" class="btn btn-secondary">Annulla</a>
+    </div>
+</form>
+
+<script>
+// Gestione visibilità data fine in base al tipo durata
+document.getElementById('tipo_durata').addEventListener('change', function() {
+    const dataFineGroup = document.getElementById('dataFineGroup');
+    const dataFineInput = document.getElementById('data_fine');
+    
+    if (this.value === 'fine_lavori') {
+        dataFineGroup.style.display = 'none';
+        dataFineInput.removeAttribute('required');
+        dataFineInput.value = '';
+    } else {
+        dataFineGroup.style.display = 'block';
+        dataFineInput.setAttribute('required', 'required');
+        
+        // Se giornaliera, imposta data fine = data inizio
+        if (this.value === 'giornaliera') {
+            const dataInizio = document.getElementById('data_inizio').value;
+            if (dataInizio) {
+                dataFineInput.value = dataInizio;
+            }
+        }
+    }
+});
+
+// Sincronizza data fine con data inizio per permessi giornalieri
+document.getElementById('data_inizio').addEventListener('change', function() {
+    const tipoDurata = document.getElementById('tipo_durata').value;
+    if (tipoDurata === 'giornaliera') {
+        document.getElementById('data_fine').value = this.value;
+    }
+});
+
+// Mostra info agenzia porto
+document.getElementById('porto_id').addEventListener('change', function() {
+    const option = this.options[this.selectedIndex];
+    const agenzia = option.getAttribute('data-agenzia');
+    const email = option.getAttribute('data-email');
+    const info = document.getElementById('portoInfo');
+    
+    if (agenzia || email) {
+        info.innerHTML = '<strong>Agenzia:</strong> ' + (agenzia || 'N/D') + 
+                        (email ? ' - <a href="mailto:' + email + '">' + email + '</a>' : '');
+    } else {
+        info.innerHTML = '';
+    }
+});
+
+// Inizializza stato al caricamento
+document.getElementById('tipo_durata').dispatchEvent(new Event('change'));
+document.getElementById('porto_id').dispatchEvent(new Event('change'));
+</script>
+{{end}}

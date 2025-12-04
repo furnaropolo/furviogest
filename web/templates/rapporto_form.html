@@ -1,0 +1,179 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.Rapporto.ID}}Modifica Rapporto #{{.Data.Rapporto.ID}}{{else}}Nuovo Rapporto Intervento{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" class="form">
+        <div class="form-section">
+            <h3>Informazioni Intervento</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nave_id">Nave *</label>
+                    <select id="nave_id" name="nave_id" required>
+                        <option value="">-- Seleziona Nave --</option>
+                        {{range .Data.Navi}}
+                        <option value="{{.ID}}" {{if eq .ID $.Data.Rapporto.NaveID}}selected{{end}}>
+                            {{.Nome}} ({{.Compagnia}})
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="porto_id">Porto *</label>
+                    <select id="porto_id" name="porto_id" required>
+                        <option value="">-- Seleziona Porto --</option>
+                        {{range .Data.Porti}}
+                        <option value="{{.ID}}" {{if eq .ID $.Data.Rapporto.PortoID}}selected{{end}}>{{.Nome}}</option>
+                        {{end}}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tipo">Tipo Intervento *</label>
+                    <select id="tipo" name="tipo" required>
+                        <option value="wifi" {{if eq .Data.Rapporto.Tipo "wifi"}}selected{{end}}>WiFi</option>
+                        <option value="gsm" {{if eq .Data.Rapporto.Tipo "gsm"}}selected{{end}}>GSM</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="data_intervento">Data Intervento *</label>
+                    <input type="date" id="data_intervento" name="data_intervento" 
+                           value="{{.Data.Rapporto.DataIntervento}}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="descrizione">Descrizione Lavoro</label>
+                <textarea id="descrizione" name="descrizione" rows="5" 
+                          placeholder="Descrizione dettagliata dell'intervento eseguito...">{{.Data.Rapporto.Descrizione}}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="note">Note</label>
+                <textarea id="note" name="note" rows="3">{{.Data.Rapporto.Note}}</textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Tecnici Partecipanti</h3>
+            <div class="tecnici-grid">
+                {{range .Data.Tecnici}}
+                <label class="checkbox-label">
+                    <input type="checkbox" name="tecnici" value="{{.ID}}" {{if .Selected}}checked{{end}}>
+                    {{.Cognome}} {{.Nome}}
+                </label>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {{if .Data.Rapporto.ID}}Salva Modifiche{{else}}Crea Rapporto{{end}}
+            </button>
+            <a href="/rapporti" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.form-container {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 900px;
+}
+
+.form-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.1rem;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.tecnici-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.checkbox-label:hover {
+    background: #e9ecef;
+}
+
+.checkbox-label input {
+    width: auto;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 15px;
+}
+</style>
+{{end}}

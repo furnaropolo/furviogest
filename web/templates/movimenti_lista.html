@@ -1,0 +1,118 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Movimenti: {{.Data.Prodotto.Nome}}</h1>
+    <div class="header-actions">
+        {{if .Session.IsTecnico}}
+        <a href="/magazzino/movimento/{{.Data.Prodotto.ID}}" class="btn btn-primary">Nuovo Movimento</a>
+        {{end}}
+        <a href="/magazzino" class="btn btn-secondary">Torna al Magazzino</a>
+    </div>
+</div>
+
+<div class="product-info">
+    <div class="info-card">
+        <span class="info-label">Codice:</span>
+        <span class="info-value">{{.Data.Prodotto.Codice}}</span>
+    </div>
+    <div class="info-card">
+        <span class="info-label">Categoria:</span>
+        <span class="info-value">{{if eq .Data.Prodotto.Categoria "cavo"}}Cavo{{else}}Materiale{{end}}</span>
+    </div>
+    <div class="info-card">
+        <span class="info-label">Giacenza Attuale:</span>
+        <span class="info-value giacenza">{{printf "%.2f" .Data.Prodotto.Giacenza}} {{.Data.Prodotto.UnitaMisura}}</span>
+    </div>
+</div>
+
+{{if .Data.Movimenti}}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data/Ora</th>
+                <th>Tipo</th>
+                <th>Quantita</th>
+                <th>Motivo</th>
+                <th>Tecnico</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.Movimenti}}
+            <tr>
+                <td>{{.CreatedAt.Format "02/01/2006 15:04"}}</td>
+                <td>
+                    {{if eq .Tipo "carico"}}
+                    <span class="badge badge-success">CARICO</span>
+                    {{else}}
+                    <span class="badge badge-danger">SCARICO</span>
+                    {{end}}
+                </td>
+                <td>
+                    {{if eq .Tipo "carico"}}
+                    <span class="text-success">+{{printf "%.2f" .Quantita}}</span>
+                    {{else}}
+                    <span class="text-danger">-{{printf "%.2f" .Quantita}}</span>
+                    {{end}}
+                    <small>{{.UnitaMisura}}</small>
+                </td>
+                <td>{{.Motivo}}</td>
+                <td>{{.NomeTecnico}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessun movimento registrato</h3>
+    {{if .Session.IsTecnico}}
+    <a href="/magazzino/movimento/{{.Data.Prodotto.ID}}" class="btn btn-primary mt-2">Registra il primo movimento</a>
+    {{end}}
+</div>
+{{end}}
+
+<style>
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.product-info {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+}
+.info-card {
+    display: flex;
+    flex-direction: column;
+}
+.info-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.info-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+.info-value.giacenza {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.badge-success { background: #28a745; color: white; }
+.badge-danger { background: #dc3545; color: white; }
+.text-success { color: #28a745; font-weight: 600; }
+.text-danger { color: #dc3545; font-weight: 600; }
+small { color: var(--text-secondary); }
+</style>
+{{end}}

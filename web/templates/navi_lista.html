@@ -1,0 +1,144 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Navi</h1>
+    <div class="header-actions">
+        {{if .Session.IsTecnico}}
+        <a href="/orari/upload" class="btn btn-secondary">Upload Orari Corsica</a>
+        <a href="/navi/nuovo" class="btn btn-primary">Nuova Nave</a>
+        {{end}}
+    </div>
+</div>
+
+{{if .Data}}
+<div class="filters-bar">
+    <input type="text" id="searchInput" placeholder="Cerca nave..." class="search-input">
+    <label class="filter-checkbox">
+        <input type="checkbox" id="filterLavori" onchange="filterTable()">
+        Mostra solo ferme per lavori
+    </label>
+</div>
+
+<div class="table-container">
+    <table class="table" id="naviTable">
+        <thead>
+            <tr>
+                <th>Stato</th>
+                <th>Nome</th>
+                <th>Compagnia</th>
+                <th>IMO</th>
+                <th>Email Master</th>
+                <th>Lavori</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr data-ferma="{{if .FermaPerLavori}}1{{else}}0{{end}}">
+                <td>
+                    {{if .FermaPerLavori}}
+                    <span class="badge badge-warning" title="Non raggiungibile da remoto">IN CANTIERE</span>
+                    {{else}}
+                    <span class="badge badge-success">ATTIVA</span>
+                    {{end}}
+                </td>
+                <td><strong><a href="/navi/dettaglio/{{.ID}}">{{.Nome}}</a></strong></td>
+                <td>{{.NomeCompagnia}}</td>
+                <td>{{.IMO}}</td>
+                <td>{{if .EmailMaster}}<a href="mailto:{{.EmailMaster}}">{{.EmailMaster}}</a>{{end}}</td>
+                <td>
+                    {{if .FermaPerLavori}}
+                        {{if .DataInizioLavori}}
+                        <small>Dal: {{.DataInizioLavori.Format "02/01/2006"}}</small><br>
+                        {{end}}
+                        {{if .DataFineLavoriPrev}}
+                        <small>Fine prev: {{.DataFineLavoriPrev.Format "02/01/2006"}}</small>
+                        {{end}}
+                    {{else}}
+                    -
+                    {{end}}
+                </td>
+                <td class="table-actions">
+                    <a href="/navi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli e Orari">Dettagli</a>
+                    {{if $.Session.IsTecnico}}
+                    <a href="/navi/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    <a href="/navi/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro?')">Elimina</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessuna nave trovata</h3>
+    <p>Prima di aggiungere una nave, assicurati di aver creato almeno una compagnia.</p>
+    {{if .Session.IsTecnico}}
+    <a href="/navi/nuovo" class="btn btn-primary mt-2">Aggiungi la prima nave</a>
+    {{end}}
+</div>
+{{end}}
+
+<script>
+document.getElementById('searchInput').addEventListener('keyup', filterTable);
+
+function filterTable() {
+    var searchFilter = document.getElementById('searchInput').value.toLowerCase();
+    var onlyFerme = document.getElementById('filterLavori').checked;
+    var rows = document.querySelectorAll('#naviTable tbody tr');
+    
+    rows.forEach(function(row) {
+        var text = row.textContent.toLowerCase();
+        var isFerma = row.getAttribute('data-ferma') === '1';
+        var matchSearch = text.includes(searchFilter);
+        var matchFerma = !onlyFerme || isFerma;
+        
+        row.style.display = (matchSearch && matchFerma) ? '' : 'none';
+    });
+}
+</script>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.filters-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+.badge-warning {
+    background: #ffc107;
+    color: #212529;
+}
+.badge-success {
+    background: #28a745;
+    color: white;
+}
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+.btn-info:hover {
+    background: #138496;
+}
+</style>
+{{end}}

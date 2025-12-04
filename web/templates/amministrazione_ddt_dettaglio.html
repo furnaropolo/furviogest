@@ -1,0 +1,176 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Dettaglio DDT #{{.Data.DDT.Numero}}</h1>
+    <div class="page-actions">
+        <a href="/amministrazione/ddt" class="btn btn-secondary">Torna alla Lista DDT</a>
+    </div>
+</div>
+
+<div class="detail-card">
+    <div class="detail-section">
+        <h3>Informazioni Generali</h3>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label>Numero DDT</label>
+                <span>{{.Data.DDT.Numero}}</span>
+            </div>
+            <div class="detail-item">
+                <label>Data Emissione</label>
+                <span>{{.Data.DDT.DataEmissione}}</span>
+            </div>
+            <div class="detail-item">
+                <label>Tipo</label>
+                <span class="badge badge-{{if eq .Data.DDT.TipoDDT "intervento"}}primary{{else}}info{{end}}">
+                    {{if eq .Data.DDT.TipoDDT "intervento"}}Intervento{{else}}Spedizione{{end}}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <h3>Destinazione</h3>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label>Compagnia</label>
+                <span>{{.Data.DDT.Compagnia}}</span>
+            </div>
+            <div class="detail-item">
+                <label>Nave</label>
+                <span>{{.Data.DDT.Nave}}</span>
+            </div>
+            {{if .Data.DDT.Porto}}
+            <div class="detail-item">
+                <label>Porto</label>
+                <span>{{.Data.DDT.Porto}}</span>
+            </div>
+            {{end}}
+            {{if .Data.DDT.Destinatario}}
+            <div class="detail-item">
+                <label>Destinatario</label>
+                <span>{{.Data.DDT.Destinatario}}</span>
+            </div>
+            {{end}}
+            {{if .Data.DDT.Indirizzo}}
+            <div class="detail-item">
+                <label>Indirizzo</label>
+                <span>{{.Data.DDT.Indirizzo}}</span>
+            </div>
+            {{end}}
+            {{if .Data.DDT.Vettore}}
+            <div class="detail-item">
+                <label>Vettore/Corriere</label>
+                <span>{{.Data.DDT.Vettore}}</span>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    {{if .Data.DDT.Note}}
+    <div class="detail-section">
+        <h3>Note</h3>
+        <p>{{.Data.DDT.Note}}</p>
+    </div>
+    {{end}}
+</div>
+
+<div class="detail-card mt-3">
+    <h3>Articoli DDT</h3>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Codice</th>
+                    <th>Prodotto</th>
+                    <th>Descrizione</th>
+                    <th class="text-right">Quantità</th>
+                    <th>U.M.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Data.Righe}}
+                <tr>
+                    <td><code>{{.CodiceProdotto}}</code></td>
+                    <td>{{.NomeProdotto}}</td>
+                    <td>{{.Descrizione}}</td>
+                    <td class="text-right">{{printf "%.2f" .Quantita}}</td>
+                    <td>{{.UnitaMisura}}</td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="5" class="text-center">Nessun articolo</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.detail-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.detail-section h3 {
+    color: #333;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-item label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-item span {
+    font-size: 1rem;
+    color: #333;
+}
+
+.badge-primary { background-color: #007bff; color: white; padding: 4px 8px; border-radius: 4px; }
+.badge-info { background-color: #17a2b8; color: white; padding: 4px 8px; border-radius: 4px; }
+
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.mt-3 { margin-top: 20px; }
+
+code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+</style>
+{{end}}

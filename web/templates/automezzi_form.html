@@ -1,0 +1,48 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data}}Modifica Automezzo{{else}}Nuovo Automezzo{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data" class="form">
+        <div class="form-group">
+            <label for="targa">Targa *</label>
+            <input type="text" id="targa" name="targa" value="{{if .Data}}{{.Data.Targa}}{{end}}" required style="text-transform: uppercase;">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="marca">Marca</label>
+                <input type="text" id="marca" name="marca" value="{{if .Data}}{{.Data.Marca}}{{end}}">
+            </div>
+            <div class="form-group">
+                <label for="modello">Modello</label>
+                <input type="text" id="modello" name="modello" value="{{if .Data}}{{.Data.Modello}}{{end}}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="libretto">Libretto di Circolazione</label>
+            <input type="file" id="libretto" name="libretto" accept="image/*,.pdf">
+            <small>Formati accettati: immagini o PDF</small>
+            {{if and .Data .Data.LibrettoPath}}
+            <p class="mt-1">
+                <a href="/static/{{.Data.LibrettoPath}}" target="_blank">Visualizza libretto attuale</a>
+            </p>
+            {{end}}
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note">{{if .Data}}{{.Data.Note}}{{end}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data}}Salva Modifiche{{else}}Crea Automezzo{{end}}</button>
+            <a href="/automezzi" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+{{end}}

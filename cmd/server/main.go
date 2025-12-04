@@ -1,0 +1,229 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"furviogest/internal/auth"
+	"furviogest/internal/database"
+	"furviogest/internal/handlers"
+	"furviogest/internal/middleware"
+)
+
+func main() {
+	// Flag per configurazione
+	port := flag.Int("port", 8080, "Porta del server")
+	dbPath := flag.String("db", "", "Percorso del database SQLite")
+	flag.Parse()
+
+	// Determina la directory base del progetto
+	execPath, err := os.Executable()
+	if err != nil {
+		log.Fatal("Errore determinazione percorso eseguibile:", err)
+	}
+	baseDir := filepath.Dir(filepath.Dir(filepath.Dir(execPath)))
+
+	// Se eseguito con go run, usa la directory corrente
+	if _, err := os.Stat(filepath.Join(baseDir, "web")); os.IsNotExist(err) {
+		baseDir, _ = os.Getwd()
+	}
+
+	// Percorso database di default
+	if *dbPath == "" {
+		*dbPath = filepath.Join(baseDir, "data", "furviogest.db")
+	}
+
+	// Inizializza il database
+	log.Println("Inizializzazione database:", *dbPath)
+	if err := database.InitDB(*dbPath); err != nil {
+		log.Fatal("Errore inizializzazione database:", err)
+	}
+	defer database.CloseDB()
+
+	// Crea utente admin predefinito
+	if err := database.CreateDefaultAdmin(auth.HashPassword); err != nil {
+		log.Println("Attenzione: errore creazione admin predefinito:", err)
+	}
+
+	// Inizializza i template
+	templatesDir := filepath.Join(baseDir, "web", "templates")
+	log.Println("Caricamento templates da:", templatesDir)
+	if err := handlers.InitTemplates(templatesDir); err != nil {
+		log.Fatal("Errore caricamento templates:", err)
+	}
+
+	// Avvia routine pulizia sessioni scadute
+	auth.StartCleanupRoutine()
+
+	// Configura il router
+	mux := http.NewServeMux()
+
+	// File statici
+	staticDir := filepath.Join(baseDir, "web", "static")
+	fs := http.FileServer(http.Dir(staticDir))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Directory uploads
+	uploadsDir := filepath.Join(baseDir, "web", "static", "uploads")
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		log.Println("Attenzione: impossibile creare directory uploads:", err)
+	}
+
+	// Route pubbliche (login/logout)
+	mux.HandleFunc("/login", handlers.LoginPage)
+	mux.HandleFunc("/logout", handlers.Logout)
+
+	// Route protette (richiedono autenticazione)
+	mux.Handle("/", middleware.RequireAuth(http.HandlerFunc(handlers.Dashboard)))
+	mux.Handle("/cambio-password", middleware.RequireAuth(http.HandlerFunc(handlers.CambioPassword)))
+
+	// Anagrafica Tecnici
+	mux.Handle("/tecnici", middleware.RequireAuth(http.HandlerFunc(handlers.ListaTecnici)))
+	mux.Handle("/tecnici/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoTecnico))))
+	mux.Handle("/tecnici/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaTecnico))))
+	mux.Handle("/tecnici/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaTecnico))))
+
+	// Anagrafica Fornitori
+	mux.Handle("/fornitori", middleware.RequireAuth(http.HandlerFunc(handlers.ListaFornitori)))
+	mux.Handle("/fornitori/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoFornitore))))
+	mux.Handle("/fornitori/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaFornitore))))
+	mux.Handle("/fornitori/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFornitore))))
+
+	// Anagrafica Porti
+	mux.Handle("/porti", middleware.RequireAuth(http.HandlerFunc(handlers.ListaPorti)))
+	mux.Handle("/porti/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoPorto))))
+	mux.Handle("/porti/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaPorto))))
+	mux.Handle("/porti/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaPorto))))
+
+	// Anagrafica Automezzi
+	mux.Handle("/automezzi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaAutomezzi)))
+	mux.Handle("/automezzi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoAutomezzo))))
+	mux.Handle("/automezzi/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaAutomezzo))))
+	mux.Handle("/automezzi/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaAutomezzo))))
+
+	// Anagrafica Compagnie
+	mux.Handle("/compagnie", middleware.RequireAuth(http.HandlerFunc(handlers.ListaCompagnie)))
+	mux.Handle("/compagnie/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaCompagnia))))
+	mux.Handle("/compagnie/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaCompagnia))))
+	mux.Handle("/compagnie/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaCompagnia))))
+
+	// Anagrafica Navi
+	mux.Handle("/navi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNavi)))
+	mux.Handle("/navi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaNave))))
+	mux.Handle("/navi/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaNave))))
+	mux.Handle("/navi/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaNave))))
+
+	// Magazzino Prodotti
+	mux.Handle("/magazzino", middleware.RequireAuth(http.HandlerFunc(handlers.ListaProdotti)))
+	mux.Handle("/magazzino/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoProdotto))))
+	mux.Handle("/magazzino/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaProdotto))))
+	mux.Handle("/magazzino/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaProdotto))))
+	mux.Handle("/magazzino/movimenti/", middleware.RequireAuth(http.HandlerFunc(handlers.ListaMovimenti)))
+	mux.Handle("/magazzino/movimento/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoMovimento))))
+
+	// Impostazioni Azienda
+	mux.Handle("/impostazioni", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ImpostazioniAziendaHandler))))
+	mux.Handle("/impostazioni/elimina-logo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaLogo))))
+	mux.Handle("/impostazioni/elimina-firma", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFirmaEmail))))
+	mux.Handle("/azienda/logo", middleware.RequireAuth(http.HandlerFunc(handlers.ServeLogoAzienda)))
+	mux.Handle("/azienda/firma", middleware.RequireAuth(http.HandlerFunc(handlers.ServeFirmaEmail)))
+
+	// Permessi Accesso Porto
+	mux.Handle("/permessi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaPermessi)))
+	mux.Handle("/permessi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoPermesso))))
+	mux.Handle("/permessi/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaPermesso))))
+	mux.Handle("/permessi/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaPermesso))))
+	mux.Handle("/permessi/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioPermesso)))
+
+	// Dettaglio Nave e Orari
+	mux.Handle("/navi/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioNave)))
+	mux.Handle("/navi/orario/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoOrario))))
+	mux.Handle("/navi/orario/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaOrario))))
+	mux.Handle("/navi/sosta/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaSosta))))
+	mux.Handle("/navi/sosta/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaSosta))))
+	
+	// Upload Orari Corsica Ferries
+	mux.Handle("/orari/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadOrariPage))))
+
+	// Apparati Nave
+	mux.Handle("/navi/apparati/", middleware.RequireAuth(http.HandlerFunc(handlers.ListaApparati)))
+	mux.Handle("/navi/apparati/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoApparato))))
+	mux.Handle("/navi/apparato/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaApparato))))
+	mux.Handle("/navi/apparato/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaApparato))))
+	mux.Handle("/navi/observium/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ConfigObservium))))
+	
+	// API Apparati
+	mux.Handle("/api/test-connection", middleware.RequireAuth(http.HandlerFunc(handlers.APITestConnection)))
+	mux.Handle("/api/discovery-devices", middleware.RequireAuth(http.HandlerFunc(handlers.APIDiscoveryDevices)))
+	mux.Handle("/api/import-device", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.APIImportDevice))))
+	mux.Handle("/api/check-apparato", middleware.RequireAuth(http.HandlerFunc(handlers.APICheckApparato)))
+
+	// Attrezzi e Consumabili
+	mux.Handle("/attrezzi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaAttrezzi)))
+	mux.Handle("/attrezzi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoAttrezzo))))
+	mux.Handle("/attrezzi/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaAttrezzo))))
+	mux.Handle("/attrezzi/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaAttrezzo))))
+	mux.Handle("/attrezzi/movimento/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.MovimentoAttrezzoHandler))))
+	mux.Handle("/attrezzi/storico/", middleware.RequireAuth(http.HandlerFunc(handlers.StoricoAttrezzo)))
+
+	// Route Amministrazione (solo lettura per ufficio contabilita)
+	mux.Handle("/amministrazione", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.DashboardAmministrazione))))
+	mux.Handle("/amministrazione/magazzino", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.GiacenzaMagazzino))))
+	mux.Handle("/amministrazione/magazzino/export", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ExportMagazzinoCSV))))
+	mux.Handle("/amministrazione/rapporti", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ListaRapportiAmministrazione))))
+	mux.Handle("/amministrazione/note-spese", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.NoteSpeseAmministrazione))))
+	mux.Handle("/amministrazione/note-spese/export", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ExportNoteSpeseCSV))))
+	mux.Handle("/amministrazione/trasferte", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.RiepilogoTrasferteAmministrazione))))
+	mux.Handle("/amministrazione/trasferte/export", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ExportTrasferteCSV))))
+	mux.Handle("/amministrazione/riepilogo", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.RiepilogoMensile))))
+	mux.Handle("/amministrazione/ddt", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.DDTAmministrazione))))
+	mux.Handle("/amministrazione/ddt/export", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ExportDDTCSV))))
+	mux.Handle("/amministrazione/ddt/", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.DettaglioDDTAmministrazione))))
+
+	// TODO: Aggiungere altre route per rapporti, trasferte, note spese, DDT
+	// Rapporti Intervento
+	mux.Handle("/rapporti", middleware.RequireAuth(http.HandlerFunc(handlers.ListaRapporti)))
+	mux.Handle("/rapporti/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoRapporto))))
+	mux.Handle("/rapporti/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaRapporto))))
+	mux.Handle("/rapporti/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaRapporto))))
+	mux.Handle("/rapporti/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioRapporto)))
+	mux.Handle("/rapporti/materiale/aggiungi", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AggiungiMateriale))))
+	mux.Handle("/rapporti/materiale/rimuovi/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RimuoviMateriale))))
+	mux.Handle("/rapporti/foto/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadFotoRapporto))))
+	mux.Handle("/rapporti/foto/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFotoRapporto))))
+
+	// Trasferte
+	mux.Handle("/trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.ListaTrasferte)))
+	mux.Handle("/trasferte/nuovo", middleware.RequireAuth(http.HandlerFunc(handlers.NuovaTrasferta)))
+	mux.Handle("/trasferte/modifica/", middleware.RequireAuth(http.HandlerFunc(handlers.ModificaTrasferta)))
+	mux.Handle("/trasferte/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaTrasferta))))
+	// Note Spese Tecnici
+	mux.Handle("/note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNoteSpese)))
+	mux.Handle("/note-spese/nuovo", middleware.RequireAuth(http.HandlerFunc(handlers.NuovaNotaSpesa)))
+	mux.Handle("/note-spese/modifica/", middleware.RequireAuth(http.HandlerFunc(handlers.ModificaNotaSpesa)))
+	mux.Handle("/note-spese/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaNotaSpesa))))
+	// DDT Tecnici
+	mux.Handle("/ddt", middleware.RequireAuth(http.HandlerFunc(handlers.ListaDDT)))
+	mux.Handle("/ddt/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoDDT))))
+	mux.Handle("/ddt/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaDDT))))
+	mux.Handle("/ddt/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioDDT)))
+	mux.Handle("/ddt/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaDDT))))
+	mux.Handle("/ddt/riga/aggiungi", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AggiungiRigaDDT))))
+	mux.Handle("/ddt/riga/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RimuoviRigaDDT))))
+	mux.Handle("/ddt/genera-numero", middleware.RequireAuth(http.HandlerFunc(handlers.GeneraNumDDT)))
+	// Foglio Mensile
+	mux.Handle("/foglio-mensile", middleware.RequireAuth(http.HandlerFunc(handlers.FoglioMensile)))
+	// Avvia il server
+	addr := fmt.Sprintf(":%d", *port)
+	log.Printf("Server FurvioGest avviato su http://localhost%s", addr)
+	log.Println("Credenziali predefinite: admin / admin")
+	log.Println("IMPORTANTE: Cambiare la password al primo accesso!")
+
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Fatal("Errore avvio server:", err)
+	}
+}

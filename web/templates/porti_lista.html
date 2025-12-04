@@ -1,0 +1,55 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Porti</h1>
+    {{if .Session.IsTecnico}}
+    <a href="/porti/nuovo" class="btn btn-primary">Nuovo Porto</a>
+    {{end}}
+</div>
+
+{{if .Data}}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Città</th>
+                <th>Paese</th>
+                <th>Agenzia</th>
+                <th>Email Agenzia</th>
+                <th>Tel. Agenzia</th>
+                {{if .Session.IsTecnico}}
+                <th>Azioni</th>
+                {{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr>
+                <td>{{.Nome}}</td>
+                <td>{{.Citta}}</td>
+                <td>{{.Paese}}</td>
+                <td>{{.NomeAgenzia}}</td>
+                <td>{{if .EmailAgenzia}}<a href="mailto:{{.EmailAgenzia}}">{{.EmailAgenzia}}</a>{{end}}</td>
+                <td>{{.TelefonoAgenzia}}</td>
+                {{if $.Session.IsTecnico}}
+                <td class="table-actions">
+                    <a href="/porti/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    <a href="/porti/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro?')">Elimina</a>
+                </td>
+                {{end}}
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessun porto trovato</h3>
+    {{if .Session.IsTecnico}}
+    <a href="/porti/nuovo" class="btn btn-primary mt-2">Aggiungi il primo porto</a>
+    {{end}}
+</div>
+{{end}}
+{{end}}

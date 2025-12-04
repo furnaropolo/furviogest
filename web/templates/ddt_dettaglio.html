@@ -1,0 +1,131 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>DDT {{.Data.DDT.Numero}}</h1>
+    <div class="page-actions">
+        {{if .Session.IsTecnico}}
+        <a href="/ddt/modifica/{{.Data.DDT.ID}}" class="btn btn-primary">Modifica DDT</a>
+        {{end}}
+        <a href="/ddt" class="btn btn-secondary">Torna alla Lista</a>
+    </div>
+</div>
+
+<div class="detail-card">
+    <div class="detail-grid">
+        <div class="detail-item">
+            <label>Numero:</label>
+            <span>{{.Data.DDT.Numero}}</span>
+        </div>
+        <div class="detail-item">
+            <label>Tipo:</label>
+            <span>
+                {{if eq .Data.DDT.TipoDDT "intervento"}}<span class="badge badge-primary">Intervento</span>
+                {{else}}<span class="badge badge-info">Spedizione</span>
+                {{end}}
+            </span>
+        </div>
+        <div class="detail-item">
+            <label>Data Emissione:</label>
+            <span>{{.Data.DDT.DataEmissione}}</span>
+        </div>
+        <div class="detail-item">
+            <label>Compagnia:</label>
+            <span>{{.Data.DDT.NomeCompagnia}}</span>
+        </div>
+        <div class="detail-item">
+            <label>Nave:</label>
+            <span>{{.Data.DDT.NomeNave}}</span>
+        </div>
+        <div class="detail-item">
+            <label>Porto:</label>
+            <span>{{if .Data.DDT.NomePorto}}{{.Data.DDT.NomePorto}}{{else}}-{{end}}</span>
+        </div>
+        {{if .Data.DDT.Destinatario}}
+        <div class="detail-item">
+            <label>Destinatario:</label>
+            <span>{{.Data.DDT.Destinatario}}</span>
+        </div>
+        {{end}}
+        {{if .Data.DDT.Indirizzo}}
+        <div class="detail-item">
+            <label>Indirizzo:</label>
+            <span>{{.Data.DDT.Indirizzo}}</span>
+        </div>
+        {{end}}
+        {{if .Data.DDT.Vettore}}
+        <div class="detail-item">
+            <label>Vettore:</label>
+            <span>{{.Data.DDT.Vettore}}</span>
+        </div>
+        {{end}}
+        {{if .Data.DDT.Note}}
+        <div class="detail-item full-width">
+            <label>Note:</label>
+            <span>{{.Data.DDT.Note}}</span>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<div class="section-header mt-3">
+    <h2>Materiali/Prodotti</h2>
+</div>
+
+{{if .Session.IsTecnico}}
+<div class="form-container mb-3">
+    <form method="POST" action="/ddt/riga/aggiungi" class="form-inline">
+        <input type="hidden" name="ddt_id" value="{{.Data.DDT.ID}}">
+        <div class="form-group">
+            <label>Prodotto:</label>
+            <select name="prodotto_id" required>
+                <option value="">-- Seleziona --</option>
+                {{range .Data.Prodotti}}
+                <option value="{{.ID}}">{{.Nome}} ({{.Quantita}} {{.UnitaMisura}})</option>
+                {{end}}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Quantità:</label>
+            <input type="number" name="quantita" step="0.01" min="0.01" value="1" required style="width: 80px;">
+        </div>
+        <div class="form-group">
+            <label>Descrizione:</label>
+            <input type="text" name="descrizione" placeholder="Descrizione aggiuntiva">
+        </div>
+        <button type="submit" class="btn btn-primary">Aggiungi</button>
+    </form>
+</div>
+{{end}}
+
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Prodotto</th>
+                <th>Quantità</th>
+                <th>Descrizione</th>
+                {{if .Session.IsTecnico}}<th>Azioni</th>{{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.Righe}}
+            <tr>
+                <td>{{.NomeProdotto}}</td>
+                <td>{{printf "%.2f" .Quantita}} {{.Unita}}</td>
+                <td>{{if .Descrizione}}{{.Descrizione}}{{else}}-{{end}}</td>
+                {{if $.Session.IsTecnico}}
+                <td>
+                    <a href="/ddt/riga/elimina/{{.ID}}/{{.DDTID}}" class="btn btn-small btn-danger" onclick="return confirm('Rimuovere questo materiale? La quantità verrà ripristinata in magazzino.')">Rimuovi</a>
+                </td>
+                {{end}}
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="4" class="text-center">Nessun materiale inserito</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

@@ -1,0 +1,96 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    {{if .Session}}
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/">FurvioGest</a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                {{if eq .Session.Ruolo "amministrazione"}}
+                <!-- Menu per Amministrazione -->
+                <a href="/amministrazione" class="navbar-item">Dashboard</a>
+                <a href="/amministrazione/magazzino" class="navbar-item">Giacenza Magazzino</a>
+                <a href="/amministrazione/rapporti" class="navbar-item">Rapporti</a>
+                <a href="/amministrazione/note-spese" class="navbar-item">Note Spese</a>
+                <a href="/amministrazione/trasferte" class="navbar-item">Trasferte</a>
+                <a href="/amministrazione/riepilogo" class="navbar-item">Riepilogo Mensile</a>
+                {{else}}
+                <!-- Menu per Tecnico e Guest -->
+                <a href="/" class="navbar-item">Dashboard</a>
+                <div class="navbar-dropdown">
+                    <a href="#" class="navbar-item dropdown-toggle">Anagrafiche</a>
+                    <div class="dropdown-content">
+                        <a href="/tecnici" class="dropdown-item">Tecnici</a>
+                        <a href="/fornitori" class="dropdown-item">Fornitori</a>
+                        <a href="/porti" class="dropdown-item">Porti</a>
+                        <a href="/automezzi" class="dropdown-item">Automezzi</a>
+                        <a href="/compagnie" class="dropdown-item">Compagnie</a>
+                        <a href="/navi" class="dropdown-item">Navi</a>
+                    </div>
+                </div>
+                <a href="/magazzino" class="navbar-item">Magazzino</a>
+                <a href="/attrezzi" class="navbar-item">Attrezzi</a>
+                <a href="/permessi" class="navbar-item">Permessi</a>
+                <a href="/rapporti" class="navbar-item">Rapporti</a>
+                <div class="navbar-dropdown">
+                    <a href="#" class="navbar-item dropdown-toggle">Trasferte</a>
+                    <div class="dropdown-content">
+                        <a href="/trasferte" class="dropdown-item">Lista Trasferte</a>
+                        <a href="/note-spese" class="dropdown-item">Note Spese</a>
+                        <a href="/foglio-mensile" class="dropdown-item">Foglio Mensile</a>
+                    </div>
+                </div>
+                <a href="/ddt" class="navbar-item">DDT</a>
+                {{if .Session.IsTecnico}}
+                <a href="/amministrazione" class="navbar-item">Amministrazione</a>
+                {{end}}
+                {{end}}
+            </div>
+            <div class="navbar-end">
+                <span class="navbar-item user-info">
+                    {{.Session.Nome}} {{.Session.Cognome}}
+                    <span class="badge badge-{{if eq .Session.Ruolo "tecnico"}}primary{{else if eq .Session.Ruolo "amministrazione"}}info{{else}}secondary{{end}}">
+                        {{if eq .Session.Ruolo "tecnico"}}Tecnico{{else if eq .Session.Ruolo "amministrazione"}}Amministrazione{{else}}Guest{{end}}
+                    </span>
+                </span>
+                {{if .Session.IsTecnico}}
+                <a href="/impostazioni" class="navbar-item">Impostazioni</a>
+                {{end}}
+                <a href="/cambio-password" class="navbar-item">Cambia Password</a>
+                <a href="/logout" class="navbar-item btn-logout">Esci</a>
+            </div>
+        </div>
+    </nav>
+    {{end}}
+
+    <main class="container">
+        {{if .Error}}
+        <div class="alert alert-error">
+            {{.Error}}
+        </div>
+        {{end}}
+        {{if .Success}}
+        <div class="alert alert-success">
+            {{.Success}}
+        </div>
+        {{end}}
+        {{template "content" .}}
+    </main>
+
+    <footer class="footer">
+        <p>&copy; {{.CurrentYear}} FurvioGest - Gestione Interventi Manutenzione WiFi/GSM</p>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+{{end}}

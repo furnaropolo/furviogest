@@ -1,0 +1,87 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.NotaSpesa.ID}}Modifica Nota Spesa{{else}}Nuova Nota Spesa{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="data">Data *</label>
+                <input type="date" id="data" name="data" value="{{.Data.NotaSpesa.Data}}" required>
+            </div>
+            <div class="form-group">
+                <label for="tipo_spesa">Tipo Spesa *</label>
+                <select id="tipo_spesa" name="tipo_spesa" required>
+                    <option value="">-- Seleziona --</option>
+                    <option value="carburante" {{if eq .Data.NotaSpesa.TipoSpesa "carburante"}}selected{{end}}>Carburante</option>
+                    <option value="pedaggio" {{if eq .Data.NotaSpesa.TipoSpesa "pedaggio"}}selected{{end}}>Pedaggio</option>
+                    <option value="parcheggio" {{if eq .Data.NotaSpesa.TipoSpesa "parcheggio"}}selected{{end}}>Parcheggio</option>
+                    <option value="vitto" {{if eq .Data.NotaSpesa.TipoSpesa "vitto"}}selected{{end}}>Vitto</option>
+                    <option value="alloggio" {{if eq .Data.NotaSpesa.TipoSpesa "alloggio"}}selected{{end}}>Alloggio</option>
+                    <option value="trasporto" {{if eq .Data.NotaSpesa.TipoSpesa "trasporto"}}selected{{end}}>Trasporto</option>
+                    <option value="materiale" {{if eq .Data.NotaSpesa.TipoSpesa "materiale"}}selected{{end}}>Materiale</option>
+                    <option value="altro" {{if eq .Data.NotaSpesa.TipoSpesa "altro"}}selected{{end}}>Altro</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="trasferta_id">Trasferta Collegata</label>
+            <select id="trasferta_id" name="trasferta_id">
+                <option value="">-- Nessuna trasferta --</option>
+                {{range .Data.Trasferte}}
+                <option value="{{.ID}}" {{if and $.Data.NotaSpesa.TrasfertaID (eq .ID $.Data.NotaSpesa.TrasfertaID)}}selected{{end}}>
+                    {{.DataPartenza}} - {{.Destinazione}}
+                </option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="descrizione">Descrizione *</label>
+            <input type="text" id="descrizione" name="descrizione" value="{{.Data.NotaSpesa.Descrizione}}" required placeholder="es. Rifornimento autostrada A1">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="importo">Importo (€) *</label>
+                <input type="number" id="importo" name="importo" step="0.01" min="0" value="{{printf "%.2f" .Data.NotaSpesa.Importo}}" required>
+            </div>
+            <div class="form-group">
+                <label for="metodo_pagamento">Metodo Pagamento *</label>
+                <select id="metodo_pagamento" name="metodo_pagamento" required>
+                    <option value="">-- Seleziona --</option>
+                    <option value="contanti" {{if eq .Data.NotaSpesa.MetodoPagamento "contanti"}}selected{{end}}>Contanti</option>
+                    <option value="carta_aziendale" {{if eq .Data.NotaSpesa.MetodoPagamento "carta_aziendale"}}selected{{end}}>Carta Aziendale</option>
+                    <option value="carta_personale" {{if eq .Data.NotaSpesa.MetodoPagamento "carta_personale"}}selected{{end}}>Carta Personale</option>
+                    <option value="bonifico" {{if eq .Data.NotaSpesa.MetodoPagamento "bonifico"}}selected{{end}}>Bonifico</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="ricevuta">Ricevuta/Scontrino</label>
+            {{if .Data.NotaSpesa.RicevutaPath}}
+            <div class="current-file">
+                <a href="{{.Data.NotaSpesa.RicevutaPath}}" target="_blank">Visualizza ricevuta attuale</a>
+            </div>
+            {{end}}
+            <input type="file" id="ricevuta" name="ricevuta" accept="image/*,.pdf">
+            <small>Formati accettati: immagini, PDF</small>
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note">{{.Data.NotaSpesa.Note}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.NotaSpesa.ID}}Salva Modifiche{{else}}Registra Spesa{{end}}</button>
+            <a href="/note-spese" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+{{end}}

@@ -1,0 +1,80 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data}}Modifica Tecnico{{else}}Nuovo Tecnico{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="username">Username *</label>
+                <input type="text" id="username" name="username" value="{{if .Data}}{{.Data.Username}}{{end}}" {{if .Data}}readonly{{end}} required>
+                {{if .Data}}<small>Lo username non può essere modificato</small>{{end}}
+            </div>
+            <div class="form-group">
+                <label for="{{if .Data}}nuova_password{{else}}password{{end}}">{{if .Data}}Nuova Password{{else}}Password *{{end}}</label>
+                <input type="password" id="{{if .Data}}nuova_password{{else}}password{{end}}" name="{{if .Data}}nuova_password{{else}}password{{end}}" {{if not .Data}}required{{end}} minlength="6">
+                {{if .Data}}<small>Lascia vuoto per non modificare</small>{{else}}<small>Minimo 6 caratteri</small>{{end}}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="nome">Nome *</label>
+                <input type="text" id="nome" name="nome" value="{{if .Data}}{{.Data.Nome}}{{end}}" required>
+            </div>
+            <div class="form-group">
+                <label for="cognome">Cognome *</label>
+                <input type="text" id="cognome" name="cognome" value="{{if .Data}}{{.Data.Cognome}}{{end}}" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" value="{{if .Data}}{{.Data.Email}}{{end}}" required>
+            </div>
+            <div class="form-group">
+                <label for="telefono">Telefono</label>
+                <input type="tel" id="telefono" name="telefono" value="{{if .Data}}{{.Data.Telefono}}{{end}}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="ruolo">Ruolo *</label>
+                <select id="ruolo" name="ruolo" required>
+                    <option value="tecnico" {{if and .Data (eq .Data.Ruolo "tecnico")}}selected{{end}}>Tecnico (può fare tutto)</option>
+                    <option value="guest" {{if and .Data (eq .Data.Ruolo "guest")}}selected{{end}}>Guest (solo visualizzazione)</option>
+                </select>
+            </div>
+            {{if .Data}}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="attivo" {{if .Data.Attivo}}checked{{end}}>
+                    Utente Attivo
+                </label>
+            </div>
+            {{end}}
+        </div>
+
+        <div class="form-group">
+            <label for="documento">Documento di Identità</label>
+            <input type="file" id="documento" name="documento" accept="image/*,.pdf">
+            <small>Formati accettati: immagini o PDF</small>
+            {{if and .Data .Data.DocumentoPath}}
+            <p class="mt-1">
+                <a href="/static/{{.Data.DocumentoPath}}" target="_blank">Visualizza documento attuale</a>
+            </p>
+            {{end}}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data}}Salva Modifiche{{else}}Crea Tecnico{{end}}</button>
+            <a href="/tecnici" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+{{end}}

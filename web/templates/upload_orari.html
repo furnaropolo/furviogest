@@ -1,0 +1,106 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Upload Orari Corsica Ferries</h1>
+</div>
+
+{{if .Error}}
+<div class="alert alert-error">{{.Error}}</div>
+{{end}}
+
+{{if .Success}}
+<div class="alert alert-success">{{.Success}}</div>
+{{end}}
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">Carica Nuovo File</div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>Nota:</strong> Il caricamento di un nuovo file sostituira' completamente gli orari precedenti.
+            </div>
+            
+            <form method="POST" action="/orari/upload" enctype="multipart/form-data" class="form">
+                <div class="form-group">
+                    <label for="file_orari">File XLSX Orari</label>
+                    <input type="file" id="file_orari" name="file_orari" accept=".xlsx,.xls" required>
+                    <small class="form-help">Seleziona il file Excel con gli orari delle navi Corsica Ferries</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="note">Note (opzionale)</label>
+                    <textarea id="note" name="note" rows="2" placeholder="Es: Orari estivi 2024"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Carica File</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">Storico Upload</div>
+        <div class="card-body">
+            {{if .Data.Uploads}}
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>File</th>
+                        <th>Utente</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Data.Uploads}}
+                    <tr>
+                        <td><small>{{.DataUpload}}</small></td>
+                        <td><small>{{.NomeFile}}</small></td>
+                        <td><small>{{.NomeUtente}}</small></td>
+                        <td><small>{{.Note}}</small></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p class="text-muted">Nessun upload effettuato</p>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">Formato File Atteso</div>
+    <div class="card-body">
+        <p>Il file XLSX deve contenere le seguenti colonne:</p>
+        <ul>
+            <li><strong>Nome Nave</strong> - Nome della nave</li>
+            <li><strong>Porto Partenza</strong> - Porto di partenza</li>
+            <li><strong>Porto Arrivo</strong> - Porto di destinazione</li>
+            <li><strong>Orario Partenza</strong> - Ora di partenza</li>
+            <li><strong>Orario Arrivo</strong> - Ora di arrivo</li>
+            <li><strong>Giorni</strong> - Giorni della settimana</li>
+        </ul>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="/navi" class="btn btn-secondary">Torna alle Navi</a>
+</div>
+
+<style>
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+@media (max-width: 768px) {
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+.table-sm td, .table-sm th {
+    padding: 0.5rem;
+}
+</style>
+{{end}}

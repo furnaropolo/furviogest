@@ -1,0 +1,172 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.Prodotto.ID}}Modifica Prodotto{{else}}Nuovo Prodotto{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="codice">Codice *</label>
+                <input type="text" id="codice" name="codice" value="{{.Data.Prodotto.Codice}}" required style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label for="nome">Nome *</label>
+                <input type="text" id="nome" name="nome" value="{{.Data.Prodotto.Nome}}" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="descrizione">Descrizione</label>
+            <textarea id="descrizione" name="descrizione">{{.Data.Prodotto.Descrizione}}</textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="categoria">Categoria *</label>
+                <select id="categoria" name="categoria" required onchange="toggleCategoriaFields()">
+                    <option value="materiale" {{if eq .Data.Prodotto.Categoria "materiale"}}selected{{end}}{{if not .Data.Prodotto.ID}}selected{{end}}>Materiale (pezzi)</option>
+                    <option value="cavo" {{if eq .Data.Prodotto.Categoria "cavo"}}selected{{end}}>Cavo (metri)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo Impianto *</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="">Seleziona...</option>
+                    <option value="wifi" {{if eq .Data.Prodotto.Tipo "wifi"}}selected{{end}}>WiFi</option>
+                    <option value="gsm" {{if eq .Data.Prodotto.Tipo "gsm"}}selected{{end}}>GSM</option>
+                    <option value="entrambi" {{if eq .Data.Prodotto.Tipo "entrambi"}}selected{{end}}>WiFi + GSM (entrambi)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="origine">Origine *</label>
+                <select id="origine" name="origine" required onchange="toggleOrigineFields()">
+                    <option value="">Seleziona...</option>
+                    <option value="nuovo" {{if eq .Data.Prodotto.Origine "nuovo"}}selected{{end}}>Nuovo (acquistato)</option>
+                    <option value="spare" {{if eq .Data.Prodotto.Origine "spare"}}selected{{end}}>Spare (recuperato)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Campi per prodotti NUOVI -->
+        <div id="campi-nuovo" class="conditional-fields" style="display: none;">
+            <h3>Dati Acquisto</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="fornitore_id">Fornitore</label>
+                    <select id="fornitore_id" name="fornitore_id">
+                        <option value="">Nessuno</option>
+                        {{range .Data.Fornitori}}
+                        <option value="{{.ID}}" {{if $.Data.Prodotto.FornitoreID}}{{if eq $.Data.Prodotto.FornitoreID .ID}}selected{{end}}{{end}}>{{.Nome}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="numero_fattura">Numero Fattura</label>
+                    <input type="text" id="numero_fattura" name="numero_fattura" value="{{.Data.Prodotto.NumeroFattura}}">
+                </div>
+                <div class="form-group">
+                    <label for="data_fattura">Data Fattura</label>
+                    <input type="date" id="data_fattura" name="data_fattura" value="{{if .Data.Prodotto.DataFattura}}{{.Data.Prodotto.DataFattura.Format "2006-01-02"}}{{end}}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Campi per prodotti SPARE -->
+        <div id="campi-spare" class="conditional-fields" style="display: none;">
+            <h3>Dati Recupero</h3>
+            <div class="form-group">
+                <label for="nave_origine">Nave di Origine</label>
+                <input type="text" id="nave_origine" name="nave_origine" value="{{.Data.Prodotto.NaveOrigine}}" placeholder="Nome della nave da cui e' stato recuperato">
+            </div>
+        </div>
+
+        <div class="form-row">
+            {{if not .Data.Prodotto.ID}}
+            <div class="form-group">
+                <label for="giacenza" id="label-giacenza">Giacenza Iniziale</label>
+                <input type="number" id="giacenza" name="giacenza" value="{{printf "%.2f" .Data.Prodotto.Giacenza}}" min="0" step="0.01">
+                <small id="hint-giacenza">pezzi</small>
+            </div>
+            {{end}}
+            <div class="form-group">
+                <label for="giacenza_minima" id="label-giacenza-min">Giacenza Minima (alert)</label>
+                <input type="number" id="giacenza_minima" name="giacenza_minima" value="{{printf "%.2f" .Data.Prodotto.GiacenzaMinima}}" min="0" step="0.01">
+                <small id="hint-giacenza-min">pezzi</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note">{{.Data.Prodotto.Note}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.Prodotto.ID}}Salva Modifiche{{else}}Crea Prodotto{{end}}</button>
+            <a href="/magazzino" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<style>
+.conditional-fields {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+.conditional-fields h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+</style>
+
+<script>
+function toggleOrigineFields() {
+    var origine = document.getElementById('origine').value;
+    var campiNuovo = document.getElementById('campi-nuovo');
+    var campiSpare = document.getElementById('campi-spare');
+
+    if (origine === 'nuovo') {
+        campiNuovo.style.display = 'block';
+        campiSpare.style.display = 'none';
+    } else if (origine === 'spare') {
+        campiNuovo.style.display = 'none';
+        campiSpare.style.display = 'block';
+    } else {
+        campiNuovo.style.display = 'none';
+        campiSpare.style.display = 'none';
+    }
+}
+
+function toggleCategoriaFields() {
+    var categoria = document.getElementById('categoria').value;
+    var hintGiacenza = document.getElementById('hint-giacenza');
+    var hintGiacenzaMin = document.getElementById('hint-giacenza-min');
+    var giacenzaInput = document.getElementById('giacenza');
+    var giacenzaMinInput = document.getElementById('giacenza_minima');
+
+    if (categoria === 'cavo') {
+        if (hintGiacenza) hintGiacenza.textContent = 'metri';
+        if (hintGiacenzaMin) hintGiacenzaMin.textContent = 'metri';
+        if (giacenzaInput) giacenzaInput.step = '0.1';
+        if (giacenzaMinInput) giacenzaMinInput.step = '0.1';
+    } else {
+        if (hintGiacenza) hintGiacenza.textContent = 'pezzi';
+        if (hintGiacenzaMin) hintGiacenzaMin.textContent = 'pezzi';
+        if (giacenzaInput) giacenzaInput.step = '1';
+        if (giacenzaMinInput) giacenzaMinInput.step = '1';
+    }
+}
+
+// Esegui all'avvio
+document.addEventListener('DOMContentLoaded', function() {
+    toggleOrigineFields();
+    toggleCategoriaFields();
+});
+</script>
+{{end}}

@@ -1,0 +1,168 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Magazzino</h1>
+    {{if .Session.IsTecnico}}
+    <a href="/magazzino/nuovo" class="btn btn-primary">Nuovo Prodotto</a>
+    {{end}}
+</div>
+
+<!-- Filtri -->
+<div class="filters-container">
+    <form method="GET" class="filters-form">
+        <div class="filter-group">
+            <label for="categoria">Categoria:</label>
+            <select name="categoria" id="categoria" onchange="this.form.submit()">
+                <option value="">Tutte</option>
+                <option value="materiale" {{if eq .Data.FiltroCategoria "materiale"}}selected{{end}}>Materiale</option>
+                <option value="cavo" {{if eq .Data.FiltroCategoria "cavo"}}selected{{end}}>Cavi</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="tipo">Tipo:</label>
+            <select name="tipo" id="tipo" onchange="this.form.submit()">
+                <option value="">Tutti</option>
+                <option value="wifi" {{if eq .Data.FiltroTipo "wifi"}}selected{{end}}>WiFi</option>
+                <option value="gsm" {{if eq .Data.FiltroTipo "gsm"}}selected{{end}}>GSM</option>
+                <option value="entrambi" {{if eq .Data.FiltroTipo "entrambi"}}selected{{end}}>WiFi+GSM</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="origine">Origine:</label>
+            <select name="origine" id="origine" onchange="this.form.submit()">
+                <option value="">Tutte</option>
+                <option value="nuovo" {{if eq .Data.FiltroOrigine "nuovo"}}selected{{end}}>Nuovo</option>
+                <option value="spare" {{if eq .Data.FiltroOrigine "spare"}}selected{{end}}>Spare</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>
+                <input type="checkbox" name="bassa_giacenza" value="1" {{if eq .Data.FiltroBassa "1"}}checked{{end}} onchange="this.form.submit()">
+                Solo bassa giacenza
+            </label>
+        </div>
+        <a href="/magazzino" class="btn btn-secondary btn-sm">Reset Filtri</a>
+    </form>
+</div>
+
+{{if .Data.Prodotti}}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Codice</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Tipo</th>
+                <th>Origine</th>
+                <th>Giacenza</th>
+                <th>Min</th>
+                <th>Fornitore/Nave</th>
+                {{if .Session.IsTecnico}}
+                <th>Azioni</th>
+                {{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.Prodotti}}
+            <tr {{if le .Giacenza .GiacenzaMinima}}class="row-warning"{{end}}>
+                <td><strong>{{.Codice}}</strong></td>
+                <td>{{.Nome}}</td>
+                <td>
+                    <span class="badge badge-{{if eq .Categoria "cavo"}}warning{{else}}light{{end}}">
+                        {{if eq .Categoria "cavo"}}Cavo{{else}}Materiale{{end}}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge badge-{{if eq .Tipo "wifi"}}info{{else if eq .Tipo "gsm"}}success{{else}}purple{{end}}">
+                        {{if eq .Tipo "wifi"}}WiFi{{else if eq .Tipo "gsm"}}GSM{{else}}WiFi+GSM{{end}}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge badge-{{if eq .Origine "nuovo"}}primary{{else}}secondary{{end}}">
+                        {{if eq .Origine "nuovo"}}Nuovo{{else}}Spare{{end}}
+                    </span>
+                </td>
+                <td>
+                    {{if le .Giacenza .GiacenzaMinima}}
+                    <span class="text-danger"><strong>{{printf "%.2f" .Giacenza}}</strong></span>
+                    {{else}}
+                    {{printf "%.2f" .Giacenza}}
+                    {{end}}
+                    <small>{{.UnitaMisura}}</small>
+                </td>
+                <td>{{printf "%.2f" .GiacenzaMinima}} <small>{{.UnitaMisura}}</small></td>
+                <td>
+                    {{if eq .Origine "nuovo"}}
+                        {{.NomeFornitore}}
+                    {{else}}
+                        {{.NaveOrigine}}
+                    {{end}}
+                </td>
+                {{if $.Session.IsTecnico}}
+                <td class="table-actions">
+                    <a href="/magazzino/movimenti/{{.ID}}" class="btn btn-sm btn-info" title="Movimenti">Movimenti</a>
+                    <a href="/magazzino/movimento/{{.ID}}" class="btn btn-sm btn-success" title="Carico/Scarico">+/-</a>
+                    <a href="/magazzino/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    <a href="/magazzino/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro di voler eliminare questo prodotto?')">Elimina</a>
+                </td>
+                {{end}}
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessun prodotto trovato</h3>
+    {{if .Session.IsTecnico}}
+    <a href="/magazzino/nuovo" class="btn btn-primary mt-2">Aggiungi il primo prodotto</a>
+    {{end}}
+</div>
+{{end}}
+
+<style>
+.filters-container {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.filters-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.filter-group select {
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+.row-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.badge-info { background: #17a2b8; color: white; }
+.badge-success { background: #28a745; color: white; }
+.badge-primary { background: #007bff; color: white; }
+.badge-secondary { background: #6c757d; color: white; }
+.badge-warning { background: #ffc107; color: #212529; }
+.badge-light { background: #e9ecef; color: #212529; }
+.badge-purple { background: #6f42c1; color: white; }
+.text-danger { color: #dc3545; }
+small { color: var(--text-secondary); }
+</style>
+{{end}}

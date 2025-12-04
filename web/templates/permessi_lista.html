@@ -1,0 +1,89 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Permessi Accesso Porto</h1>
+    {{if .Session.IsTecnico}}
+    <a href="/permessi/nuovo" class="btn btn-primary">Nuova Richiesta</a>
+    {{end}}
+</div>
+
+<div class="filters-bar">
+    <input type="text" id="searchInput" placeholder="Cerca per nave, porto, tecnico..." class="search-input">
+</div>
+
+{{if .Data}}
+<div class="table-responsive">
+    <table class="table" id="permessiTable">
+        <thead>
+            <tr>
+                <th>Data Inizio</th>
+                <th>Data Fine</th>
+                <th>Tipo</th>
+                <th>Nave</th>
+                <th>Porto</th>
+                <th>Creato da</th>
+                <th>Email</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr>
+                <td>{{.DataInizio.Format "02/01/2006"}}</td>
+                <td>
+                    {{if .DataFine}}
+                        {{.DataFine.Format "02/01/2006"}}
+                    {{else}}
+                        <span class="badge badge-warning">Fine Lavori</span>
+                    {{end}}
+                </td>
+                <td>
+                    {{if eq (printf "%s" .TipoDurata) "giornaliera"}}
+                        <span class="badge badge-info">Giornaliera</span>
+                    {{else if eq (printf "%s" .TipoDurata) "multigiorno"}}
+                        <span class="badge badge-primary">Multigiorno</span>
+                    {{else}}
+                        <span class="badge badge-warning">Fine Lavori</span>
+                    {{end}}
+                </td>
+                <td><strong>{{.NomeNave}}</strong></td>
+                <td>{{.NomePorto}}</td>
+                <td>{{.NomeTecnico}}</td>
+                <td>
+                    {{if .EmailInviata}}
+                        <span class="badge badge-success">Inviata</span>
+                    {{else}}
+                        <span class="badge badge-secondary">Non inviata</span>
+                    {{end}}
+                </td>
+                <td class="actions">
+                    <a href="/permessi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli">Dettagli</a>
+                    {{if $.Session.IsTecnico}}
+                    <a href="/permessi/modifica/{{.ID}}" class="btn btn-sm btn-warning" title="Modifica">Modifica</a>
+                    <a href="/permessi/elimina/{{.ID}}" class="btn btn-sm btn-danger" title="Elimina" onclick="return confirm('Eliminare questa richiesta?')">Elimina</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <p>Nessuna richiesta di permesso presente.</p>
+    {{if .Session.IsTecnico}}
+    <a href="/permessi/nuovo" class="btn btn-primary">Crea la prima richiesta</a>
+    {{end}}
+</div>
+{{end}}
+
+<script>
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    const filter = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#permessiTable tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+});
+</script>
+{{end}}

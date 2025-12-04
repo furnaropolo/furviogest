@@ -1,0 +1,227 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Impostazioni Azienda</h1>
+</div>
+
+<form method="POST" action="/impostazioni" enctype="multipart/form-data" class="form">
+    <!-- Dati Identificativi -->
+    <div class="form-section">
+        <h2>Dati Identificativi</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="ragione_sociale">Ragione Sociale *</label>
+                <input type="text" id="ragione_sociale" name="ragione_sociale" value="{{.Data.Impostazioni.RagioneSociale}}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="partita_iva">Partita IVA</label>
+                <input type="text" id="partita_iva" name="partita_iva" value="{{.Data.Impostazioni.PartitaIVA}}" maxlength="11">
+            </div>
+            <div class="form-group">
+                <label for="codice_fiscale">Codice Fiscale</label>
+                <input type="text" id="codice_fiscale" name="codice_fiscale" value="{{.Data.Impostazioni.CodiceFiscale}}" maxlength="16">
+            </div>
+        </div>
+    </div>
+
+    <!-- Sede -->
+    <div class="form-section">
+        <h2>Sede Legale</h2>
+        <div class="form-group">
+            <label for="indirizzo">Indirizzo</label>
+            <input type="text" id="indirizzo" name="indirizzo" value="{{.Data.Impostazioni.Indirizzo}}">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="cap">CAP</label>
+                <input type="text" id="cap" name="cap" value="{{.Data.Impostazioni.CAP}}" maxlength="5">
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label for="citta">Citta</label>
+                <input type="text" id="citta" name="citta" value="{{.Data.Impostazioni.Citta}}">
+            </div>
+            <div class="form-group">
+                <label for="provincia">Prov.</label>
+                <input type="text" id="provincia" name="provincia" value="{{.Data.Impostazioni.Provincia}}" maxlength="2" style="text-transform: uppercase;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Contatti -->
+    <div class="form-section">
+        <h2>Contatti</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="telefono">Telefono</label>
+                <input type="tel" id="telefono" name="telefono" value="{{.Data.Impostazioni.Telefono}}">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{.Data.Impostazioni.Email}}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pec">PEC</label>
+                <input type="email" id="pec" name="pec" value="{{.Data.Impostazioni.PEC}}">
+            </div>
+            <div class="form-group">
+                <label for="sito_web">Sito Web</label>
+                <input type="url" id="sito_web" name="sito_web" value="{{.Data.Impostazioni.SitoWeb}}" placeholder="https://...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Logo -->
+    <div class="form-section">
+        <h2>Logo Aziendale</h2>
+        <p class="hint">Il logo verra utilizzato nei documenti (DDT, rapporti, ecc.)</p>
+
+        {{if .Data.Impostazioni.LogoPath}}
+        <div class="file-preview">
+            <img src="/azienda/logo" alt="Logo aziendale" class="logo-preview">
+            <a href="/impostazioni/elimina-logo" class="btn btn-danger btn-sm" onclick="return confirm('Eliminare il logo?')">Elimina Logo</a>
+        </div>
+        {{end}}
+
+        <div class="form-group">
+            <label for="logo">{{if .Data.Impostazioni.LogoPath}}Sostituisci Logo{{else}}Carica Logo{{end}}</label>
+            <input type="file" id="logo" name="logo" accept="image/*">
+            <small>Formati: PNG, JPG, GIF. Max 2MB. Consigliato: 300x100 px</small>
+        </div>
+    </div>
+
+    <!-- Firma Email -->
+    <div class="form-section">
+        <h2>Firma Email</h2>
+        <p class="hint">La firma verra aggiunta automaticamente alle email inviate dal sistema</p>
+
+        {{if .Data.Impostazioni.FirmaEmailPath}}
+        <div class="file-preview">
+            <img src="/azienda/firma" alt="Firma email" class="firma-preview">
+            <a href="/impostazioni/elimina-firma" class="btn btn-danger btn-sm" onclick="return confirm('Eliminare l\'immagine firma?')">Elimina Immagine</a>
+        </div>
+        {{end}}
+
+        <div class="form-group">
+            <label for="firma_email_img">Immagine Firma (opzionale)</label>
+            <input type="file" id="firma_email_img" name="firma_email_img" accept="image/*">
+            <small>Banner o logo per la firma email</small>
+        </div>
+
+        <div class="form-group">
+            <label for="firma_email_testo">Testo Firma Email</label>
+            <textarea id="firma_email_testo" name="firma_email_testo" rows="6" placeholder="Es:
+--
+Nome Azienda Srl
+Via Roma 1 - 00100 Roma
+Tel: 06 12345678
+www.azienda.it">{{.Data.Impostazioni.FirmaEmailTesto}}</textarea>
+            <small>Questo testo verra aggiunto in calce alle email</small>
+        </div>
+    </div>
+
+    <!-- Dati Bancari -->
+    <div class="form-section">
+        <h2>Dati Bancari</h2>
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label for="iban">IBAN</label>
+                <input type="text" id="iban" name="iban" value="{{.Data.Impostazioni.IBAN}}" maxlength="27" style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label for="banca">Banca</label>
+                <input type="text" id="banca" name="banca" value="{{.Data.Impostazioni.Banca}}">
+            </div>
+        </div>
+    </div>
+
+    <!-- Fatturazione Elettronica -->
+    <div class="form-section">
+        <h2>Fatturazione Elettronica</h2>
+        <div class="form-group">
+            <label for="codice_sdi">Codice Destinatario (SDI)</label>
+            <input type="text" id="codice_sdi" name="codice_sdi" value="{{.Data.Impostazioni.CodiceSDI}}" maxlength="7" style="text-transform: uppercase;">
+            <small>Codice a 7 caratteri per la ricezione delle fatture elettroniche</small>
+        </div>
+    </div>
+
+    <!-- Note -->
+    <div class="form-section">
+        <h2>Note</h2>
+        <div class="form-group">
+            <label for="note">Note Interne</label>
+            <textarea id="note" name="note" rows="3">{{.Data.Impostazioni.Note}}</textarea>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salva Impostazioni</button>
+        <a href="/" class="btn btn-secondary">Annulla</a>
+    </div>
+</form>
+
+<style>
+.form-section {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.form-section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+.hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+.file-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border-radius: 8px;
+}
+.logo-preview {
+    max-width: 200px;
+    max-height: 80px;
+    object-fit: contain;
+}
+.firma-preview {
+    max-width: 300px;
+    max-height: 100px;
+    object-fit: contain;
+}
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.alert-success {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+input[type="file"] {
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+}
+input[type="file"]:hover {
+    border-color: var(--primary-color);
+}
+</style>
+{{end}}

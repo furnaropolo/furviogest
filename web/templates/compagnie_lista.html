@@ -1,0 +1,53 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Compagnie di Navigazione</h1>
+    {{if .Session.IsTecnico}}
+    <a href="/compagnie/nuovo" class="btn btn-primary">Nuova Compagnia</a>
+    {{end}}
+</div>
+
+{{if .Data}}
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Indirizzo</th>
+                <th>Telefono</th>
+                <th>Email</th>
+                <th>Note</th>
+                {{if .Session.IsTecnico}}
+                <th>Azioni</th>
+                {{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr>
+                <td><strong>{{.Nome}}</strong></td>
+                <td>{{.Indirizzo}}</td>
+                <td>{{.Telefono}}</td>
+                <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                <td>{{.Note}}</td>
+                {{if $.Session.IsTecnico}}
+                <td class="table-actions">
+                    <a href="/compagnie/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    <a href="/compagnie/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro? Verranno eliminate anche tutte le navi associate.')">Elimina</a>
+                </td>
+                {{end}}
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessuna compagnia trovata</h3>
+    {{if .Session.IsTecnico}}
+    <a href="/compagnie/nuovo" class="btn btn-primary mt-2">Aggiungi la prima compagnia</a>
+    {{end}}
+</div>
+{{end}}
+{{end}}

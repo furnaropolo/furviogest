@@ -1,0 +1,76 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Tecnici</h1>
+    {{if .Session.IsTecnico}}
+    <a href="/tecnici/nuovo" class="btn btn-primary">Nuovo Tecnico</a>
+    {{end}}
+</div>
+
+{{if .Data}}
+<div class="table-container">
+    <table class="table" id="tecnici-table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Nome</th>
+                <th>Cognome</th>
+                <th>Email</th>
+                <th>Telefono</th>
+                <th>Ruolo</th>
+                <th>Stato</th>
+                <th>Documento</th>
+                {{if .Session.IsTecnico}}
+                <th>Azioni</th>
+                {{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr>
+                <td>{{.Username}}</td>
+                <td>{{.Nome}}</td>
+                <td>{{.Cognome}}</td>
+                <td><a href="mailto:{{.Email}}">{{.Email}}</a></td>
+                <td>{{.Telefono}}</td>
+                <td>
+                    <span class="badge badge-{{if eq .Ruolo "tecnico"}}primary{{else}}secondary{{end}}">
+                        {{if eq .Ruolo "tecnico"}}Tecnico{{else}}Guest{{end}}
+                    </span>
+                </td>
+                <td>
+                    {{if .Attivo}}
+                    <span class="badge badge-primary">Attivo</span>
+                    {{else}}
+                    <span class="badge badge-secondary">Inattivo</span>
+                    {{end}}
+                </td>
+                <td>
+                    {{if .DocumentoPath}}
+                    <a href="/static/{{.DocumentoPath}}" target="_blank" class="btn btn-sm btn-secondary">Visualizza</a>
+                    {{else}}
+                    <span class="text-muted">Nessuno</span>
+                    {{end}}
+                </td>
+                {{if $.Session.IsTecnico}}
+                <td class="table-actions">
+                    <a href="/tecnici/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    <a href="/tecnici/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro di voler eliminare questo tecnico?')">Elimina</a>
+                </td>
+                {{end}}
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <h3>Nessun tecnico trovato</h3>
+    <p>Non ci sono tecnici registrati nel sistema.</p>
+    {{if .Session.IsTecnico}}
+    <a href="/tecnici/nuovo" class="btn btn-primary mt-2">Aggiungi il primo tecnico</a>
+    {{end}}
+</div>
+{{end}}
+{{end}}

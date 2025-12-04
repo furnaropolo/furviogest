@@ -1,0 +1,64 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Giacenza Magazzino</h1>
+    <div class="page-actions">
+        <a href="/amministrazione/magazzino/export" class="btn btn-primary">Scarica CSV</a>
+        <a href="/amministrazione" class="btn btn-secondary">Torna alla Dashboard</a>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Codice</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Quantità</th>
+                <th>U.M.</th>
+                <th>Scorta Min.</th>
+                <th>Prezzo</th>
+                <th>Fornitore</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.Prodotti}}
+            <tr {{if .SottoScorta}}class="sotto-scorta"{{end}}>
+                <td>{{.Codice}}</td>
+                <td>{{.Nome}}</td>
+                <td>{{.Categoria}}</td>
+                <td class="text-right">{{printf "%.2f" .Quantita}}</td>
+                <td>{{.UnitaMisura}}</td>
+                <td class="text-right">{{printf "%.2f" .ScortaMinima}}</td>
+                <td class="text-right">{{printf "%.2f €" .PrezzoAcquisto}}</td>
+                <td>{{.FornitoreNome}}</td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="8" class="text-center">Nessun prodotto in magazzino</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.sotto-scorta {
+    background-color: #fff3cd !important;
+}
+
+.sotto-scorta td {
+    color: #856404;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+</style>
+{{end}}

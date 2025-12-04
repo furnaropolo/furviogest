@@ -1,0 +1,205 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Movimento Attrezzo</h1>
+</div>
+
+<div class="attrezzo-info">
+    <div class="info-row">
+        <span class="label">Attrezzo:</span>
+        <span class="value">{{.Data.Attrezzo.Nome}}</span>
+    </div>
+    <div class="info-row">
+        <span class="label">Categoria:</span>
+        <span class="value">{{if eq .Data.Attrezzo.Categoria "attrezzo"}}Attrezzo{{else}}Consumabile{{end}}</span>
+    </div>
+    <div class="info-row">
+        <span class="label">Stato attuale:</span>
+        <span class="stato-badge {{.Data.Attrezzo.Stato}}">
+            {{if eq .Data.Attrezzo.Stato "disponibile"}}Disponibile
+            {{else if eq .Data.Attrezzo.Stato "in_uso"}}In Uso
+            {{else if eq .Data.Attrezzo.Stato "perso"}}Perso
+            {{else if eq .Data.Attrezzo.Stato "usurato"}}Usurato
+            {{else}}Dismesso{{end}}
+        </span>
+    </div>
+    {{if .Data.Attrezzo.AssegnatoNome}}
+    <div class="info-row">
+        <span class="label">Assegnato a:</span>
+        <span class="value">{{.Data.Attrezzo.AssegnatoNome}}</span>
+    </div>
+    {{end}}
+</div>
+
+<div class="form-container">
+    <h3>Registra Movimento</h3>
+    <form method="POST" class="form">
+        <div class="form-group">
+            <label for="tipo">Tipo Movimento *</label>
+            <select id="tipo" name="tipo" required onchange="updateForm()">
+                <option value="">-- Seleziona --</option>
+                {{if eq .Data.Attrezzo.Stato "disponibile"}}
+                <option value="assegnazione">Assegna a tecnico</option>
+                <option value="perso">Segnala come perso</option>
+                <option value="usurato">Segnala come usurato</option>
+                <option value="dismesso">Dismetti</option>
+                {{else if eq .Data.Attrezzo.Stato "in_uso"}}
+                <option value="restituzione">Restituisci (torna disponibile)</option>
+                <option value="perso">Segnala come perso</option>
+                <option value="usurato">Segnala come usurato</option>
+                {{else if eq .Data.Attrezzo.Stato "usurato"}}
+                <option value="sostituzione">Sostituito con nuovo</option>
+                <option value="dismesso">Dismetti</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group" id="assegnato-group" style="display: none;">
+            <label for="assegnato_a">Assegna a *</label>
+            <select id="assegnato_a" name="assegnato_a">
+                <option value="">-- Seleziona Tecnico --</option>
+                {{range .Data.Tecnici}}
+                <option value="{{.ID}}">{{.Cognome}} {{.Nome}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="motivo">Motivo / Note</label>
+            <textarea id="motivo" name="motivo" rows="2" placeholder="Descrivi il motivo del movimento..."></textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Registra Movimento</button>
+            <a href="/attrezzi" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<div class="storico-container">
+    <h3>Storico Movimenti</h3>
+    {{if .Data.Movimenti}}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Operatore</th>
+                <th>Nuovo Stato</th>
+                <th>Motivo</th>
+                <th>Doc</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.Movimenti}}
+            <tr>
+                <td>{{.CreatedAt}}</td>
+                <td>
+                    <span class="tipo-badge tipo-{{.Tipo}}">
+                        {{if eq .Tipo "carico"}}Carico
+                        {{else if eq .Tipo "assegnazione"}}Assegnazione
+                        {{else if eq .Tipo "restituzione"}}Restituzione
+                        {{else if eq .Tipo "perso"}}Perso
+                        {{else if eq .Tipo "usurato"}}Usurato
+                        {{else if eq .Tipo "sostituzione"}}Sostituzione
+                        {{else}}Dismesso{{end}}
+                    </span>
+                </td>
+                <td>{{.TecnicoNome}}</td>
+                <td>{{.NuovoStato}}</td>
+                <td>{{.Motivo}}</td>
+                <td>
+                    {{if .DocumentoPath}}
+                    <a href="{{.DocumentoPath}}" target="_blank">📄</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="empty">Nessun movimento registrato</p>
+    {{end}}
+</div>
+
+<style>
+.attrezzo-info {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.info-row .label {
+    color: #666;
+    min-width: 120px;
+}
+
+.info-row .value {
+    font-weight: 500;
+}
+
+.stato-badge {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: white;
+}
+
+.stato-badge.disponibile { background: #28a745; }
+.stato-badge.in_uso { background: #007bff; }
+.stato-badge.perso { background: #dc3545; }
+.stato-badge.usurato { background: #ffc107; color: #333; }
+.stato-badge.dismesso { background: #6c757d; }
+
+.storico-container {
+    margin-top: 30px;
+}
+
+.storico-container h3 {
+    margin-bottom: 15px;
+}
+
+.tipo-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.tipo-badge.tipo-carico { background: #d4edda; color: #155724; }
+.tipo-badge.tipo-assegnazione { background: #cce5ff; color: #004085; }
+.tipo-badge.tipo-restituzione { background: #d1ecf1; color: #0c5460; }
+.tipo-badge.tipo-perso { background: #f8d7da; color: #721c24; }
+.tipo-badge.tipo-usurato { background: #fff3cd; color: #856404; }
+.tipo-badge.tipo-sostituzione { background: #e2e3e5; color: #383d41; }
+.tipo-badge.tipo-dismesso { background: #d6d8db; color: #1b1e21; }
+
+.empty {
+    color: #666;
+    font-style: italic;
+}
+</style>
+
+<script>
+function updateForm() {
+    var tipo = document.getElementById('tipo').value;
+    var assegnatoGroup = document.getElementById('assegnato-group');
+    
+    if (tipo === 'assegnazione') {
+        assegnatoGroup.style.display = 'block';
+        document.getElementById('assegnato_a').required = true;
+    } else {
+        assegnatoGroup.style.display = 'none';
+        document.getElementById('assegnato_a').required = false;
+    }
+}
+</script>
+{{end}}

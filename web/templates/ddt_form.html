@@ -1,0 +1,120 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.DDT.ID}}Modifica DDT{{else}}Nuovo DDT{{end}}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" class="form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="numero">Numero DDT *</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="numero" name="numero" value="{{.Data.DDT.Numero}}" required style="flex: 1;">
+                    {{if not .Data.DDT.ID}}
+                    <button type="button" class="btn btn-secondary" onclick="generaNumero()">Genera</button>
+                    {{end}}
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="tipo_ddt">Tipo DDT *</label>
+                <select id="tipo_ddt" name="tipo_ddt" required>
+                    <option value="intervento" {{if eq .Data.DDT.TipoDDT "intervento"}}selected{{end}}>Intervento</option>
+                    <option value="spedizione" {{if eq .Data.DDT.TipoDDT "spedizione"}}selected{{end}}>Spedizione</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="data_emissione">Data Emissione *</label>
+                <input type="date" id="data_emissione" name="data_emissione" value="{{.Data.DDT.DataEmissione}}" required>
+            </div>
+            <div class="form-group">
+                <label for="compagnia_id">Compagnia *</label>
+                <select id="compagnia_id" name="compagnia_id" required onchange="filtraNavi()">
+                    <option value="">-- Seleziona --</option>
+                    {{range .Data.Compagnie}}
+                    <option value="{{.ID}}" {{if eq .ID $.Data.DDT.CompagniaID}}selected{{end}}>{{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="nave_id">Nave *</label>
+                <select id="nave_id" name="nave_id" required>
+                    <option value="">-- Seleziona Compagnia prima --</option>
+                    {{range .Data.Navi}}
+                    <option value="{{.ID}}" data-compagnia="{{.CompagniaID}}" {{if eq .ID $.Data.DDT.NaveID}}selected{{end}}>{{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="porto_id">Porto</label>
+                <select id="porto_id" name="porto_id">
+                    <option value="">-- Nessun Porto --</option>
+                    {{range .Data.Porti}}
+                    <option value="{{.ID}}" {{if and $.Data.DDT.PortoID (eq .ID $.Data.DDT.PortoID)}}selected{{end}}>{{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="destinatario">Destinatario</label>
+            <input type="text" id="destinatario" name="destinatario" value="{{.Data.DDT.Destinatario}}">
+        </div>
+
+        <div class="form-group">
+            <label for="indirizzo">Indirizzo Destinazione</label>
+            <input type="text" id="indirizzo" name="indirizzo" value="{{.Data.DDT.Indirizzo}}">
+        </div>
+
+        <div class="form-group">
+            <label for="vettore">Vettore/Trasportatore</label>
+            <input type="text" id="vettore" name="vettore" value="{{.Data.DDT.Vettore}}">
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note">{{.Data.DDT.Note}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.DDT.ID}}Salva Modifiche{{else}}Crea DDT{{end}}</button>
+            <a href="/ddt" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function generaNumero() {
+    fetch('/ddt/genera-numero')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('numero').value = data.numero;
+        });
+}
+
+function filtraNavi() {
+    var compagniaId = document.getElementById('compagnia_id').value;
+    var naveSelect = document.getElementById('nave_id');
+    var options = naveSelect.querySelectorAll('option[data-compagnia]');
+    
+    options.forEach(function(opt) {
+        if (compagniaId === '' || opt.getAttribute('data-compagnia') === compagniaId) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+            if (opt.selected) opt.selected = false;
+        }
+    });
+}
+
+// Filtra navi al caricamento
+document.addEventListener('DOMContentLoaded', filtraNavi);
+</script>
+{{end}}

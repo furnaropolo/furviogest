@@ -1,0 +1,303 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Rapporto Intervento #{{.Data.Rapporto.ID}}</h1>
+    <div class="page-actions">
+        {{if .Session.IsTecnico}}
+        <a href="/rapporti/modifica/{{.Data.Rapporto.ID}}" class="btn btn-primary">Modifica</a>
+        {{end}}
+        <a href="/rapporti" class="btn btn-secondary">Torna alla Lista</a>
+    </div>
+</div>
+
+<!-- Info Rapporto -->
+<div class="detail-card">
+    <div class="detail-section">
+        <h3>Informazioni Intervento</h3>
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label>Data</label>
+                <span>{{.Data.Rapporto.DataIntervento}}</span>
+            </div>
+            <div class="detail-item">
+                <label>Tipo</label>
+                <span class="badge badge-{{if eq .Data.Rapporto.Tipo "wifi"}}primary{{else}}info{{end}}">
+                    {{if eq .Data.Rapporto.Tipo "wifi"}}WiFi{{else}}GSM{{end}}
+                </span>
+            </div>
+            <div class="detail-item">
+                <label>Nave</label>
+                <span>{{.Data.Rapporto.NomeNave}}</span>
+            </div>
+            <div class="detail-item">
+                <label>Compagnia</label>
+                <span>{{.Data.Rapporto.NomeCompagnia}}</span>
+            </div>
+            <div class="detail-item">
+                <label>Porto</label>
+                <span>{{.Data.Rapporto.NomePorto}}</span>
+            </div>
+            <div class="detail-item">
+                <label>DDT</label>
+                {{if .Data.Rapporto.DDTGenerato}}
+                <span class="badge badge-success">{{.Data.Rapporto.NumeroDDT}}</span>
+                {{else}}
+                <span class="badge badge-secondary">Non generato</span>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    {{if .Data.Rapporto.Descrizione}}
+    <div class="detail-section">
+        <h3>Descrizione Lavoro</h3>
+        <p class="description-text">{{.Data.Rapporto.Descrizione}}</p>
+    </div>
+    {{end}}
+
+    {{if .Data.Rapporto.Note}}
+    <div class="detail-section">
+        <h3>Note</h3>
+        <p>{{.Data.Rapporto.Note}}</p>
+    </div>
+    {{end}}
+</div>
+
+<!-- Tecnici -->
+<div class="detail-card">
+    <h3>Tecnici Partecipanti</h3>
+    {{if .Data.Tecnici}}
+    <div class="tecnici-list">
+        {{range .Data.Tecnici}}
+        <span class="tecnico-badge">{{.Cognome}} {{.Nome}}</span>
+        {{end}}
+    </div>
+    {{else}}
+    <p class="text-muted">Nessun tecnico assegnato</p>
+    {{end}}
+</div>
+
+<!-- Materiale Utilizzato -->
+<div class="detail-card">
+    <h3>Materiale Utilizzato</h3>
+    
+    {{if .Session.IsTecnico}}
+    <form method="POST" action="/rapporti/materiale/aggiungi" class="add-material-form">
+        <input type="hidden" name="rapporto_id" value="{{.Data.Rapporto.ID}}">
+        <div class="form-row">
+            <select name="prodotto_id" required>
+                <option value="">-- Seleziona Prodotto --</option>
+                {{range .Data.Prodotti}}
+                <option value="{{.ID}}">{{.Codice}} - {{.Nome}} ({{.Quantita}} {{.UnitaMisura}})</option>
+                {{end}}
+            </select>
+            <input type="number" name="quantita" step="0.01" min="0.01" placeholder="Qtà" required style="width:100px">
+            <button type="submit" class="btn btn-primary btn-sm">Aggiungi</button>
+        </div>
+    </form>
+    {{end}}
+
+    {{if .Data.Materiali}}
+    <table class="table mt-2">
+        <thead>
+            <tr>
+                <th>Codice</th>
+                <th>Prodotto</th>
+                <th>Quantità</th>
+                <th>U.M.</th>
+                {{if .Session.IsTecnico}}<th>Azioni</th>{{end}}
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.Materiali}}
+            <tr>
+                <td><code>{{.Codice}}</code></td>
+                <td>{{.NomeProdotto}}</td>
+                <td>{{printf "%.2f" .Quantita}}</td>
+                <td>{{.UnitaMisura}}</td>
+                {{if $.Session.IsTecnico}}
+                <td>
+                    <a href="/rapporti/materiale/rimuovi/{{.ID}}" class="btn btn-sm btn-danger"
+                       onclick="return confirm('Rimuovere questo materiale? Verrà ricaricato in magazzino.')">
+                        Rimuovi
+                    </a>
+                </td>
+                {{end}}
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="text-muted mt-2">Nessun materiale registrato</p>
+    {{end}}
+</div>
+
+<!-- Foto -->
+<div class="detail-card">
+    <h3>Foto Intervento</h3>
+    
+    {{if .Session.IsTecnico}}
+    <form method="POST" action="/rapporti/foto/upload" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name="rapporto_id" value="{{.Data.Rapporto.ID}}">
+        <div class="form-row">
+            <input type="file" name="foto" accept="image/*" required>
+            <input type="text" name="descrizione" placeholder="Descrizione (opzionale)" style="flex:1">
+            <button type="submit" class="btn btn-primary btn-sm">Carica</button>
+        </div>
+    </form>
+    {{end}}
+
+    {{if .Data.Foto}}
+    <div class="foto-grid">
+        {{range .Data.Foto}}
+        <div class="foto-item">
+            <a href="{{.FilePath}}" target="_blank">
+                <img src="{{.FilePath}}" alt="{{.Descrizione}}">
+            </a>
+            {{if .Descrizione}}<p class="foto-desc">{{.Descrizione}}</p>{{end}}
+            {{if $.Session.IsTecnico}}
+            <a href="/rapporti/foto/elimina/{{.ID}}" class="btn btn-sm btn-danger"
+               onclick="return confirm('Eliminare questa foto?')">Elimina</a>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <p class="text-muted mt-2">Nessuna foto caricata</p>
+    {{end}}
+</div>
+
+<style>
+.detail-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.detail-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.1rem;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+}
+
+.detail-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-item label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-item span {
+    font-size: 1rem;
+    color: #333;
+}
+
+.description-text {
+    white-space: pre-wrap;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.tecnici-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tecnico-badge {
+    background: #e9ecef;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.add-material-form .form-row,
+.upload-form .form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.add-material-form select {
+    min-width: 300px;
+    padding: 8px;
+}
+
+.foto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.foto-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    text-align: center;
+}
+
+.foto-item img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.foto-item .foto-desc {
+    padding: 8px;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.foto-item .btn {
+    margin: 10px;
+}
+
+.badge-primary { background-color: #007bff; color: white; padding: 4px 10px; border-radius: 4px; }
+.badge-info { background-color: #17a2b8; color: white; padding: 4px 10px; border-radius: 4px; }
+.badge-success { background-color: #28a745; color: white; padding: 4px 10px; border-radius: 4px; }
+.badge-secondary { background-color: #6c757d; color: white; padding: 4px 10px; border-radius: 4px; }
+
+.text-muted { color: #6c757d; }
+.mt-2 { margin-top: 15px; }
+
+code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+</style>
+{{end}}

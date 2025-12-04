@@ -1,0 +1,126 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>DDT Uscita Merce</h1>
+    <div class="page-actions">
+        <a href="/amministrazione/ddt/export?mese={{.Data.MeseFilter}}&anno={{.Data.AnnoFilter}}" class="btn btn-primary">Scarica CSV</a>
+        <a href="/amministrazione" class="btn btn-secondary">Torna alla Dashboard</a>
+    </div>
+</div>
+
+<div class="filter-form">
+    <form method="GET" class="form-inline">
+        <div class="form-group">
+            <label for="mese">Mese</label>
+            <select name="mese" id="mese">
+                <option value="">Tutti</option>
+                <option value="01" {{if eq .Data.MeseFilter "01"}}selected{{end}}>Gennaio</option>
+                <option value="02" {{if eq .Data.MeseFilter "02"}}selected{{end}}>Febbraio</option>
+                <option value="03" {{if eq .Data.MeseFilter "03"}}selected{{end}}>Marzo</option>
+                <option value="04" {{if eq .Data.MeseFilter "04"}}selected{{end}}>Aprile</option>
+                <option value="05" {{if eq .Data.MeseFilter "05"}}selected{{end}}>Maggio</option>
+                <option value="06" {{if eq .Data.MeseFilter "06"}}selected{{end}}>Giugno</option>
+                <option value="07" {{if eq .Data.MeseFilter "07"}}selected{{end}}>Luglio</option>
+                <option value="08" {{if eq .Data.MeseFilter "08"}}selected{{end}}>Agosto</option>
+                <option value="09" {{if eq .Data.MeseFilter "09"}}selected{{end}}>Settembre</option>
+                <option value="10" {{if eq .Data.MeseFilter "10"}}selected{{end}}>Ottobre</option>
+                <option value="11" {{if eq .Data.MeseFilter "11"}}selected{{end}}>Novembre</option>
+                <option value="12" {{if eq .Data.MeseFilter "12"}}selected{{end}}>Dicembre</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="anno">Anno</label>
+            <select name="anno" id="anno">
+                <option value="">Tutti</option>
+                <option value="2024" {{if eq .Data.AnnoFilter "2024"}}selected{{end}}>2024</option>
+                <option value="2025" {{if eq .Data.AnnoFilter "2025"}}selected{{end}}>2025</option>
+                <option value="2026" {{if eq .Data.AnnoFilter "2026"}}selected{{end}}>2026</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filtra</button>
+        <a href="/amministrazione/ddt" class="btn btn-secondary">Reset</a>
+    </form>
+</div>
+
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Numero</th>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Nave</th>
+                <th>Compagnia</th>
+                <th>Porto/Destinatario</th>
+                <th>Vettore</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.DDTs}}
+            <tr>
+                <td><strong>{{.Numero}}</strong></td>
+                <td>{{.DataEmissione}}</td>
+                <td>
+                    <span class="badge badge-{{if eq .TipoDDT "intervento"}}primary{{else}}info{{end}}">
+                        {{if eq .TipoDDT "intervento"}}Intervento{{else}}Spedizione{{end}}
+                    </span>
+                </td>
+                <td>{{.Nave}}</td>
+                <td>{{.Compagnia}}</td>
+                <td>{{if .Porto}}{{.Porto}}{{else}}{{.Destinatario}}{{end}}</td>
+                <td>{{.Vettore}}</td>
+                <td>
+                    <a href="/amministrazione/ddt/{{.ID}}" class="btn btn-secondary btn-sm">Dettaglio</a>
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="8" class="text-center">Nessun DDT trovato</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.filter-form {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.form-inline .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-inline label {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.form-inline select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.badge-primary { background-color: #007bff; color: white; }
+.badge-info { background-color: #17a2b8; color: white; }
+
+.text-center { text-align: center; }
+.btn-sm { padding: 5px 10px; font-size: 0.85rem; }
+</style>
+{{end}}
