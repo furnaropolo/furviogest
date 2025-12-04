@@ -41,7 +41,7 @@ Il server accetta i seguenti parametri:
 
 | Parametro | Default | Descrizione |
 |-----------|---------|-------------|
-| `-port` | 8080 | Porta del server HTTP |
+| `-port` | 8000 | Porta del server HTTP |
 | `-db` | data/furviogest.db | Percorso del database SQLite |
 
 ## Primo Avvio
