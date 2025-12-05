@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"strconv"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -124,6 +125,11 @@ func SalvaImpostazioniAzienda(w http.ResponseWriter, r *http.Request) {
 			banca = ?,
 			codice_sdi = ?,
 			note = ?,
+			smtp_server = ?,
+			smtp_port = ?,
+			smtp_user = ?,
+			smtp_password = ?,
+			smtp_from_name = ?,
 			updated_at = ?
 		WHERE id = 1
 	`,
@@ -145,6 +151,11 @@ func SalvaImpostazioniAzienda(w http.ResponseWriter, r *http.Request) {
 		r.FormValue("banca"),
 		r.FormValue("codice_sdi"),
 		r.FormValue("note"),
+		r.FormValue("smtp_server"),
+		func() int { p, _ := strconv.Atoi(r.FormValue("smtp_port")); if p == 0 { return 587 }; return p }(),
+		r.FormValue("smtp_user"),
+		r.FormValue("smtp_password"),
+		r.FormValue("smtp_from_name"),
 		time.Now(),
 	)
 
@@ -217,13 +228,18 @@ func getImpostazioniAzienda() (*models.ImpostazioniAzienda, error) {
 		SELECT id, ragione_sociale, partita_iva, codice_fiscale, indirizzo,
 			cap, citta, provincia, telefono, email, pec, sito_web,
 			logo_path, firma_email_path, firma_email_testo,
-			iban, banca, codice_sdi, note, updated_at
+			iban, banca, codice_sdi, note,
+			COALESCE(smtp_server, '') as smtp_server, COALESCE(smtp_port, 587) as smtp_port,
+			COALESCE(smtp_user, '') as smtp_user, COALESCE(smtp_password, '') as smtp_password,
+			COALESCE(smtp_from_name, '') as smtp_from_name, updated_at
 		FROM impostazioni_azienda WHERE id = 1
 	`).Scan(
 		&imp.ID, &imp.RagioneSociale, &imp.PartitaIVA, &imp.CodiceFiscale, &imp.Indirizzo,
 		&imp.CAP, &imp.Citta, &imp.Provincia, &imp.Telefono, &imp.Email, &imp.PEC, &imp.SitoWeb,
 		&imp.LogoPath, &imp.FirmaEmailPath, &imp.FirmaEmailTesto,
-		&imp.IBAN, &imp.Banca, &imp.CodiceSDI, &imp.Note, &imp.UpdatedAt,
+		&imp.IBAN, &imp.Banca, &imp.CodiceSDI, &imp.Note,
+		&imp.SMTPServer, &imp.SMTPPort, &imp.SMTPUser, &imp.SMTPPassword,
+		&imp.SMTPFromName, &imp.UpdatedAt,
 	)
 	if err != nil {
 		return &models.ImpostazioniAzienda{}, err

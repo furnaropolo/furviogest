@@ -29,6 +29,15 @@
         </div>
 
         <div class="form-group">
+        <div class="form-group">
+            <label for="email_destinatari">Destinatari Email Permessi *</label>
+            <select id="email_destinatari" name="email_destinatari" required>
+                <option value="solo_agenzia" {{if .Data}}{{if eq .Data.EmailDestinatari "solo_agenzia"}}selected{{end}}{{end}}>Solo Agenzia</option>
+                <option value="tutti" {{if .Data}}{{if eq .Data.EmailDestinatari "tutti"}}selected{{end}}{{end}}>Agenzia + Ispettore + Master + DDM</option>
+            </select>
+            <small>Scegli a chi inviare le richieste permesso per questa compagnia</small>
+        </div>
+
             <label for="note">Note</label>
             <textarea id="note" name="note">{{if .Data}}{{.Data.Note}}{{end}}</textarea>
         </div>

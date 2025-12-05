@@ -158,6 +158,37 @@ www.azienda.it">{{.Data.Impostazioni.FirmaEmailTesto}}</textarea>
         </div>
     </div>
 
+    </div>
+
+    <!-- Impostazioni SMTP -->
+    <div class="form-section">
+        <h2>Impostazioni Email (SMTP)</h2>
+        <p class="form-help">Configura le impostazioni del server SMTP per l'invio automatico delle email.</p>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="smtp_server">Server SMTP</label>
+                <input type="text" id="smtp_server" name="smtp_server" placeholder="es. smtp.gmail.com" value="{{.Data.Impostazioni.SMTPServer}}">
+            </div>
+            <div class="form-group">
+                <label for="smtp_port">Porta SMTP</label>
+                <input type="number" id="smtp_port" name="smtp_port" placeholder="587" value="{{if .Data.Impostazioni.SMTPPort}}{{.Data.Impostazioni.SMTPPort}}{{else}}587{{end}}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="smtp_user">Username SMTP</label>
+                <input type="text" id="smtp_user" name="smtp_user" placeholder="email@esempio.com" value="{{.Data.Impostazioni.SMTPUser}}">
+            </div>
+            <div class="form-group">
+                <label for="smtp_password">Password SMTP</label>
+                <input type="password" id="smtp_password" name="smtp_password" placeholder="Password" value="{{.Data.Impostazioni.SMTPPassword}}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="smtp_from_name">Nome Mittente</label>
+            <input type="text" id="smtp_from_name" name="smtp_from_name" placeholder="Nome visualizzato nelle email" value="{{.Data.Impostazioni.SMTPFromName}}">
+            <small>Lascia vuoto per usare la ragione sociale</small>
+        </div>
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">Salva Impostazioni</button>
         <a href="/" class="btn btn-secondary">Annulla</a>

@@ -114,6 +114,15 @@
     </div>
 
     <div class="form-section">
+    <div class="form-section">
+        <h3>Descrizione Intervento *</h3>
+        <p class="form-help">Descrivi i lavori da effettuare sulla nave (questa informazione sarà inclusa nell'email all'agenzia)</p>
+        <div class="form-group">
+            <textarea name="descrizione_intervento" id="descrizione_intervento" class="form-control" rows="4" required
+                      placeholder="Es: Intervento di manutenzione sistema WiFi ponte comando. Necessario accesso sala radio e ponte di comando.">{{if $permesso}}{{$permesso.DescrizioneIntervento}}{{end}}</textarea>
+        </div>
+    </div>
+
         <h3>Note</h3>
         <div class="form-group">
             <textarea name="note" id="note" class="form-control" rows="4" 

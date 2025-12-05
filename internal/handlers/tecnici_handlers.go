@@ -155,9 +155,11 @@ func ModificaTecnico(w http.ResponseWriter, r *http.Request) {
 		var docPath sql.NullString
 		var telefono sql.NullString
 		err := database.DB.QueryRow(`
-			SELECT id, username, nome, cognome, email, telefono, ruolo, attivo, documento_path
+			SELECT id, username, nome, cognome, email, telefono, ruolo, attivo, documento_path,
+			COALESCE(smtp_server, ''), COALESCE(smtp_port, 587), COALESCE(smtp_user, ''), COALESCE(smtp_password, '')
 			FROM utenti WHERE id = ?
-		`, id).Scan(&t.ID, &t.Username, &t.Nome, &t.Cognome, &t.Email, &telefono, &t.Ruolo, &t.Attivo, &docPath)
+		`, id).Scan(&t.ID, &t.Username, &t.Nome, &t.Cognome, &t.Email, &telefono, &t.Ruolo, &t.Attivo, &docPath,
+			&t.SMTPServer, &t.SMTPPort, &t.SMTPUser, &t.SMTPPassword)
 
 		if err != nil {
 			http.Redirect(w, r, "/tecnici", http.StatusSeeOther)
@@ -187,6 +189,16 @@ func ModificaTecnico(w http.ResponseWriter, r *http.Request) {
 	ruolo := models.Ruolo(r.FormValue("ruolo"))
 	attivo := r.FormValue("attivo") == "on"
 	nuovaPassword := r.FormValue("nuova_password")
+
+	// Campi SMTP
+	smtpServer := strings.TrimSpace(r.FormValue("smtp_server"))
+	smtpPortStr := r.FormValue("smtp_port")
+	smtpPort := 587
+	if p, err := strconv.Atoi(smtpPortStr); err == nil && p > 0 {
+		smtpPort = p
+	}
+	smtpUser := strings.TrimSpace(r.FormValue("smtp_user"))
+	smtpPassword := r.FormValue("smtp_password")
 
 	// Validazione
 	if nome == "" || cognome == "" || email == "" {
@@ -229,14 +241,14 @@ func ModificaTecnico(w http.ResponseWriter, r *http.Request) {
 	// Aggiorna nel database
 	if updateDocumento {
 		_, err = database.DB.Exec(`
-			UPDATE utenti SET nome = ?, cognome = ?, email = ?, telefono = ?, ruolo = ?, attivo = ?, documento_path = ?, updated_at = CURRENT_TIMESTAMP
+			UPDATE utenti SET nome = ?, cognome = ?, email = ?, telefono = ?, ruolo = ?, attivo = ?, documento_path = ?, smtp_server = ?, smtp_port = ?, smtp_user = ?, smtp_password = ?, updated_at = CURRENT_TIMESTAMP
 			WHERE id = ?
-		`, nome, cognome, email, telefono, ruolo, attivo, documentoPath, id)
+		`, nome, cognome, email, telefono, ruolo, attivo, documentoPath, smtpServer, smtpPort, smtpUser, smtpPassword, id)
 	} else {
 		_, err = database.DB.Exec(`
-			UPDATE utenti SET nome = ?, cognome = ?, email = ?, telefono = ?, ruolo = ?, attivo = ?, updated_at = CURRENT_TIMESTAMP
+			UPDATE utenti SET nome = ?, cognome = ?, email = ?, telefono = ?, ruolo = ?, attivo = ?, smtp_server = ?, smtp_port = ?, smtp_user = ?, smtp_password = ?, updated_at = CURRENT_TIMESTAMP
 			WHERE id = ?
-		`, nome, cognome, email, telefono, ruolo, attivo, id)
+		`, nome, cognome, email, telefono, ruolo, attivo, smtpServer, smtpPort, smtpUser, smtpPassword, id)
 	}
 
 	if err != nil {

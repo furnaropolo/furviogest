@@ -71,10 +71,60 @@
             {{end}}
         </div>
 
+        <!-- Sezione SMTP -->
+        <div class="form-section smtp-section">
+            <h3>Impostazioni Email (SMTP)</h3>
+            <p class="form-help">Configura le credenziali per inviare email delle richieste permessi con il tuo account.</p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="smtp_server">Server SMTP</label>
+                    <input type="text" id="smtp_server" name="smtp_server" placeholder="smtp.gmail.com" value="{{if .Data}}{{.Data.SMTPServer}}{{end}}">
+                </div>
+                <div class="form-group">
+                    <label for="smtp_port">Porta</label>
+                    <input type="number" id="smtp_port" name="smtp_port" placeholder="587" value="{{if .Data}}{{if .Data.SMTPPort}}{{.Data.SMTPPort}}{{else}}587{{end}}{{else}}587{{end}}">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="smtp_user">Username SMTP</label>
+                    <input type="text" id="smtp_user" name="smtp_user" placeholder="tua.email@esempio.com" value="{{if .Data}}{{.Data.SMTPUser}}{{end}}">
+                </div>
+                <div class="form-group">
+                    <label for="smtp_password">Password SMTP</label>
+                    <input type="password" id="smtp_password" name="smtp_password" placeholder="Password" value="{{if .Data}}{{.Data.SMTPPassword}}{{end}}">
+                </div>
+            </div>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{if .Data}}Salva Modifiche{{else}}Crea Tecnico{{end}}</button>
             <a href="/tecnici" class="btn btn-secondary">Annulla</a>
         </div>
     </form>
 </div>
+
+<style>
+.smtp-section {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+.smtp-section h3 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+.form-help {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+</style>
 {{end}}

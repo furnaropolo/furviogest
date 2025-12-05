@@ -1,0 +1,94 @@
+{{define "content"}}
+<div class="page-header">
+    <h1>Anteprima Email - Richiesta Permesso #{{.Data.PermessoID}}</h1>
+    <a href="/permessi/dettaglio/{{.Data.PermessoID}}" class="btn btn-secondary">Torna al Dettaglio</a>
+</div>
+
+<div class="preview-container">
+    <div class="email-info">
+        <h3>Destinatari Email</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>A (TO):</label>
+                <div class="email-list">
+                    {{range .Data.DestinatariTO}}
+                    <span class="email-badge to">{{.}}</span>
+                    {{else}}
+                    <span class="text-muted">Nessun destinatario principale</span>
+                    {{end}}
+                </div>
+            </div>
+            {{if .Data.DestinatariCC}}
+            <div class="info-item">
+                <label>CC:</label>
+                <div class="email-list">
+                    {{range .Data.DestinatariCC}}
+                    <span class="email-badge cc">{{.}}</span>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+            <div class="info-item">
+                <label>Oggetto:</label>
+                <span>{{.Data.Oggetto}}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="email-preview">
+        <h3>Anteprima Corpo Email</h3>
+        <div class="email-frame">
+            {{.Data.CorpoHTML}}
+        </div>
+    </div>
+
+    {{if .Data.Allegati}}
+    <div class="allegati-section">
+        <h3>Allegati</h3>
+        <ul>
+            {{range .Data.Allegati}}
+            <li>{{.}}</li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    {{if .Data.SMTPConfigurato}}
+    <div class="actions">
+        <form method="POST" action="/permessi/invia-email/{{.Data.PermessoID}}" 
+              onsubmit="return confirm('Confermi l\'invio dell\'email?');">
+            <button type="submit" class="btn btn-success btn-lg">
+                Invia Email
+            </button>
+        </form>
+        <a href="/permessi/dettaglio/{{.Data.PermessoID}}" class="btn btn-secondary">Annulla</a>
+    </div>
+    {{else}}
+    <div class="alert alert-warning">
+        <strong>Attenzione:</strong> Le impostazioni SMTP non sono configurate nel tuo profilo. 
+        <a href="/tecnici">Configura le tue credenziali email</a> per poter inviare.
+    </div>
+    {{end}}
+</div>
+
+<style>
+.preview-container { max-width: 900px; margin: 0 auto; }
+.email-info { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.email-info h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem; }
+.info-grid { display: grid; gap: 1rem; }
+.info-item { display: flex; gap: 1rem; align-items: flex-start; }
+.info-item label { font-weight: bold; min-width: 80px; color: var(--text-muted); }
+.email-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.email-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.9rem; }
+.email-badge.to { background: #d4edda; color: #155724; }
+.email-badge.cc { background: #cce5ff; color: #004085; }
+.email-preview { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.email-preview h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem; }
+.email-frame { background: white; border: 1px solid #ddd; border-radius: 4px; padding: 1rem; max-height: 600px; overflow-y: auto; }
+.allegati-section { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.allegati-section h3 { margin-top: 0; color: var(--primary-color); }
+.actions { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; }
+.btn-lg { padding: 1rem 2rem; font-size: 1.1rem; }
+.alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; }
+</style>
+{{end}}

@@ -67,12 +67,16 @@ func NuovoFornitore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
 	telefono := strings.TrimSpace(r.FormValue("telefono"))
 	email := strings.TrimSpace(r.FormValue("email"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if nome == "" {
 		data.Error = "Il nome è obbligatorio"
@@ -82,7 +86,7 @@ func NuovoFornitore(w http.ResponseWriter, r *http.Request) {
 
 	_, err := database.DB.Exec(`
 		INSERT INTO fornitori (nome, indirizzo, telefono, email, note)
-		VALUES (?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`, nome, indirizzo, telefono, email, note)
 
 	if err != nil {
@@ -139,12 +143,16 @@ func ModificaFornitore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
 	telefono := strings.TrimSpace(r.FormValue("telefono"))
 	email := strings.TrimSpace(r.FormValue("email"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if nome == "" {
 		data.Error = "Il nome è obbligatorio"
@@ -237,7 +245,7 @@ func NuovoPorto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	citta := strings.TrimSpace(r.FormValue("citta"))
 	paese := strings.TrimSpace(r.FormValue("paese"))
@@ -245,6 +253,10 @@ func NuovoPorto(w http.ResponseWriter, r *http.Request) {
 	emailAgenzia := strings.TrimSpace(r.FormValue("email_agenzia"))
 	telefonoAgenzia := strings.TrimSpace(r.FormValue("telefono_agenzia"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if nome == "" {
 		data.Error = "Il nome è obbligatorio"
@@ -317,7 +329,7 @@ func ModificaPorto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	citta := strings.TrimSpace(r.FormValue("citta"))
 	paese := strings.TrimSpace(r.FormValue("paese"))
@@ -325,6 +337,10 @@ func ModificaPorto(w http.ResponseWriter, r *http.Request) {
 	emailAgenzia := strings.TrimSpace(r.FormValue("email_agenzia"))
 	telefonoAgenzia := strings.TrimSpace(r.FormValue("telefono_agenzia"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if nome == "" {
 		data.Error = "Il nome è obbligatorio"
@@ -411,19 +427,31 @@ func NuovoAutomezzo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	// Parse del form con gestione errore
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		// Fallback: prova con ParseForm standard
+		r.ParseForm()
+	}
+
 	targa := strings.TrimSpace(r.FormValue("targa"))
 	marca := strings.TrimSpace(r.FormValue("marca"))
 	modello := strings.TrimSpace(r.FormValue("modello"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
+	// Conserva i valori inseriti in caso di errore
 	if targa == "" {
 		data.Error = "La targa è obbligatoria"
+		data.Data = models.Automezzo{Targa: targa, Marca: marca, Modello: modello, Note: note}
 		renderTemplate(w, "automezzi_form.html", data)
 		return
 	}
 
-	_, err := database.DB.Exec(`
+	_, err = database.DB.Exec(`
 		INSERT INTO automezzi (targa, marca, modello, note)
 		VALUES (?, ?, ?, ?)
 	`, targa, marca, modello, note)
@@ -482,14 +510,24 @@ func ModificaAutomezzo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	// Parse del form con gestione errore
+	parseErr := r.ParseMultipartForm(10 << 20)
+	if parseErr != nil {
+		r.ParseForm()
+	}
+
 	targa := strings.TrimSpace(r.FormValue("targa"))
 	marca := strings.TrimSpace(r.FormValue("marca"))
 	modello := strings.TrimSpace(r.FormValue("modello"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if targa == "" {
 		data.Error = "La targa è obbligatoria"
+		data.Data = models.Automezzo{ID: id, Targa: targa, Marca: marca, Modello: modello, Note: note}
 		renderTemplate(w, "automezzi_form.html", data)
 		return
 	}
@@ -573,12 +611,16 @@ func NuovaCompagnia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
 	telefono := strings.TrimSpace(r.FormValue("telefono"))
-	email := strings.TrimSpace(r.FormValue("email"))
+	emailVal := strings.TrimSpace(r.FormValue("email"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if nome == "" {
 		data.Error = "Il nome è obbligatorio"
@@ -587,9 +629,9 @@ func NuovaCompagnia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := database.DB.Exec(`
-		INSERT INTO compagnie (nome, indirizzo, telefono, email, note)
-		VALUES (?, ?, ?, ?, ?)
-	`, nome, indirizzo, telefono, email, note)
+		INSERT INTO compagnie (nome, indirizzo, telefono, email, note, email_destinatari)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, nome, indirizzo, telefono, emailVal, note, emailDestinatari)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"
@@ -617,11 +659,11 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		var c models.Compagnia
-		var indirizzo, telefono, email, note sql.NullString
+		var indirizzo, telefono, emailVal, note, emailDest sql.NullString
 		err := database.DB.QueryRow(`
-			SELECT id, nome, indirizzo, telefono, email, note
+			SELECT id, nome, indirizzo, telefono, email, note, COALESCE(email_destinatari, 'solo_agenzia')
 			FROM compagnie WHERE id = ?
-		`, id).Scan(&c.ID, &c.Nome, &indirizzo, &telefono, &email, &note)
+		`, id).Scan(&c.ID, &c.Nome, &indirizzo, &telefono, &emailVal, &note, &emailDest)
 
 		if err != nil {
 			http.Redirect(w, r, "/compagnie", http.StatusSeeOther)
@@ -633,11 +675,16 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 		if telefono.Valid {
 			c.Telefono = telefono.String
 		}
-		if email.Valid {
-			c.Email = email.String
+		if emailVal.Valid {
+			c.Email = emailVal.String
 		}
 		if note.Valid {
 			c.Note = note.String
+		}
+		if emailDest.Valid {
+			c.EmailDestinatari = emailDest.String
+		} else {
+			c.EmailDestinatari = "solo_agenzia"
 		}
 
 		data.Data = c
@@ -645,12 +692,16 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
 	telefono := strings.TrimSpace(r.FormValue("telefono"))
-	email := strings.TrimSpace(r.FormValue("email"))
+	emailVal := strings.TrimSpace(r.FormValue("email"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 
 	if nome == "" {
 		data.Error = "Il nome è obbligatorio"
@@ -659,9 +710,9 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = database.DB.Exec(`
-		UPDATE compagnie SET nome = ?, indirizzo = ?, telefono = ?, email = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE compagnie SET nome = ?, indirizzo = ?, telefono = ?, email = ?, note = ?, email_destinatari = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, nome, indirizzo, telefono, email, note, id)
+	`, nome, indirizzo, telefono, emailVal, note, emailDestinatari, id)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"
@@ -797,7 +848,7 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	compagniaID, _ := strconv.ParseInt(r.FormValue("compagnia_id"), 10, 64)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	imo := strings.TrimSpace(r.FormValue("imo"))
@@ -805,6 +856,10 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 	emailDirettore := strings.TrimSpace(r.FormValue("email_direttore_macchina"))
 	emailIspettore := strings.TrimSpace(r.FormValue("email_ispettore"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 	fermaPerLavori := r.FormValue("ferma_per_lavori") == "on"
 	
 	var dataInizioLavori, dataFineLavoriPrev interface{}
@@ -904,7 +959,7 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseForm()
+	r.ParseMultipartForm(10 << 20)
 	compagniaID, _ := strconv.ParseInt(r.FormValue("compagnia_id"), 10, 64)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	imo := strings.TrimSpace(r.FormValue("imo"))
@@ -912,6 +967,10 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 	emailDirettore := strings.TrimSpace(r.FormValue("email_direttore_macchina"))
 	emailIspettore := strings.TrimSpace(r.FormValue("email_ispettore"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	emailDestinatari := r.FormValue("email_destinatari")
+	if emailDestinatari == "" {
+		emailDestinatari = "solo_agenzia"
+	}
 	fermaPerLavori := r.FormValue("ferma_per_lavori") == "on"
 	
 	var dataInizioLavori, dataFineLavoriPrev interface{}

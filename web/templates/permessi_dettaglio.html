@@ -145,9 +145,9 @@
 <div class="detail-actions">
     {{if $.Session.IsTecnico}}
     {{if not .Data.EmailInviata}}
-    <a href="/permessi/invia-email/{{.Data.ID}}" class="btn btn-success" 
-       onclick="return confirm('Inviare l\'email all\'agenzia portuale?')">
-        Invia Email all'Agenzia
+    <a href="/permessi/anteprima-email/{{.Data.ID}}" class="btn btn-success">
+    
+        Anteprima & Invia Email
     </a>
     {{end}}
     <a href="/permessi/modifica/{{.Data.ID}}" class="btn btn-warning">Modifica</a>

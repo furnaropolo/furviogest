@@ -25,6 +25,11 @@ type Utente struct {
 	Ruolo         Ruolo     `json:"ruolo"`
 	Attivo        bool      `json:"attivo"`
 	DocumentoPath string    `json:"documento_path"` // Path al documento di identità
+	// Impostazioni SMTP personali
+	SMTPServer    string    `json:"smtp_server"`
+	SMTPPort      int       `json:"smtp_port"`
+	SMTPUser      string    `json:"smtp_user"`
+	SMTPPassword  string    `json:"-"` // Non esporre in JSON
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -36,7 +41,8 @@ type Fornitore struct {
 	Indirizzo string    `json:"indirizzo"`
 	Telefono  string    `json:"telefono"`
 	Email     string    `json:"email"`
-	Note      string    `json:"note"`
+	Note              string `json:"note"`
+	EmailDestinatari  string `json:"email_destinatari"` // solo_agenzia o tutti`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -74,7 +80,8 @@ type Compagnia struct {
 	Indirizzo string    `json:"indirizzo"`
 	Telefono  string    `json:"telefono"`
 	Email     string    `json:"email"`
-	Note      string    `json:"note"`
+	Note              string `json:"note"`
+	EmailDestinatari  string `json:"email_destinatari"` // solo_agenzia o tutti`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -195,7 +202,8 @@ type RichiestaPermesso struct {
 	TipoDurata      TipoDurataPermesso `json:"tipo_durata"`
 	DataInizio      time.Time          `json:"data_inizio"`
 	DataFine        *time.Time         `json:"data_fine,omitempty"` // NULL se fine_lavori
-	Note            string             `json:"note"`
+	Note                 string             `json:"note"`
+	DescrizioneIntervento string             `json:"descrizione_intervento"`
 	EmailInviata    bool               `json:"email_inviata"`
 	DataInvioEmail  *time.Time         `json:"data_invio_email,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
@@ -377,6 +385,12 @@ type ImpostazioniAzienda struct {
 	Banca             string    `json:"banca"`
 	CodiceSDI         string    `json:"codice_sdi"`         // Codice destinatario fatturazione elettronica
 	Note              string    `json:"note"`
+	// Impostazioni SMTP
+	SMTPServer        string    `json:"smtp_server"`
+	SMTPPort          int       `json:"smtp_port"`
+	SMTPUser          string    `json:"smtp_user"`
+	SMTPPassword      string    `json:"smtp_password"`
+	SMTPFromName      string    `json:"smtp_from_name"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
