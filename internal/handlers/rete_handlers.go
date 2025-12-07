@@ -107,7 +107,7 @@ type NaveInfo struct {
 func executeSSHCommand(ip string, port int, user, pass, command string) (string, error) {
 	expectScript := fmt.Sprintf(`
 log_user 1
-set timeout 60
+set timeout 120
 spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p %d %s@%s
 
 expect {
@@ -118,7 +118,7 @@ expect {
     ">" {
         send "%s\r"
     }
-    "<*>" {
+    -re {<[^>]+>} {
         send "%s\r"
     }
     timeout {
@@ -130,10 +130,18 @@ expect {
 }
 
 expect {
+    -re {---- More ----} {
+        send " "
+        exp_continue
+    }
+    -re {\[Y/N\]} {
+        send "N\r"
+        exp_continue
+    }
     ">" {
         send "quit\r"
     }
-    "<*>" {
+    -re {<[^>]+>} {
         send "quit\r"
     }
     timeout {}
@@ -834,27 +842,34 @@ func parseHuaweiAPOutput(output string) []map[string]string {
 	var aps []map[string]string
 
 	lines := strings.Split(output, "\n")
-	// Esempio output Huawei:
-	// AP ID  AP Name          State   IP Address      MAC Address        Model
-	// 0      AP-Deck1         Run     192.168.1.10    00:e0:fc:12:34:56  AP6050DN
+	// Formato reale output Huawei:
+	// ID    MAC            Name           Group   IP           Type             State  STA  Uptime...
+	// 0     484c-2911-cb30 AP-02          default 10.101.3.102 AirEngine5761-11 nor    2    20D:6H...
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "AP ID") || strings.HasPrefix(line, "-") {
+		// Salta righe vuote, header e separatori
+		if line == "" || strings.HasPrefix(line, "ID") || strings.HasPrefix(line, "-") || 
+		   strings.HasPrefix(line, "Total") || strings.Contains(line, "idle  :") || 
+		   strings.Contains(line, "nor   :") || strings.Contains(line, "ExtraInfo") {
 			continue
 		}
 
-		// Usa regex per parsare (più robusto)
-		// Pattern: ID Name State IP MAC Model
-		re := regexp.MustCompile(`^(\d+)\s+(\S+)\s+(\S+)\s+(\d+\.\d+\.\d+\.\d+)?\s*([0-9a-fA-F:-]+)\s+(\S+)?`)
+		// Usa regex per il formato: ID MAC Name Group IP Type State STA Uptime...
+		// MAC formato: xxxx-xxxx-xxxx
+		re := regexp.MustCompile(`^(\d+)\s+([0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+`)
 		matches := re.FindStringSubmatch(line)
-		if len(matches) >= 6 {
+		if len(matches) >= 8 {
+			ip := matches[5]
+			if ip == "-" {
+				ip = ""
+			}
 			ap := map[string]string{
-				"name":   matches[2],
-				"state":  matches[3],
-				"ip":     matches[4],
-				"mac":    normalizeMAC(matches[5]),
+				"name":   matches[3],
+				"mac":    normalizeMAC(matches[2]),
+				"ip":     ip,
 				"model":  matches[6],
+				"state":  matches[7],
 			}
 			aps = append(aps, ap)
 		}
@@ -868,22 +883,27 @@ func parseHuaweiMacTable(output string) []map[string]string {
 	var entries []map[string]string
 
 	lines := strings.Split(output, "\n")
-	// Esempio output:
-	// MAC Address      VLAN  State  Port
-	// 00e0-fc12-3456   100   D      GE0/0/1
+	// Formato reale output Huawei:
+	// MAC            VLAN/VSI/BD   Port        Type
+	// 0001-2e7a-df1e 1/-/-         GE0/0/9     dynamic
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.Contains(line, "MAC Address") || strings.HasPrefix(line, "-") {
+		// Salta righe vuote, header e info
+		if line == "" || strings.Contains(line, "MAC") || strings.HasPrefix(line, "-") ||
+		   strings.HasPrefix(line, "Total") || strings.Contains(line, "Info:") ||
+		   strings.Contains(line, "spawn") || strings.Contains(line, "assword") {
 			continue
 		}
 
-		fields := strings.Fields(line)
-		if len(fields) >= 4 {
+		// Usa regex per estrarre MAC (formato xxxx-xxxx-xxxx) e porta (GE/XGE)
+		re := regexp.MustCompile(`^([0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4})\s+(\S+)\s+((?:GE|XGE|Eth)[0-9/]+)\s+(\S+)`)
+		matches := re.FindStringSubmatch(line)
+		if len(matches) >= 5 {
 			entry := map[string]string{
-				"mac":  normalizeMAC(fields[0]),
-				"vlan": fields[1],
-				"port": fields[3],
+				"mac":  normalizeMAC(matches[1]),
+				"vlan": matches[2],
+				"port": matches[3],
 			}
 			entries = append(entries, entry)
 		}
@@ -945,7 +965,7 @@ func updateOrCreateAP(naveID, acID int64, ap map[string]string) {
 	// Determina stato
 	stato := "unknown"
 	state := strings.ToLower(ap["state"])
-	if state == "run" || state == "online" || state == "normal" {
+	if state == "run" || state == "online" || state == "normal" || state == "nor" {
 		stato = "online"
 	} else if state == "fault" || state == "error" {
 		stato = "fault"

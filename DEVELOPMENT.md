@@ -210,3 +210,15 @@
 - Setup iniziale progetto
 - Anagrafiche base
 - Autenticazione e ruoli
+
+### 2025-12-07 (sessione 5)
+- **Gestione Rete Nave - AC e Switch**:
+  - Fix scan AP da Access Controller Huawei
+  - Corretto parser output "display ap all" per formato reale Huawei
+  - Mapping stato AP: nor → online, idle → offline
+  - Fix scan tabella MAC da switch Huawei
+  - Corretto parser output "display mac-address" con porte GE/XGE
+  - Gestione paginazione "---- More ----" negli switch
+  - Associazione automatica AP ↔ porta switch tramite MAC address
+  - Supporto porte Huawei formato 0/0/x e 1/0/x
+  - Backup automatico configurazione switch
