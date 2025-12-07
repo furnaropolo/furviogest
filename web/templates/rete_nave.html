@@ -1,0 +1,420 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-wifi me-2"></i>Gestione Rete - {{.Data.Nave.Nome}}</h2>
+            <p class="text-muted mb-0">{{.Data.Nave.NomeCompagnia}}</p>
+        </div>
+        <div>
+            {{if .Data.Nave.FermaPerLavori}}
+            <span class="badge bg-warning text-dark fs-6"><i class="bi bi-tools me-1"></i>Nave Ferma per Lavori</span>
+            {{end}}
+            <a href="/navi" class="btn btn-outline-secondary ms-2"><i class="bi bi-arrow-left me-1"></i>Torna alle Navi</a>
+        </div>
+    </div>
+
+    {{if .Data.APFault}}
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
+        <div>
+            <strong>Attenzione!</strong> Ci sono <strong>{{.Data.APFault}}</strong> Access Point in stato FAULT su questa nave.
+        </div>
+    </div>
+    {{end}}
+
+    <div class="row">
+        <!-- Access Controller -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-router me-2"></i>Access Controller (AC)</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/navi/ac/salva/{{.Data.Nave.ID}}" method="POST">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Indirizzo IP</label>
+                                <input type="text" class="form-control" name="ip" value="{{if .Data.AC}}{{.Data.AC.IP}}{{end}}" placeholder="192.168.1.1" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Porta SSH</label>
+                                <input type="number" class="form-control" name="ssh_port" value="{{if .Data.AC}}{{.Data.AC.SSHPort}}{{else}}22{{end}}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Username SSH</label>
+                                <input type="text" class="form-control" name="ssh_user" value="{{if .Data.AC}}{{.Data.AC.SSHUser}}{{end}}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password SSH</label>
+                                <input type="password" class="form-control" name="ssh_pass" value="{{if .Data.AC}}{{.Data.AC.SSHPass}}{{end}}" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Note</label>
+                                <input type="text" class="form-control" name="note" value="{{if .Data.AC}}{{.Data.AC.Note}}{{end}}">
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex justify-content-between">
+                            <div>
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Salva AC</button>
+                                {{if .Data.AC}}
+                                <button type="button" class="btn btn-outline-info ms-2" onclick="testSSH('ac')">
+                                    <i class="bi bi-plug me-1"></i>Test Connessione
+                                </button>
+                                {{end}}
+                            </div>
+                            {{if .Data.AC}}
+                            <a href="/navi/ac/elimina/{{.Data.Nave.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare AC e tutti gli AP associati?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {{end}}
+                        </div>
+                    </form>
+                    {{if .Data.AC}}
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            {{if .Data.AC.UltimoCheck}}Ultimo check: {{.Data.AC.UltimoCheck}}{{end}}
+                            {{if .Data.AC.UltimoBackup}}<br>Ultimo backup: {{.Data.AC.UltimoBackup}}{{end}}
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-success" onclick="scanAP()" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
+                                <i class="bi bi-broadcast me-1"></i>Scan AP
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="backupConfig('ac', {{.Data.AC.ID}})">
+                                <i class="bi bi-download me-1"></i>Backup Config
+                            </button>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        <!-- Switches -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Switch ({{len .Data.Switches}})</h5>
+                    <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalSwitch" onclick="resetSwitchForm()">
+                        <i class="bi bi-plus-lg me-1"></i>Aggiungi
+                    </button>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    {{if .Data.Switches}}
+                    <div class="list-group list-group-flush">
+                        {{range .Data.Switches}}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        {{.Nome}}
+                                        <span class="badge bg-{{if eq .Marca "huawei"}}warning text-dark{{else}}info{{end}}">{{.Marca}}</span>
+                                    </h6>
+                                    <small class="text-muted">{{.IP}}:{{.SSHPort}} {{if .Modello}}({{.Modello}}){{end}}</small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-info" onclick="testSSHSwitch({{.ID}}, '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}')" title="Test">
+                                        <i class="bi bi-plug"></i>
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="scanMAC({{.ID}})" title="Scan MAC" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="backupConfig('switch', {{.ID}})" title="Backup">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary" onclick="editSwitch({{.ID}}, '{{.Nome}}', '{{.Marca}}', '{{.Modello}}', '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Note}}')" title="Modifica">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <a href="/navi/switch/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo switch?')" title="Elimina">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {{if or .UltimoCheck .UltimoBackup}}
+                            <small class="text-muted d-block mt-1">
+                                {{if .UltimoCheck}}Check: {{.UltimoCheck}}{{end}}
+                                {{if .UltimoBackup}} | Backup: {{.UltimoBackup}}{{end}}
+                            </small>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <p class="text-muted mb-0">Nessuno switch configurato</p>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Points -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-broadcast me-2"></i>Access Point ({{len .Data.AccessPoints}})</h5>
+        </div>
+        <div class="card-body">
+            {{if .Data.AccessPoints}}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Stato</th>
+                            <th>Nome AP</th>
+                            <th>MAC Address</th>
+                            <th>IP</th>
+                            <th>Modello</th>
+                            <th>Switch</th>
+                            <th>Porta</th>
+                            <th>Ultimo Check</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data.AccessPoints}}
+                        <tr class="{{if eq .Stato "fault"}}table-danger{{else if eq .Stato "offline"}}table-warning{{else if eq .Stato "online"}}table-success{{end}}">
+                            <td>
+                                {{if eq .Stato "online"}}<span class="badge bg-success">Online</span>
+                                {{else if eq .Stato "fault"}}<span class="badge bg-danger">FAULT</span>
+                                {{else if eq .Stato "offline"}}<span class="badge bg-warning text-dark">Offline</span>
+                                {{else}}<span class="badge bg-secondary">Unknown</span>{{end}}
+                            </td>
+                            <td><strong>{{.APName}}</strong></td>
+                            <td><code>{{.APMAC}}</code></td>
+                            <td>{{.APIP}}</td>
+                            <td>{{.APModel}}</td>
+                            <td>{{.SwitchNome}}</td>
+                            <td>{{.SwitchPort}}</td>
+                            <td><small>{{.UltimoCheck}}</small></td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="text-muted mb-0">
+                {{if .Data.AC}}
+                Nessun AP rilevato. Clicca su "Scan AP" per rilevare gli Access Point.
+                {{else}}
+                Configura prima l'Access Controller per poter rilevare gli AP.
+                {{end}}
+            </p>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- Backup Configurazioni -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-archive me-2"></i>Backup Configurazioni</h5>
+        </div>
+        <div class="card-body">
+            {{if .Data.Backups}}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Apparato</th>
+                            <th>Dimensione</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data.Backups}}
+                        <tr>
+                            <td>{{.CreatedAt}}</td>
+                            <td>
+                                {{if eq .TipoApparato "ac"}}<span class="badge bg-primary">AC</span>
+                                {{else}}<span class="badge bg-success">Switch</span>{{end}}
+                            </td>
+                            <td>{{.NomeApparato}}</td>
+                            <td>{{.FileSize}} bytes</td>
+                            <td>
+                                <a href="/api/rete/download-config/{{.ID}}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="text-muted mb-0">Nessun backup disponibile</p>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Switch -->
+<div class="modal fade" id="modalSwitch" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formSwitch" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalSwitchTitle">Nuovo Switch</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="nave_id" value="{{.Data.Nave.ID}}">
+                    <div class="mb-3">
+                        <label class="form-label">Nome Switch</label>
+                        <input type="text" class="form-control" name="nome" id="sw_nome" placeholder="es. SW-Ponte-1" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Marca</label>
+                            <select class="form-select" name="marca" id="sw_marca" required>
+                                <option value="huawei">Huawei</option>
+                                <option value="hp">HP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Modello</label>
+                            <input type="text" class="form-control" name="modello" id="sw_modello" placeholder="S5700">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Indirizzo IP</label>
+                            <input type="text" class="form-control" name="ip" id="sw_ip" placeholder="192.168.1.2" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Porta SSH</label>
+                            <input type="number" class="form-control" name="ssh_port" id="sw_ssh_port" value="22">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Username SSH</label>
+                            <input type="text" class="form-control" name="ssh_user" id="sw_ssh_user" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password SSH</label>
+                            <input type="password" class="form-control" name="ssh_pass" id="sw_ssh_pass" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Note</label>
+                        <input type="text" class="form-control" name="note" id="sw_note">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast per messaggi -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="toast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">Messaggio</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastBody"></div>
+    </div>
+</div>
+
+<script>
+const naveID = {{.Data.Nave.ID}};
+
+function showToast(title, message, isError) {
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastBody').textContent = message;
+    const toast = document.getElementById('toast');
+    toast.classList.remove('bg-success', 'bg-danger', 'text-white');
+    if (isError) {
+        toast.classList.add('bg-danger', 'text-white');
+    }
+    new bootstrap.Toast(toast).show();
+}
+
+function testSSH(type) {
+    const ip = document.querySelector('input[name="ip"]').value;
+    const port = document.querySelector('input[name="ssh_port"]').value;
+    const user = document.querySelector('input[name="ssh_user"]').value;
+    const pass = document.querySelector('input[name="ssh_pass"]').value;
+
+    fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Test SSH', data.message, !data.success);
+        });
+}
+
+function testSSHSwitch(id, ip, port, user, pass) {
+    fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Test SSH', data.message, !data.success);
+        });
+}
+
+function scanAP() {
+    showToast('Scan AP', 'Scansione in corso...', false);
+    fetch(`/api/rete/scan-ap?nave_id=${naveID}`)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Scan AP', data.message, !data.success);
+            if (data.success) {
+                setTimeout(() => location.reload(), 1500);
+            }
+        });
+}
+
+function scanMAC(switchID) {
+    showToast('Scan MAC', 'Scansione tabella MAC in corso...', false);
+    fetch(`/api/rete/scan-mac?switch_id=${switchID}`)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Scan MAC', data.message, !data.success);
+            if (data.success) {
+                setTimeout(() => location.reload(), 1500);
+            }
+        });
+}
+
+function backupConfig(tipo, id) {
+    showToast('Backup', 'Backup configurazione in corso...', false);
+    fetch(`/api/rete/backup-config?tipo=${tipo}&id=${id}`)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Backup', data.message, !data.success);
+            if (data.success) {
+                setTimeout(() => location.reload(), 1500);
+            }
+        });
+}
+
+function resetSwitchForm() {
+    document.getElementById('modalSwitchTitle').textContent = 'Nuovo Switch';
+    document.getElementById('formSwitch').action = `/navi/switch/nuovo/${naveID}`;
+    document.getElementById('sw_nome').value = '';
+    document.getElementById('sw_marca').value = 'huawei';
+    document.getElementById('sw_modello').value = '';
+    document.getElementById('sw_ip').value = '';
+    document.getElementById('sw_ssh_port').value = '22';
+    document.getElementById('sw_ssh_user').value = '';
+    document.getElementById('sw_ssh_pass').value = '';
+    document.getElementById('sw_note').value = '';
+}
+
+function editSwitch(id, nome, marca, modello, ip, port, user, pass, note) {
+    document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch';
+    document.getElementById('formSwitch').action = `/navi/switch/modifica/${id}`;
+    document.getElementById('sw_nome').value = nome;
+    document.getElementById('sw_marca').value = marca;
+    document.getElementById('sw_modello').value = modello;
+    document.getElementById('sw_ip').value = ip;
+    document.getElementById('sw_ssh_port').value = port;
+    document.getElementById('sw_ssh_user').value = user;
+    document.getElementById('sw_ssh_pass').value = pass;
+    document.getElementById('sw_note').value = note;
+    new bootstrap.Modal(document.getElementById('modalSwitch')).show();
+}
+</script>
+{{end}}

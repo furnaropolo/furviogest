@@ -61,6 +61,7 @@
                 </td>
                 <td class="table-actions">
                     <a href="/navi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli e Orari">Dettagli</a>
+                    <a href="/navi/rete/{{.ID}}" class="btn btn-sm btn-primary" title="Gestione Rete"><i class="bi bi-wifi"></i> Rete</a>
                     {{if $.Session.IsTecnico}}
                     <a href="/navi/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
                     <a href="/navi/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro?')">Elimina</a>

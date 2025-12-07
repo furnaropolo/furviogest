@@ -436,3 +436,101 @@ func AddCalendarioTables() error {
 	_, err := DB.Exec(schema)
 	return err
 }
+
+// AddMonitoringTables aggiunge le tabelle per il monitoraggio rete navi
+func AddMonitoringTables() error {
+	schema := `
+	-- Tabella Access Controller (1 per nave)
+	CREATE TABLE IF NOT EXISTS access_controller (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nave_id INTEGER NOT NULL UNIQUE,
+		ip TEXT NOT NULL,
+		ssh_port INTEGER NOT NULL DEFAULT 22,
+		ssh_user TEXT NOT NULL,
+		ssh_pass TEXT NOT NULL,
+		note TEXT,
+		ultimo_check DATETIME,
+		ultimo_backup DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE CASCADE
+	);
+
+	-- Tabella Switch (N per nave)
+	CREATE TABLE IF NOT EXISTS switch_nave (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nave_id INTEGER NOT NULL,
+		nome TEXT NOT NULL,
+		marca TEXT NOT NULL CHECK(marca IN ('huawei', 'hp')),
+		modello TEXT,
+		ip TEXT NOT NULL,
+		ssh_port INTEGER NOT NULL DEFAULT 22,
+		ssh_user TEXT NOT NULL,
+		ssh_pass TEXT NOT NULL,
+		note TEXT,
+		ultimo_check DATETIME,
+		ultimo_backup DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE CASCADE
+	);
+
+	-- Tabella Access Point (rilevati dall AC)
+	CREATE TABLE IF NOT EXISTS access_point (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nave_id INTEGER NOT NULL,
+		ac_id INTEGER NOT NULL,
+		ap_name TEXT NOT NULL,
+		ap_mac TEXT NOT NULL,
+		ap_model TEXT,
+		ap_serial TEXT,
+		ap_ip TEXT,
+		switch_id INTEGER,
+		switch_port TEXT,
+		stato TEXT NOT NULL DEFAULT 'unknown' CHECK(stato IN ('online', 'offline', 'fault', 'unknown')),
+		ultimo_check DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE CASCADE,
+		FOREIGN KEY (ac_id) REFERENCES access_controller(id) ON DELETE CASCADE,
+		FOREIGN KEY (switch_id) REFERENCES switch_nave(id) ON DELETE SET NULL,
+		UNIQUE(nave_id, ap_mac)
+	);
+
+	-- Tabella log stato AP (storico)
+	CREATE TABLE IF NOT EXISTS ap_status_log (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ap_id INTEGER NOT NULL,
+		stato TEXT NOT NULL,
+		dettaglio TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (ap_id) REFERENCES access_point(id) ON DELETE CASCADE
+	);
+
+	-- Tabella backup configurazioni
+	CREATE TABLE IF NOT EXISTS config_backup (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nave_id INTEGER NOT NULL,
+		tipo_apparato TEXT NOT NULL CHECK(tipo_apparato IN ('ac', 'switch')),
+		apparato_id INTEGER NOT NULL,
+		nome_apparato TEXT NOT NULL,
+		file_path TEXT NOT NULL,
+		file_size INTEGER,
+		hash_md5 TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE CASCADE
+	);
+
+	-- Indici
+	CREATE INDEX IF NOT EXISTS idx_ac_nave ON access_controller(nave_id);
+	CREATE INDEX IF NOT EXISTS idx_switch_nave ON switch_nave(nave_id);
+	CREATE INDEX IF NOT EXISTS idx_ap_nave ON access_point(nave_id);
+	CREATE INDEX IF NOT EXISTS idx_ap_stato ON access_point(stato);
+	CREATE INDEX IF NOT EXISTS idx_ap_ac ON access_point(ac_id);
+	CREATE INDEX IF NOT EXISTS idx_ap_log_ap ON ap_status_log(ap_id);
+	CREATE INDEX IF NOT EXISTS idx_backup_nave ON config_backup(nave_id);
+	`
+
+	_, err := DB.Exec(schema)
+	return err
+}

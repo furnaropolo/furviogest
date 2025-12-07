@@ -46,12 +46,17 @@ func main() {
 
 	// Crea utente admin predefinito
 	if err := database.CreateDefaultAdmin(auth.HashPassword); err != nil {
+		log.Println("Attenzione: errore creazione admin predefinito:", err)
+	}
 
 	// Crea tabelle calendario trasferte
 	if err := database.AddCalendarioTables(); err != nil {
 		log.Println("Attenzione: errore creazione tabelle calendario:", err)
 	}
-		log.Println("Attenzione: errore creazione admin predefinito:", err)
+
+	// Crea tabelle monitoraggio rete
+	if err := database.AddMonitoringTables(); err != nil {
+		log.Println("Attenzione: errore creazione tabelle monitoraggio:", err)
 	}
 
 	// Inizializza i template
@@ -63,6 +68,9 @@ func main() {
 
 	// Avvia routine pulizia sessioni scadute
 	auth.StartCleanupRoutine()
+
+	// Avvia scheduler monitoraggio rete
+	handlers.StartMonitoringScheduler()
 
 	// Configura il router
 	mux := http.NewServeMux()
@@ -156,18 +164,21 @@ func main() {
 	// Upload Orari Corsica Ferries
 	mux.Handle("/orari/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadOrariPage))))
 
-	// Apparati Nave
-	mux.Handle("/navi/apparati/", middleware.RequireAuth(http.HandlerFunc(handlers.ListaApparati)))
-	mux.Handle("/navi/apparati/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoApparato))))
-	mux.Handle("/navi/apparato/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaApparato))))
-	mux.Handle("/navi/apparato/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaApparato))))
-	mux.Handle("/navi/observium/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ConfigObservium))))
+	// Gestione Rete Nave (AC, Switch, AP)
+	mux.Handle("/navi/rete/", middleware.RequireAuth(http.HandlerFunc(handlers.GestioneReteNave)))
+	mux.Handle("/navi/ac/salva/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.SalvaAccessController))))
+	mux.Handle("/navi/ac/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaAccessController))))
+	mux.Handle("/navi/switch/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoSwitch))))
+	mux.Handle("/navi/switch/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaSwitch))))
+	mux.Handle("/navi/switch/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaSwitch))))
 	
-	// API Apparati
-	mux.Handle("/api/test-connection", middleware.RequireAuth(http.HandlerFunc(handlers.APITestConnection)))
-	mux.Handle("/api/discovery-devices", middleware.RequireAuth(http.HandlerFunc(handlers.APIDiscoveryDevices)))
-	mux.Handle("/api/import-device", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.APIImportDevice))))
-	mux.Handle("/api/check-apparato", middleware.RequireAuth(http.HandlerFunc(handlers.APICheckApparato)))
+	// API Monitoraggio Rete
+	mux.Handle("/api/rete/scan-ap", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanAccessPoints)))
+	mux.Handle("/api/rete/scan-mac", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanMacTable)))
+	mux.Handle("/api/rete/backup-config", middleware.RequireAuth(http.HandlerFunc(handlers.APIBackupConfig)))
+	mux.Handle("/api/rete/download-config/", middleware.RequireAuth(http.HandlerFunc(handlers.APIDownloadConfig)))
+	mux.Handle("/api/rete/test-ssh", middleware.RequireAuth(http.HandlerFunc(handlers.APITestSSH)))
+	mux.Handle("/api/rete/ap-fault", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetAPFault)))
 
 	// Attrezzi e Consumabili
 	mux.Handle("/attrezzi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaAttrezzi)))
@@ -177,7 +188,7 @@ func main() {
 	mux.Handle("/attrezzi/movimento/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.MovimentoAttrezzoHandler))))
 	mux.Handle("/attrezzi/storico/", middleware.RequireAuth(http.HandlerFunc(handlers.StoricoAttrezzo)))
 
-	// Route Amministrazione (solo lettura per ufficio contabilita)
+	// Route Amministrazione
 	mux.Handle("/amministrazione", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.DashboardAmministrazione))))
 	mux.Handle("/amministrazione/magazzino", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.GiacenzaMagazzino))))
 	mux.Handle("/amministrazione/magazzino/export", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ExportMagazzinoCSV))))
@@ -191,7 +202,6 @@ func main() {
 	mux.Handle("/amministrazione/ddt/export", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.ExportDDTCSV))))
 	mux.Handle("/amministrazione/ddt/", middleware.RequireAuth(middleware.RequireTecnicoOrAmministrazione(http.HandlerFunc(handlers.DettaglioDDTAmministrazione))))
 
-	// TODO: Aggiungere altre route per rapporti, trasferte, note spese, DDT
 	// Rapporti Intervento
 	mux.Handle("/rapporti", middleware.RequireAuth(http.HandlerFunc(handlers.ListaRapporti)))
 	mux.Handle("/rapporti/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoRapporto))))
@@ -208,11 +218,13 @@ func main() {
 	mux.Handle("/trasferte/nuovo", middleware.RequireAuth(http.HandlerFunc(handlers.NuovaTrasferta)))
 	mux.Handle("/trasferte/modifica/", middleware.RequireAuth(http.HandlerFunc(handlers.ModificaTrasferta)))
 	mux.Handle("/trasferte/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaTrasferta))))
+
 	// Note Spese Tecnici
 	mux.Handle("/note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNoteSpese)))
 	mux.Handle("/note-spese/nuovo", middleware.RequireAuth(http.HandlerFunc(handlers.NuovaNotaSpesa)))
 	mux.Handle("/note-spese/modifica/", middleware.RequireAuth(http.HandlerFunc(handlers.ModificaNotaSpesa)))
 	mux.Handle("/note-spese/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaNotaSpesa))))
+
 	// DDT Tecnici
 	mux.Handle("/ddt", middleware.RequireAuth(http.HandlerFunc(handlers.ListaDDT)))
 	mux.Handle("/ddt/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoDDT))))
@@ -222,8 +234,10 @@ func main() {
 	mux.Handle("/ddt/riga/aggiungi", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AggiungiRigaDDT))))
 	mux.Handle("/ddt/riga/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RimuoviRigaDDT))))
 	mux.Handle("/ddt/genera-numero", middleware.RequireAuth(http.HandlerFunc(handlers.GeneraNumDDT)))
+
 	// Foglio Mensile
 	mux.Handle("/foglio-mensile", middleware.RequireAuth(http.HandlerFunc(handlers.FoglioMensile)))
+
 	// Calendario Trasferte
 	mux.Handle("/calendario-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.CalendarioTrasferte)))
 	mux.Handle("/api/calendario/giornata", middleware.RequireAuth(http.HandlerFunc(handlers.APIDettaglioGiornata)))
@@ -236,6 +250,7 @@ func main() {
 	mux.Handle("/email-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailTrasferte)))
 	mux.Handle("/email-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailNoteSpese)))
 	mux.Handle("/api/navi-compagnia", middleware.RequireAuth(http.HandlerFunc(handlers.APINaviCompagnia)))
+
 	// Avvia il server
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("Server FurvioGest avviato su http://localhost%s", addr)
