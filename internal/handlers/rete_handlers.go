@@ -108,7 +108,7 @@ func executeSSHCommand(ip string, port int, user, pass, command string) (string,
 	expectScript := fmt.Sprintf(`
 log_user 1
 set timeout 60
-spawn ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p %d %s@%s
+spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p %d %s@%s
 
 expect {
     "assword:" {
@@ -401,6 +401,7 @@ func APIScanAccessPoints(w http.ResponseWriter, r *http.Request) {
 	// Parse output Huawei AC
 	aps := parseHuaweiAPOutput(string(output))
 
+	log.Printf("[SCAN AP] Output raw: %s", string(output))
 	// Aggiorna database
 	for _, ap := range aps {
 		updateOrCreateAP(naveID, ac.ID, ap)
@@ -650,7 +651,7 @@ func APITestSSH(w http.ResponseWriter, r *http.Request) {
 	// Usa expect per compatibilità con Huawei
 	expectScript := fmt.Sprintf(`
 set timeout 15
-spawn ssh -o StrictHostKeyChecking=no -p %s %s@%s
+spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -p %s %s@%s
 expect {
     "*assword*" { send "%s\r"; exp_continue }
     "<*>" { exit 0 }
@@ -667,7 +668,7 @@ expect {
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 	
-	log.Printf("[SSH TEST] IP: %s, User: %s, ExitCode: %v", ip, user, cmd.ProcessState.ExitCode())
+	log.Printf("[SSH TEST] IP: %s, User: %s, ExitCode: %v, Output: %s", ip, user, cmd.ProcessState.ExitCode(), outputStr)
 
 	exitCode := cmd.ProcessState.ExitCode()
 	
