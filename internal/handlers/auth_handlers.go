@@ -139,6 +139,11 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 // Dashboard mostra la dashboard principale
 func Dashboard(w http.ResponseWriter, r *http.Request) {
+	// Route "/" è un catch-all in ServeMux, controlliamo se è la root esatta
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	data := NewPageData("Dashboard - FurvioGest", r)
 	renderTemplate(w, "dashboard.html", data)
 }

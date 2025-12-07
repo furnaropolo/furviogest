@@ -747,6 +747,11 @@ type NaveFormData struct {
 
 func ListaNavi(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Navi - FurvioGest", r)
+	// Controlla path esatto
+	if r.URL.Path != "/navi" && r.URL.Path != "/navi/" {
+		http.NotFound(w, r)
+		return
+	}
 
 	rows, err := database.DB.Query(`
 		SELECT n.id, n.compagnia_id, n.nome, n.imo, n.email_master, n.email_direttore_macchina,

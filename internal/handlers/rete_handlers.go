@@ -101,7 +101,7 @@ type NaveInfo struct {
 // ============================================
 
 // GestioneReteNave mostra la pagina gestione rete di una nave
-func GestioneReteNave(w http.ResponseWriter, r *http.Request) {
+func GestioneReteNave_OLD(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Gestione Rete Nave - FurvioGest", r)
 
 	// Estrai ID nave dall'URL
@@ -1176,4 +1176,61 @@ func runBackupBatch(naveID int64, tipoApparato string, apparatoID int64) {
 	}
 
 	log.Printf("[Monitoring] Backup %s %s salvato", tipoApparato, nome)
+}
+
+// GestioneReteNave mostra la pagina gestione rete di una nave
+func GestioneReteNave(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[RETE] Richiesta URL: %s", r.URL.Path)
+	
+	data := NewPageData("Gestione Rete Nave - FurvioGest", r)
+
+	// Estrai ID nave dall'URL
+	path := strings.TrimPrefix(r.URL.Path, "/navi/rete/")
+	log.Printf("[RETE] Path dopo trim: %s", path)
+	
+	naveID, err := strconv.ParseInt(path, 10, 64)
+	if err != nil {
+		log.Printf("[RETE] Errore parsing ID: %v", err)
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+	log.Printf("[RETE] NaveID: %d", naveID)
+
+	// Carica dati nave
+	nave := getNaveInfoByID(naveID)
+	log.Printf("[RETE] Nave trovata: ID=%d Nome=%s", nave.ID, nave.Nome)
+	
+	if nave.ID == 0 {
+		log.Printf("[RETE] Nave non trovata, redirect")
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	// Carica AC (può essere nil)
+	ac := getAccessControllerByNave(naveID)
+
+	// Carica switch
+	switches := getSwitchesByNave(naveID)
+
+	// Carica AP
+	accessPoints := getAccessPointsByNave(naveID)
+
+	// Carica backup recenti
+	backups := getRecentBackups(naveID, 10)
+
+	// Conta AP in fault
+	apFault := countAPByStatus(naveID, "fault")
+
+	pageData := ReteNavePageData{
+		Nave:         nave,
+		AC:           ac,
+		Switches:     switches,
+		AccessPoints: accessPoints,
+		Backups:      backups,
+		APFault:      apFault,
+	}
+
+	data.Data = pageData
+	log.Printf("[RETE] Rendering template rete_nave.html")
+	renderTemplate(w, "rete_nave.html", data)
 }

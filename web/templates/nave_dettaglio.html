@@ -5,7 +5,7 @@
     <h1>{{.Data.Nave.Nome}}</h1>
     <div class="header-actions">
         {{if $.Session.IsTecnico}}
-        <a href="/navi/apparati/{{.Data.Nave.ID}}" class="btn btn-info">Gestione Apparati</a>
+        <a href="/navi/rete/{{.Data.Nave.ID}}" class="btn btn-info"><i class="bi bi-wifi"></i> Gestione Rete</a>
         <a href="/navi/modifica/{{.Data.Nave.ID}}" class="btn btn-warning">Modifica Nave</a>
         {{end}}
         <a href="/navi" class="btn btn-secondary">Torna alla Lista</a>
