@@ -45,6 +45,22 @@
             <input type="email" id="email_ispettore" name="email_ispettore" value="{{.Data.Nave.EmailIspettore}}">
         </div>
 
+        <h3>Numeri Telefonici</h3>
+        <div class="form-group">
+            <label for="tel_master">Telefono Comandante</label>
+            <input type="tel" id="tel_master" name="tel_master" value="{{.Data.Nave.TelMaster}}" placeholder="es. 3471234567">
+        </div>
+
+        <div class="form-group">
+            <label for="tel_direttore_macchina">Telefono Direttore di Macchina</label>
+            <input type="tel" id="tel_direttore_macchina" name="tel_direttore_macchina" value="{{.Data.Nave.TelDirettoreMacchina}}" placeholder="es. 3471234567">
+        </div>
+
+        <div class="form-group">
+            <label for="tel_ispettore">Telefono Ispettore Nave</label>
+            <input type="tel" id="tel_ispettore" name="tel_ispettore" value="{{.Data.Nave.TelIspettore}}" placeholder="es. 3471234567">
+        </div>
+
         <div class="form-section stato-lavori">
             <h3>Stato Nave</h3>
             <div class="form-group checkbox-group">

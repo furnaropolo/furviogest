@@ -4,6 +4,7 @@ import (
 	"furviogest/internal/auth"
 	"furviogest/internal/middleware"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -70,7 +71,10 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 		http.Error(w, "Template non trovato: "+name, http.StatusInternalServerError)
 		return
 	}
-	tmpl.ExecuteTemplate(w, "base", data)
+	err := tmpl.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		log.Printf("[TEMPLATE ERROR] %s: %v", name, err)
+	}
 }
 
 // NewPageData crea un nuovo PageData con i dati comuni

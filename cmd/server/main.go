@@ -179,6 +179,7 @@ func main() {
 	mux.Handle("/api/rete/download-config/", middleware.RequireAuth(http.HandlerFunc(handlers.APIDownloadConfig)))
 	mux.Handle("/api/rete/test-ssh", middleware.RequireAuth(http.HandlerFunc(handlers.APITestSSH)))
 	mux.Handle("/api/rete/ap-fault", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetAPFault)))
+	mux.Handle("/api/rete/export-ap-csv", middleware.RequireAuth(http.HandlerFunc(handlers.APIExportAPCSV)))
 
 	// Attrezzi e Consumabili
 	mux.Handle("/attrezzi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaAttrezzi)))

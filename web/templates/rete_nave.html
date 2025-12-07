@@ -46,7 +46,7 @@
                 </div>
                 <div class="col-md-4 text-end">
                     <div class="btn-group-vertical">
-                        <button class="btn btn-outline-info btn-sm" onclick="testSSHAC()"><i class="bi bi-plug me-1"></i>Test SSH</button>
+                        <button id="btnTestAC" class="btn btn-outline-info btn-sm" onclick="testSSHAC('{{.Data.AC.IP}}', {{.Data.AC.SSHPort}}, '{{.Data.AC.SSHUser}}', '{{.Data.AC.SSHPass}}')"><i class="bi bi-plug me-1"></i>Test SSH</button>
                         <button class="btn btn-outline-success btn-sm" onclick="scanAP()" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}><i class="bi bi-broadcast me-1"></i>Scan AP</button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="backupConfig('ac', {{.Data.AC.ID}})"><i class="bi bi-download me-1"></i>Backup Config</button>
                         <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAC"><i class="bi bi-pencil me-1"></i>Modifica</button>
@@ -96,7 +96,7 @@
                             <td><small>{{.UltimoCheck}}</small></td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-info" onclick="testSSHSwitch('{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}')" title="Test SSH">
+                                    <button class="btn btn-outline-info" onclick="testSSHSwitch('{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', {{.ID}})" title="Test SSH">
                                         <i class="bi bi-plug"></i>
                                     </button>
                                     <button class="btn btn-outline-success" onclick="scanMAC({{.ID}})" title="Scan MAC" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
@@ -128,8 +128,9 @@
 
     <!-- SEZIONE ACCESS POINT -->
     <div class="card mb-4">
-        <div class="card-header bg-info text-white">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-broadcast me-2"></i>Access Point Rilevati ({{len .Data.AccessPoints}})</h5>
+            {{if .Data.AccessPoints}}<a href="/api/rete/export-ap-csv?nave_id={{.Data.Nave.ID}}" class="btn btn-light btn-sm"><i class="bi bi-file-earmark-excel me-1"></i>Export CSV</a>{{end}}
         </div>
         <div class="card-body">
             {{if .Data.AccessPoints}}
@@ -327,6 +328,7 @@
 
 <script>
 const naveID = {{.Data.Nave.ID}};
+const acID = {{if .Data.AC}}{{.Data.AC.ID}}{{else}}0{{end}};
 const compagnia = "{{.Data.Nave.NomeCompagnia}}";
 
 // Credenziali di default in base alla compagnia
@@ -360,28 +362,85 @@ function showToast(title, message, isError) {
     new bootstrap.Toast(toast).show();
 }
 
-function testSSHAC() {
-    const ip = document.getElementById('ac_ip').value;
-    const port = document.getElementById('ac_ssh_port').value;
-    const user = document.getElementById('ac_ssh_user').value;
-    const pass = document.getElementById('ac_ssh_pass').value;
+function testSSHAC(acIp, acPort, acUser, acPass) {
+    const btn = document.getElementById('btnTestAC');
+    const ip = acIp || document.getElementById('ac_ip').value;
+    const port = acPort || document.getElementById('ac_ssh_port').value;
+    const user = acUser || document.getElementById('ac_ssh_user').value;
+    const pass = acPass || document.getElementById('ac_ssh_pass').value;
 
     if (!ip) {
-        showToast('Errore', 'Inserisci IP dell\'AC', true);
+        showToast('Errore', 'Inserisci IP AC', true);
         return;
     }
 
-    showToast('Test SSH', 'Connessione in corso...', false);
-    fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`)
-        .then(r => r.json())
-        .then(data => showToast('Test SSH AC', data.message, !data.success));
-}
+    // Stato: In corso (giallo)
+    btn.className = 'btn btn-warning btn-sm';
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Testing...';
+    btn.disabled = true;
 
-function testSSHSwitch(ip, port, user, pass) {
-    showToast('Test SSH', 'Connessione in corso...', false);
-    fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`)
+    fetch("/api/rete/test-ssh?ip=" + ip + "&port=" + port + "&user=" + user + "&pass=" + encodeURIComponent(pass))
         .then(r => r.json())
-        .then(data => showToast('Test SSH Switch', data.message, !data.success));
+        .then(data => {
+            if (data.success) {
+                // Stato: OK (verde)
+                btn.className = 'btn btn-success btn-sm';
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>SSH OK';
+                showToast('Test SSH AC', 'Connessione riuscita! Avvio scan AP e backup...', false);
+                // Esegui scan AP automatico
+                setTimeout(() => {
+                    scanAP();
+                    setTimeout(() => {
+                        if (typeof acID !== 'undefined' && acID) {
+                            backupConfig('ac', acID);
+                        }
+                    }, 3000);
+                }, 1000);
+            } else {
+                // Stato: Errore (rosso)
+                btn.className = 'btn btn-danger btn-sm';
+                btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Errore';
+                showToast('Test SSH AC', data.message, true);
+            }
+            btn.disabled = false;
+            // Torna al colore normale dopo 5 secondi
+            setTimeout(() => {
+                btn.className = 'btn btn-outline-info btn-sm';
+                btn.innerHTML = '<i class="bi bi-plug me-1"></i>Test SSH';
+            }, 5000);
+        })
+        .catch(err => {
+            btn.className = 'btn btn-danger btn-sm';
+            btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Errore';
+            btn.disabled = false;
+            showToast('Errore', 'Errore di connessione', true);
+        });
+}
+async function testSSHSwitch(ip, port, user, pass, switchId) {
+    showToast('Test SSH Switch', 'Connessione in corso...', false);
+    try {
+        const resp = await fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`);
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Test SSH Switch', 'Connessione riuscita! Avvio scan MAC...', false);
+            // Esegui scan MAC
+            const macResp = await fetch(`/api/rete/scan-mac?switch_id=${switchId}`);
+            const macData = await macResp.json();
+            showToast('Scan MAC', macData.message, !macData.success);
+
+            // Esegui backup config
+            showToast('Backup', 'Backup configurazione in corso...', false);
+            const backupResp = await fetch(`/api/rete/backup-config?tipo=switch&id=${switchId}`);
+            const backupData = await backupResp.json();
+            showToast('Backup', backupData.message, !backupData.success);
+
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showToast('Test SSH Switch', data.message, true);
+        }
+    } catch(e) {
+        showToast('Errore', 'Errore di connessione: ' + e.message, true);
+    }
 }
 
 function scanAP() {

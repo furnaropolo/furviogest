@@ -860,13 +860,16 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 	emailMaster := strings.TrimSpace(r.FormValue("email_master"))
 	emailDirettore := strings.TrimSpace(r.FormValue("email_direttore_macchina"))
 	emailIspettore := strings.TrimSpace(r.FormValue("email_ispettore"))
+	telMaster := strings.TrimSpace(r.FormValue("tel_master"))
+	telDirettore := strings.TrimSpace(r.FormValue("tel_direttore_macchina"))
+	telIspettore := strings.TrimSpace(r.FormValue("tel_ispettore"))
 	note := strings.TrimSpace(r.FormValue("note"))
 	emailDestinatari := r.FormValue("email_destinatari")
 	if emailDestinatari == "" {
 		emailDestinatari = "solo_agenzia"
 	}
 	fermaPerLavori := r.FormValue("ferma_per_lavori") == "on"
-	
+
 	var dataInizioLavori, dataFineLavoriPrev interface{}
 	if fermaPerLavori {
 		if d := r.FormValue("data_inizio_lavori"); d != "" {
@@ -885,11 +888,12 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := database.DB.Exec(`
-		INSERT INTO navi (compagnia_id, nome, imo, email_master, email_direttore_macchina, 
-		                  email_ispettore, note, ferma_per_lavori, data_inizio_lavori, data_fine_lavori_prevista)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, compagniaID, nome, imo, emailMaster, emailDirettore, emailIspettore, note, 
-	   fermaPerLavori, dataInizioLavori, dataFineLavoriPrev)
+		INSERT INTO navi (compagnia_id, nome, imo, email_master, email_direttore_macchina,
+		                  email_ispettore, tel_master, tel_direttore_macchina, tel_ispettore,
+		                  note, ferma_per_lavori, data_inizio_lavori, data_fine_lavori_prevista)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, compagniaID, nome, imo, emailMaster, emailDirettore, emailIspettore,
+	   telMaster, telDirettore, telIspettore, note, fermaPerLavori, dataInizioLavori, dataFineLavoriPrev)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"
@@ -924,13 +928,16 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		var n models.Nave
 		var imo, emailMaster, emailDirettore, emailIspettore, note sql.NullString
+		var telMaster, telDirettore, telIspettore sql.NullString
 		var dataInizioLavori, dataFineLavori sql.NullTime
 		err := database.DB.QueryRow(`
-			SELECT id, compagnia_id, nome, imo, email_master, email_direttore_macchina, 
-			       email_ispettore, note, ferma_per_lavori, data_inizio_lavori, data_fine_lavori_prevista
+			SELECT id, compagnia_id, nome, imo, email_master, email_direttore_macchina,
+			       email_ispettore, tel_master, tel_direttore_macchina, tel_ispettore,
+			       note, ferma_per_lavori, data_inizio_lavori, data_fine_lavori_prevista
 			FROM navi WHERE id = ?
-		`, id).Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &emailMaster, &emailDirettore, 
-		            &emailIspettore, &note, &n.FermaPerLavori, &dataInizioLavori, &dataFineLavori)
+		`, id).Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &emailMaster, &emailDirettore,
+		            &emailIspettore, &telMaster, &telDirettore, &telIspettore,
+		            &note, &n.FermaPerLavori, &dataInizioLavori, &dataFineLavori)
 
 		if err != nil {
 			http.Redirect(w, r, "/navi", http.StatusSeeOther)
@@ -947,6 +954,15 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 		}
 		if emailIspettore.Valid {
 			n.EmailIspettore = emailIspettore.String
+		}
+		if telMaster.Valid {
+			n.TelMaster = telMaster.String
+		}
+		if telDirettore.Valid {
+			n.TelDirettoreMacchina = telDirettore.String
+		}
+		if telIspettore.Valid {
+			n.TelIspettore = telIspettore.String
 		}
 		if note.Valid {
 			n.Note = note.String
@@ -971,13 +987,16 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 	emailMaster := strings.TrimSpace(r.FormValue("email_master"))
 	emailDirettore := strings.TrimSpace(r.FormValue("email_direttore_macchina"))
 	emailIspettore := strings.TrimSpace(r.FormValue("email_ispettore"))
+	telMaster := strings.TrimSpace(r.FormValue("tel_master"))
+	telDirettore := strings.TrimSpace(r.FormValue("tel_direttore_macchina"))
+	telIspettore := strings.TrimSpace(r.FormValue("tel_ispettore"))
 	note := strings.TrimSpace(r.FormValue("note"))
 	emailDestinatari := r.FormValue("email_destinatari")
 	if emailDestinatari == "" {
 		emailDestinatari = "solo_agenzia"
 	}
 	fermaPerLavori := r.FormValue("ferma_per_lavori") == "on"
-	
+
 	var dataInizioLavori, dataFineLavoriPrev interface{}
 	if fermaPerLavori {
 		if d := r.FormValue("data_inizio_lavori"); d != "" {
@@ -997,12 +1016,13 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 
 	_, err = database.DB.Exec(`
 		UPDATE navi SET compagnia_id = ?, nome = ?, imo = ?, email_master = ?,
-		       email_direttore_macchina = ?, email_ispettore = ?, note = ?,
-		       ferma_per_lavori = ?, data_inizio_lavori = ?, data_fine_lavori_prevista = ?,
+		       email_direttore_macchina = ?, email_ispettore = ?,
+		       tel_master = ?, tel_direttore_macchina = ?, tel_ispettore = ?,
+		       note = ?, ferma_per_lavori = ?, data_inizio_lavori = ?, data_fine_lavori_prevista = ?,
 		       updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, compagniaID, nome, imo, emailMaster, emailDirettore, emailIspettore, note, 
-	   fermaPerLavori, dataInizioLavori, dataFineLavoriPrev, id)
+	`, compagniaID, nome, imo, emailMaster, emailDirettore, emailIspettore,
+	   telMaster, telDirettore, telIspettore, note, fermaPerLavori, dataInizioLavori, dataFineLavoriPrev, id)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"

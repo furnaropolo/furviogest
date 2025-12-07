@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
@@ -101,6 +102,59 @@ type NaveInfo struct {
 // ============================================
 
 // GestioneReteNave mostra la pagina gestione rete di una nave
+
+// executeSSHCommand esegue un comando SSH usando expect per compatibilità Huawei
+func executeSSHCommand(ip string, port int, user, pass, command string) (string, error) {
+	expectScript := fmt.Sprintf(`
+log_user 1
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -p %d %s@%s
+
+expect {
+    "assword:" {
+        send "%s\r"
+        exp_continue
+    }
+    ">" {
+        send "%s\r"
+    }
+    "<*>" {
+        send "%s\r"
+    }
+    timeout {
+        exit 4
+    }
+    "Permission denied" {
+        exit 1
+    }
+}
+
+expect {
+    ">" {
+        send "quit\r"
+    }
+    "<*>" {
+        send "quit\r"
+    }
+    timeout {}
+}
+
+expect eof
+`, port, user, ip, pass, command, command)
+
+	cmd := exec.Command("expect", "-c", expectScript)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("SSH error: %v - %s", err, stderr.String())
+	}
+
+	return stdout.String(), nil
+}
+
 func GestioneReteNave_OLD(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Gestione Rete Nave - FurvioGest", r)
 
@@ -287,6 +341,17 @@ func EliminaSwitch(w http.ResponseWriter, r *http.Request) {
 	var naveID int64
 	database.DB.QueryRow("SELECT nave_id FROM switch_nave WHERE id = ?", switchID).Scan(&naveID)
 
+	// Elimina backup e file associati
+	rows, _ := database.DB.Query("SELECT file_path FROM config_backup WHERE tipo_apparato = 'switch' AND apparato_id = ?", switchID)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var filePath string
+			rows.Scan(&filePath)
+			os.Remove(filePath)
+		}
+	}
+	database.DB.Exec("DELETE FROM config_backup WHERE tipo_apparato = 'switch' AND apparato_id = ?", switchID)
 	database.DB.Exec("DELETE FROM switch_nave WHERE id = ?", switchID)
 
 	http.Redirect(w, r, fmt.Sprintf("/navi/rete/%d", naveID), http.StatusSeeOther)
@@ -325,16 +390,8 @@ func APIScanAccessPoints(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Esegui comando SSH su AC Huawei
-	// Comando: display ap all
-	cmd := exec.Command("sshpass", "-p", ac.SSHPass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=10",
-		"-p", fmt.Sprintf("%d", ac.SSHPort),
-		fmt.Sprintf("%s@%s", ac.SSHUser, ac.IP),
-		"display ap all")
-
-	output, err := cmd.Output()
+	// Esegui comando SSH su AC Huawei usando expect
+	output, err := executeSSHCommand(ac.IP, ac.SSHPort, ac.SSHUser, ac.SSHPass, "display ap all")
 	if err != nil {
 		result["message"] = "Errore connessione SSH: " + err.Error()
 		json.NewEncoder(w).Encode(result)
@@ -387,14 +444,8 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 		cmdStr = "show mac-address"
 	}
 
-	cmd := exec.Command("sshpass", "-p", sw.SSHPass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=10",
-		"-p", fmt.Sprintf("%d", sw.SSHPort),
-		fmt.Sprintf("%s@%s", sw.SSHUser, sw.IP),
-		cmdStr)
-
-	output, err := cmd.Output()
+	// Esegui comando SSH usando expect
+	output, err := executeSSHCommand(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, cmdStr)
 	if err != nil {
 		result["message"] = "Errore connessione SSH: " + err.Error()
 		json.NewEncoder(w).Encode(result)
@@ -481,15 +532,8 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Esegui comando backup
-	cmd := exec.Command("sshpass", "-p", sshPass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=30",
-		"-p", fmt.Sprintf("%d", sshPort),
-		fmt.Sprintf("%s@%s", sshUser, ip),
-		cmdStr)
-
-	output, err := cmd.Output()
+	// Esegui comando backup usando expect
+	output, err := executeSSHCommand(ip, sshPort, sshUser, sshPass, cmdStr)
 	if err != nil {
 		result["message"] = "Errore backup: " + err.Error()
 		json.NewEncoder(w).Encode(result)
@@ -497,7 +541,7 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Calcola hash MD5
-	hash := md5.Sum(output)
+	hash := md5.Sum([]byte(output))
 	hashStr := hex.EncodeToString(hash[:])
 
 	// Verifica se config è cambiata rispetto all'ultimo backup
@@ -523,7 +567,7 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%s_%s_%s.cfg", tipoApparato, nome, timestamp)
 	filePath := filepath.Join(backupDir, filename)
 
-	err = os.WriteFile(filePath, output, 0644)
+	err = os.WriteFile(filePath, []byte(output), 0644)
 	if err != nil {
 		result["message"] = "Errore salvataggio file: " + err.Error()
 		json.NewEncoder(w).Encode(result)
@@ -577,7 +621,9 @@ func APIDownloadConfig(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// Imposta header per download
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filepath.Base(filePath)))
+	// Forza estensione .txt per leggibilità
+	filename := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)) + ".txt"
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 
 	io.Copy(w, file)
@@ -601,22 +647,43 @@ func APITestSSH(w http.ResponseWriter, r *http.Request) {
 		"message": "",
 	}
 
-	// Test connessione SSH con comando semplice
-	cmd := exec.Command("sshpass", "-p", pass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=5",
-		"-p", port,
-		fmt.Sprintf("%s@%s", user, ip),
-		"echo OK")
+	// Usa expect per compatibilità con Huawei
+	expectScript := fmt.Sprintf(`
+set timeout 15
+spawn ssh -o StrictHostKeyChecking=no -p %s %s@%s
+expect {
+    "*assword*" { send "%s\r"; exp_continue }
+    "<*>" { exit 0 }
+    ">" { exit 0 }
+    "Permission denied" { exit 1 }
+    "Connection refused" { exit 2 }
+    "Connection timed out" { exit 3 }
+    timeout { exit 4 }
+    eof { exit 0 }
+}
+`, port, user, ip, pass)
 
-	output, err := cmd.Output()
-	if err != nil {
-		result["message"] = "Connessione fallita: " + err.Error()
-	} else if strings.TrimSpace(string(output)) == "OK" {
+	cmd := exec.Command("expect", "-c", expectScript)
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+	
+	log.Printf("[SSH TEST] IP: %s, User: %s, ExitCode: %v", ip, user, cmd.ProcessState.ExitCode())
+
+	exitCode := cmd.ProcessState.ExitCode()
+	
+	if exitCode == 0 && (strings.Contains(outputStr, "<") || strings.Contains(outputStr, ">") || strings.Contains(outputStr, "Huawei") || strings.Contains(outputStr, "HUAWEI")) {
 		result["success"] = true
 		result["message"] = "Connessione SSH riuscita"
+	} else if exitCode == 1 || strings.Contains(outputStr, "Permission denied") {
+		result["message"] = "Password errata o utente non valido"
+	} else if exitCode == 2 || strings.Contains(outputStr, "Connection refused") {
+		result["message"] = "Connessione rifiutata - porta SSH chiusa"
+	} else if exitCode == 3 || exitCode == 4 || strings.Contains(outputStr, "timed out") {
+		result["message"] = "Timeout - apparato non raggiungibile"
+	} else if err != nil {
+		result["message"] = "Errore: " + err.Error()
 	} else {
-		result["message"] = "Risposta inattesa: " + string(output)
+		result["message"] = "Risposta inattesa"
 	}
 
 	json.NewEncoder(w).Encode(result)
@@ -1026,14 +1093,7 @@ func RunMonitoringJob() {
 
 // runScanAPBatch esegue scan AP per una nave (versione batch)
 func runScanAPBatch(naveID int64, ac *AccessController) {
-	cmd := exec.Command("sshpass", "-p", ac.SSHPass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=30",
-		"-p", fmt.Sprintf("%d", ac.SSHPort),
-		fmt.Sprintf("%s@%s", ac.SSHUser, ac.IP),
-		"display ap all")
-
-	output, err := cmd.Output()
+	output, err := executeSSHCommand(ac.IP, ac.SSHPort, ac.SSHUser, ac.SSHPass, "display ap all")
 	if err != nil {
 		log.Printf("[Monitoring] Errore scan AP nave %d: %v", naveID, err)
 		return
@@ -1057,14 +1117,7 @@ func runScanMACBatch(naveID int64, sw *SwitchNave) {
 		cmdStr = "show mac-address"
 	}
 
-	cmd := exec.Command("sshpass", "-p", sw.SSHPass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=30",
-		"-p", fmt.Sprintf("%d", sw.SSHPort),
-		fmt.Sprintf("%s@%s", sw.SSHUser, sw.IP),
-		cmdStr)
-
-	output, err := cmd.Output()
+	output, err := executeSSHCommand(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, cmdStr)
 	if err != nil {
 		log.Printf("[Monitoring] Errore scan MAC switch %d: %v", sw.ID, err)
 		return
@@ -1119,21 +1172,14 @@ func runBackupBatch(naveID int64, tipoApparato string, apparatoID int64) {
 		}
 	}
 
-	cmd := exec.Command("sshpass", "-p", sshPass, "ssh",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "ConnectTimeout=60",
-		"-p", fmt.Sprintf("%d", sshPort),
-		fmt.Sprintf("%s@%s", sshUser, ip),
-		cmdStr)
-
-	output, err := cmd.Output()
+	output, err := executeSSHCommand(ip, sshPort, sshUser, sshPass, cmdStr)
 	if err != nil {
 		log.Printf("[Monitoring] Errore backup %s %d: %v", tipoApparato, apparatoID, err)
 		return
 	}
 
 	// Calcola hash
-	hash := md5.Sum(output)
+	hash := md5.Sum([]byte(output))
 	hashStr := hex.EncodeToString(hash[:])
 
 	// Verifica se cambiata
@@ -1157,7 +1203,7 @@ func runBackupBatch(naveID int64, tipoApparato string, apparatoID int64) {
 	filename := fmt.Sprintf("%s_%s_%s.cfg", tipoApparato, nome, timestamp)
 	filePath := filepath.Join(backupDir, filename)
 
-	err = os.WriteFile(filePath, output, 0644)
+	err = os.WriteFile(filePath, []byte(output), 0644)
 	if err != nil {
 		log.Printf("[Monitoring] Errore salvataggio backup: %v", err)
 		return
@@ -1233,4 +1279,42 @@ func GestioneReteNave(w http.ResponseWriter, r *http.Request) {
 	data.Data = pageData
 	log.Printf("[RETE] Rendering template rete_nave.html")
 	renderTemplate(w, "rete_nave.html", data)
+}
+
+// APIExportAPCSV esporta gli AP in formato CSV
+func APIExportAPCSV(w http.ResponseWriter, r *http.Request) {
+	naveID, _ := strconv.ParseInt(r.URL.Query().Get("nave_id"), 10, 64)
+	
+	// Ottieni nome nave per il filename
+	var nomeNave string
+	database.DB.QueryRow("SELECT nome FROM navi WHERE id = ?", naveID).Scan(&nomeNave)
+	
+	// Ottieni AP
+	accessPoints := getAccessPointsByNave(naveID)
+	
+	// Imposta headers per download CSV
+	filename := fmt.Sprintf("AP_%s_%s.csv", strings.ReplaceAll(nomeNave, " ", "_"), time.Now().Format("20060102"))
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	
+	// BOM per Excel
+	w.Write([]byte{0xEF, 0xBB, 0xBF})
+	
+	// Header CSV
+	w.Write([]byte("Stato;Nome AP;MAC Address;IP;Modello;Seriale;Switch;Porta;Ultimo Check\n"))
+	
+	// Dati
+	for _, ap := range accessPoints {
+		line := fmt.Sprintf("%s;%s;%s;%s;%s;%s;%s;%s;%s\n",
+			ap.Stato,
+			ap.APName,
+			ap.APMAC,
+			ap.APIP,
+			ap.APModel,
+			ap.APSerial,
+			ap.SwitchNome,
+			ap.SwitchPort,
+			ap.UltimoCheck)
+		w.Write([]byte(line))
+	}
 }

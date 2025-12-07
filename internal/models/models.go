@@ -95,6 +95,9 @@ type Nave struct {
 	EmailMaster          string    `json:"email_master"`
 	EmailDirettoreMacchina string  `json:"email_direttore_macchina"`
 	EmailIspettore       string    `json:"email_ispettore"`
+	TelMaster            string    `json:"tel_master"`
+	TelDirettoreMacchina string    `json:"tel_direttore_macchina"`
+	TelIspettore         string    `json:"tel_ispettore"`
 	Note                 string    `json:"note"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
