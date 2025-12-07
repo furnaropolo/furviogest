@@ -130,6 +130,8 @@ func SalvaImpostazioniAzienda(w http.ResponseWriter, r *http.Request) {
 			smtp_user = ?,
 			smtp_password = ?,
 			smtp_from_name = ?,
+			email_foglio_trasferte = ?,
+			email_nota_spese = ?,
 			updated_at = ?
 		WHERE id = 1
 	`,
@@ -156,6 +158,8 @@ func SalvaImpostazioniAzienda(w http.ResponseWriter, r *http.Request) {
 		r.FormValue("smtp_user"),
 		r.FormValue("smtp_password"),
 		r.FormValue("smtp_from_name"),
+		r.FormValue("email_foglio_trasferte"),
+		r.FormValue("email_nota_spese"),
 		time.Now(),
 	)
 
@@ -231,7 +235,7 @@ func getImpostazioniAzienda() (*models.ImpostazioniAzienda, error) {
 			iban, banca, codice_sdi, note,
 			COALESCE(smtp_server, '') as smtp_server, COALESCE(smtp_port, 587) as smtp_port,
 			COALESCE(smtp_user, '') as smtp_user, COALESCE(smtp_password, '') as smtp_password,
-			COALESCE(smtp_from_name, '') as smtp_from_name, updated_at
+			COALESCE(smtp_from_name, '') as smtp_from_name, COALESCE(email_foglio_trasferte, '') as email_foglio_trasferte, COALESCE(email_nota_spese, '') as email_nota_spese, updated_at
 		FROM impostazioni_azienda WHERE id = 1
 	`).Scan(
 		&imp.ID, &imp.RagioneSociale, &imp.PartitaIVA, &imp.CodiceFiscale, &imp.Indirizzo,
@@ -239,7 +243,7 @@ func getImpostazioniAzienda() (*models.ImpostazioniAzienda, error) {
 		&imp.LogoPath, &imp.FirmaEmailPath, &imp.FirmaEmailTesto,
 		&imp.IBAN, &imp.Banca, &imp.CodiceSDI, &imp.Note,
 		&imp.SMTPServer, &imp.SMTPPort, &imp.SMTPUser, &imp.SMTPPassword,
-		&imp.SMTPFromName, &imp.UpdatedAt,
+		&imp.SMTPFromName, &imp.EmailFoglioTrasferte, &imp.EmailNotaSpese, &imp.UpdatedAt,
 	)
 	if err != nil {
 		return &models.ImpostazioniAzienda{}, err

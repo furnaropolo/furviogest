@@ -1,0 +1,404 @@
+{{define "content"}}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Nota Spese - {{.Data.NomeTecnico}} - {{.Data.NomeMese}} {{.Data.Anno}}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #000;
+            background: #f0f0f0;
+        }
+
+        /* Barra azioni - visibile solo a schermo */
+        .action-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #343a40;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .action-bar h2 {
+            font-size: 16px;
+            margin: 0;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-print {
+            background: #28a745;
+            color: white;
+        }
+        .btn-print:hover {
+            background: #218838;
+        }
+        .btn-email {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-email:hover {
+            background: #138496;
+        }
+        .btn-back {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-back:hover {
+            background: #5a6268;
+        }
+
+        /* Container documento */
+        .document-container {
+            max-width: 210mm;
+            margin: 80px auto 30px auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            padding: 15mm;
+        }
+
+        /* Header aziendale */
+        .company-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #1a365d;
+        }
+        .company-logo {
+            width: 80px;
+            height: auto;
+            margin-right: 20px;
+        }
+        .company-info {
+            flex: 1;
+        }
+        .company-info h2 {
+            font-size: 18px;
+            color: #1a365d;
+            margin-bottom: 3px;
+        }
+        .company-info p {
+            font-size: 10px;
+            color: #333;
+            margin: 1px 0;
+        }
+        .document-title {
+            text-align: right;
+        }
+        .document-title h1 {
+            font-size: 16px;
+            color: #1a365d;
+            margin-bottom: 5px;
+        }
+        .document-title p {
+            font-size: 11px;
+        }
+
+        /* Stili documento */
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 12px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+
+        .spese-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .spese-table th,
+        .spese-table td {
+            border: 1px solid #000;
+            padding: 5px 8px;
+            text-align: left;
+            font-size: 10px;
+        }
+        .spese-table th {
+            background: #e0e0e0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .spese-table td.importo {
+            text-align: right;
+            font-family: monospace;
+        }
+        .spese-table td.data {
+            text-align: center;
+            width: 70px;
+        }
+        .spese-table td.tipo {
+            width: 100px;
+        }
+        .spese-table .rimborso {
+            background: #fff3cd;
+        }
+        .spese-table tfoot td {
+            font-weight: bold;
+            background: #f0f0f0;
+        }
+
+        .riepilogo-section {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .riepilogo-box {
+            flex: 1;
+        }
+        .riepilogo-box h3 {
+            font-size: 12px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+        }
+        .riepilogo-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .riepilogo-table td {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+        }
+        .riepilogo-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            width: 100px;
+            font-family: monospace;
+        }
+        .riepilogo-table .totale-row {
+            background: #e0e0e0;
+        }
+        .riepilogo-table .rimborso-row {
+            background: #fff3cd;
+        }
+
+        .note-section {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            min-height: 60px;
+        }
+        .note-section h4 {
+            font-size: 10px;
+            margin-bottom: 5px;
+        }
+
+        .firma-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .firma-box {
+            width: 45%;
+            text-align: center;
+        }
+        .firma-line {
+            border-top: 1px solid #000;
+            margin-top: 40px;
+            padding-top: 5px;
+        }
+
+        .avviso-rimborso {
+            margin-top: 15px;
+            padding: 8px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            font-size: 10px;
+        }
+
+        /* Stili per stampa */
+        @media print {
+            body {
+                background: white;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+            .action-bar {
+                display: none !important;
+            }
+            .document-container {
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Barra azioni -->
+    <div class="action-bar">
+        <h2>Anteprima Nota Spese - {{.Data.NomeTecnico}} - {{.Data.NomeMese}} {{.Data.Anno}}</h2>
+        <div class="action-buttons">
+            <a href="/calendario-trasferte?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="action-btn btn-back">
+                &#8592; Indietro
+            </a>
+            <button onclick="window.print()" class="action-btn btn-print">
+                Stampa
+            </button>
+            <button onclick="inviaEmail()" class="action-btn btn-email">
+                Invia Email
+            </button>
+        </div>
+    </div>
+
+    <!-- Documento -->
+    <div class="document-container">
+        <!-- Header Aziendale -->
+        <div class="company-header">
+            {{if .Data.AziendaLogo}}<img src="/azienda/logo" alt="Logo" class="company-logo" onerror="this.style.display='none'">{{end}}
+            <div class="company-info">
+                <h2>{{.Data.Azienda}}</h2>
+                <p>{{.Data.AziendaIndirizzo}}</p>
+                <p>{{if .Data.AziendaPIVA}}P.IVA: {{.Data.AziendaPIVA}}{{end}}{{if .Data.AziendaTelefono}} - Tel: {{.Data.AziendaTelefono}}{{end}}</p>
+                <p>{{if .Data.AziendaEmail}}Email: {{.Data.AziendaEmail}}{{end}}</p>
+            </div>
+            <div class="document-title">
+                <h1>NOTA SPESE</h1>
+                <p><strong>{{.Data.NomeTecnico}}</strong></p>
+                <p>{{.Data.NomeMese}} {{.Data.Anno}}</p>
+                <p style="font-size:9px;color:#666;">Data stampa: {{.Data.DataStampa}}</p>
+            </div>
+        </div>
+
+        <!-- Dettaglio Spese -->
+        <table class="spese-table">
+            <thead>
+                <tr>
+                    <th class="data">Data</th>
+                    <th class="tipo">Tipo</th>
+                    <th>Descrizione</th>
+                    <th style="width:100px;">Pagamento</th>
+                    <th style="width:80px;">Importo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{if .Data.Spese}}
+                {{range .Data.Spese}}
+                <tr class="{{if eq .MetodoPagamento "carta_personale"}}rimborso{{end}}">
+                    <td class="data">{{.DataFormattata}}</td>
+                    <td class="tipo">{{.TipoSpesaLabel}}</td>
+                    <td>{{.Note}}</td>
+                    <td>{{if eq .MetodoPagamento "carta_personale"}}Personale{{else}}Aziendale{{end}}</td>
+                    <td class="importo">{{printf "%.2f" .Importo}}</td>
+                </tr>
+                {{end}}
+                {{else}}
+                <tr><td colspan="5" style="text-align:center;">Nessuna spesa registrata</td></tr>
+                {{end}}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="text-align:right;">TOTALE SPESE</td>
+                    <td class="importo">{{printf "%.2f" .Data.TotaleSpese}}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {{if gt .Data.TotaleRimborso 0.0}}
+        <div class="avviso-rimborso">
+            <strong>ATTENZIONE:</strong> Le righe evidenziate in giallo sono state pagate con carta personale e devono essere rimborsate.
+        </div>
+        {{end}}
+
+        <!-- Riepilogo -->
+        <div class="riepilogo-section">
+            <div class="riepilogo-box">
+                <h3>RIEPILOGO PER CATEGORIA</h3>
+                <table class="riepilogo-table">
+                    <tr><td>Carburante</td><td>{{printf "%.2f" (index .Data.SpesePer "carburante")}}</td></tr>
+                    <tr><td>Cibo/Hotel</td><td>{{printf "%.2f" (index .Data.SpesePer "cibo_hotel")}}</td></tr>
+                    <tr><td>Pedaggi/Taxi</td><td>{{printf "%.2f" (index .Data.SpesePer "pedaggi_taxi")}}</td></tr>
+                    <tr><td>Materiali</td><td>{{printf "%.2f" (index .Data.SpesePer "materiali")}}</td></tr>
+                    <tr><td>Varie</td><td>{{printf "%.2f" (index .Data.SpesePer "varie")}}</td></tr>
+                    <tr class="totale-row"><td><strong>TOTALE</strong></td><td><strong>{{printf "%.2f" .Data.TotaleSpese}}</strong></td></tr>
+                </table>
+            </div>
+            <div class="riepilogo-box">
+                <h3>RIEPILOGO PAGAMENTI</h3>
+                <table class="riepilogo-table">
+                    <tr><td>Pagato con carta aziendale</td><td>{{printf "%.2f" .Data.TotaleAziendale}}</td></tr>
+                    <tr class="rimborso-row"><td>Pagato con carta personale</td><td>{{printf "%.2f" .Data.TotaleRimborso}}</td></tr>
+                    <tr class="totale-row"><td><strong>TOTALE</strong></td><td><strong>{{printf "%.2f" .Data.TotaleSpese}}</strong></td></tr>
+                </table>
+                {{if gt .Data.TotaleRimborso 0.0}}
+                <p style="margin-top:10px; font-size:11px; font-weight:bold; color:#856404;">
+                    DA RIMBORSARE AL DIPENDENTE: {{printf "%.2f" .Data.TotaleRimborso}}
+                </p>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Note -->
+        <div class="note-section">
+            <h4>NOTE / ALLEGATI:</h4>
+            <p style="font-size:9px; color:#666;">Allegare le ricevute originali a questo foglio.</p>
+        </div>
+
+        <!-- Firme -->
+        <div class="firma-section">
+            <div class="firma-box">
+                <div class="firma-line">Firma Dipendente</div>
+            </div>
+            <div class="firma-box">
+                <div class="firma-line">Firma Responsabile / Approvazione</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function inviaEmail() {
+            if (confirm('Inviare la nota spese via email?')) {
+                window.location.href = '/email-note-spese?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}';
+            }
+        }
+    </script>
+</body>
+</html>
+{{end}}

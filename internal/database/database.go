@@ -392,3 +392,47 @@ func CreateDefaultAdmin(hashPassword func(string) (string, error)) error {
 
 	return nil
 }
+
+// AddCalendarioTables aggiunge le tabelle per il nuovo calendario trasferte
+func AddCalendarioTables() error {
+	schema := `
+	-- Tabella calendario giornate (una riga per tecnico per giorno)
+	CREATE TABLE IF NOT EXISTS calendario_giornate (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		tecnico_id INTEGER NOT NULL,
+		data DATE NOT NULL,
+		tipo_giornata TEXT NOT NULL DEFAULT 'ufficio' CHECK(tipo_giornata IN ('ufficio', 'trasferta_giornaliera', 'trasferta_pernotto', 'trasferta_festiva', 'ferie')),
+		luogo TEXT,
+		compagnia_id INTEGER,
+		nave_id INTEGER,
+		note TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (tecnico_id) REFERENCES utenti(id) ON DELETE CASCADE,
+		FOREIGN KEY (compagnia_id) REFERENCES compagnie(id) ON DELETE SET NULL,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE SET NULL,
+		UNIQUE(tecnico_id, data)
+	);
+
+	-- Tabella spese giornaliere (collegate al calendario)
+	CREATE TABLE IF NOT EXISTS spese_giornaliere (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		giornata_id INTEGER NOT NULL,
+		tipo_spesa TEXT NOT NULL CHECK(tipo_spesa IN ('carburante', 'cibo_hotel', 'pedaggi_taxi', 'materiali', 'varie')),
+		importo REAL NOT NULL,
+		note TEXT,
+		metodo_pagamento TEXT NOT NULL CHECK(metodo_pagamento IN ('carta_aziendale', 'carta_personale')),
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (giornata_id) REFERENCES calendario_giornate(id) ON DELETE CASCADE
+	);
+
+	-- Indici
+	CREATE INDEX IF NOT EXISTS idx_calendario_tecnico ON calendario_giornate(tecnico_id);
+	CREATE INDEX IF NOT EXISTS idx_calendario_data ON calendario_giornate(data);
+	CREATE INDEX IF NOT EXISTS idx_calendario_tecnico_data ON calendario_giornate(tecnico_id, data);
+	CREATE INDEX IF NOT EXISTS idx_spese_giornata ON spese_giornaliere(giornata_id);
+	`
+
+	_, err := DB.Exec(schema)
+	return err
+}

@@ -5,8 +5,8 @@
     <h1>Dashboard</h1>
     <p class="welcome-message">Benvenuto, {{.Session.Nome}} {{.Session.Cognome}}!</p>
 
-    <div class="dashboard-cards">
-        <div class="card">
+    <div class="dashboard-cards" style="display: flex; flex-wrap: wrap; gap: 20px;">
+        <div class="card" style="flex: 1; min-width: 250px;">
             <div class="card-header">
                 <h3>Anagrafiche</h3>
             </div>
@@ -22,22 +22,20 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="flex: 1; min-width: 250px;">
             <div class="card-header">
                 <h3>Magazzino</h3>
             </div>
             <div class="card-body">
                 <ul class="quick-links">
-                    <li><a href="/prodotti">Prodotti</a></li>
-                    <li><a href="/movimenti">Movimenti</a></li>
-                    {{if .Session.IsTecnico}}
-                    <li><a href="/prodotti/nuovo">Nuovo Prodotto</a></li>
-                    {{end}}
+                    <li><a href="/magazzino">Prodotti</a></li>
+                    <li><a href="/attrezzi">Attrezzi</a></li>
+                    <li><a href="/ddt">DDT</a></li>
                 </ul>
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="flex: 1; min-width: 250px;">
             <div class="card-header">
                 <h3>Operazioni</h3>
             </div>
@@ -45,28 +43,17 @@
                 <ul class="quick-links">
                     <li><a href="/permessi">Richieste Permessi</a></li>
                     <li><a href="/rapporti">Rapporti Intervento</a></li>
-                    <li><a href="/ddt">DDT</a></li>
-                    {{if .Session.IsTecnico}}
-                    <li><a href="/permessi/nuovo">Nuova Richiesta Permesso</a></li>
-                    <li><a href="/rapporti/nuovo">Nuovo Rapporto</a></li>
-                    {{end}}
                 </ul>
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="flex: 1; min-width: 250px;">
             <div class="card-header">
                 <h3>Trasferte e Spese</h3>
             </div>
             <div class="card-body">
                 <ul class="quick-links">
-                    <li><a href="/trasferte">Lista Trasferte</a></li>
-                    <li><a href="/note-spese">Note Spese</a></li>
-                    <li><a href="/foglio-mensile">Foglio Mensile</a></li>
-                    {{if .Session.IsTecnico}}
-                    <li><a href="/trasferte/nuova">Nuova Trasferta</a></li>
-                    <li><a href="/note-spese/nuova">Nuova Nota Spesa</a></li>
-                    {{end}}
+                    <li><a href="/calendario-trasferte">Calendario Trasferte e Spese</a></li>
                 </ul>
             </div>
         </div>

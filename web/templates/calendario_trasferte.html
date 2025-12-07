@@ -1,0 +1,1203 @@
+{{define "content"}}
+<div class="page-header">
+
+{{if .Data.EmailSent}}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{if eq .Data.EmailSent "trasferte"}}
+    Foglio trasferte inviato via email con successo!
+    {{else if eq .Data.EmailSent "spese"}}
+    Nota spese inviata via email con successo!
+    {{end}}
+    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+</div>
+{{end}}
+
+    <h1>Calendario Trasferte {{if not .Data.IsAdmin}}- {{.Data.NomeTecnico}}{{end}}</h1>
+    <h2 class="text-muted">{{.Data.NomeMese}} {{.Data.Anno}}</h2>
+</div>
+
+<!-- Filtri -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="GET" class="form-inline">
+            {{if .Data.IsAdmin}}
+            <div class="form-group mr-2">
+                <label for="tecnico" class="mr-2">Tecnico:</label>
+                <select name="tecnico" id="tecnico" class="form-control" onchange="this.form.submit()">
+                    {{range .Data.Tecnici}}
+                    <option value="{{.ID}}" {{if eq .ID $.Data.TecnicoID}}selected{{end}}>{{.Cognome}} {{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+            {{end}}
+            <div class="form-group mr-2">
+                <label for="mese">Mese:</label>
+                <select name="mese" id="mese" class="form-control" onchange="this.form.submit()">
+                    <option value="1" {{if eq .Data.Mese 1}}selected{{end}}>Gennaio</option>
+                    <option value="2" {{if eq .Data.Mese 2}}selected{{end}}>Febbraio</option>
+                    <option value="3" {{if eq .Data.Mese 3}}selected{{end}}>Marzo</option>
+                    <option value="4" {{if eq .Data.Mese 4}}selected{{end}}>Aprile</option>
+                    <option value="5" {{if eq .Data.Mese 5}}selected{{end}}>Maggio</option>
+                    <option value="6" {{if eq .Data.Mese 6}}selected{{end}}>Giugno</option>
+                    <option value="7" {{if eq .Data.Mese 7}}selected{{end}}>Luglio</option>
+                    <option value="8" {{if eq .Data.Mese 8}}selected{{end}}>Agosto</option>
+                    <option value="9" {{if eq .Data.Mese 9}}selected{{end}}>Settembre</option>
+                    <option value="10" {{if eq .Data.Mese 10}}selected{{end}}>Ottobre</option>
+                    <option value="11" {{if eq .Data.Mese 11}}selected{{end}}>Novembre</option>
+                    <option value="12" {{if eq .Data.Mese 12}}selected{{end}}>Dicembre</option>
+                </select>
+            </div>
+            <div class="form-group mr-2">
+                <label for="anno">Anno:</label>
+                <select name="anno" id="anno" class="form-control" onchange="this.form.submit()">
+                    {{range .Data.Anni}}
+                    <option value="{{.}}" {{if eq . $.Data.Anno}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Istruzioni selezione -->
+<div id="istruzioniSelezione" class="alert alert-info" style="display:none;">
+    <strong>Selezione multipla:</strong> <span id="testoIstruzioni">Clicca sul giorno di fine trasferta</span>
+    <button type="button" class="btn btn-sm btn-success ml-2" id="btnConfermaSelezione" onclick="confermaSelezione()" style="display:none;">Conferma</button> <button type="button" class="btn btn-sm btn-secondary ml-2" onclick="annullaSelezione()">Annulla</button>
+</div>
+
+<!-- Legenda -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center"><div class="legenda-calendario">
+            <span class="legenda-item"><span class="legenda-color" style="background: #ffffff; border: 1px solid #ccc;"></span> Ufficio</span>
+            <span class="legenda-item"><span class="legenda-color" style="background: #fff3cd;"></span> Trasferta Giornaliera</span>
+            <span class="legenda-item"><span class="legenda-color" style="background: #d4edda;"></span> Trasferta con Pernotto</span>
+            <span class="legenda-item"><span class="legenda-color" style="background: #f8d7da;"></span> Trasferta Festiva</span>
+            <span class="legenda-item"><span class="legenda-color" style="background: #cce5ff;"></span> Ferie</span>
+            <span class="legenda-item"><span class="legenda-color" style="background: #e2d5f7;"></span> Permesso</span></div><button type="button" id="btnNuovaTrasferta" class="btn btn-primary mr-2" onclick="iniziaSelezioneTrasferta()"><i class="fas fa-plus"></i> Nuova Trasferta</button><button type="button" class="btn btn-info mr-2" onclick="apriModaleFeriePermessi()"><i class="fas fa-umbrella-beach"></i> Ferie/Permessi</button><button type="button" class="btn btn-success" onclick="apriModaleNuovaSpesa()"><i class="fas fa-plus"></i> Nuova Spesa</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- Calendario -->
+<div class="card mb-3">
+    <div class="card-body p-0">
+        <table class="calendario-grid">
+            <thead>
+                <tr>
+                    <th>Lun</th>
+                    <th>Mar</th>
+                    <th>Mer</th>
+                    <th>Gio</th>
+                    <th>Ven</th>
+                    <th class="weekend">Sab</th>
+                    <th class="weekend">Dom</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{$giorni := .Data.Giorni}}
+                {{$tecnicoID := .Data.TecnicoID}}
+                {{range $i, $g := $giorni}}
+                {{if eq (mod $i 7) 0}}<tr>{{end}}
+
+                {{if eq $g.Giorno 0}}
+                <td class="giorno-vuoto"></td>
+                {{else}}
+                <td class="giorno {{if $g.IsWeekend}}weekend{{end}} {{if $g.IsFestivo}}festivo{{end}} {{if $g.TipoGiornata}}has-data{{end}}"
+                    data-data="{{$g.Data}}"
+                    data-giorno="{{$g.Giorno}}"
+                    data-tecnico="{{$tecnicoID}}"
+                    style="{{if $g.Colore}}background-color: {{$g.Colore}};{{end}}"
+                    onclick="clickGiorno('{{$g.Data}}', {{$tecnicoID}}, {{$g.Giorno}})">
+                    <div class="giorno-numero">{{$g.Giorno}}</div>
+                    {{if $g.NomeNave}}
+                    <div class="giorno-info">{{$g.NomeNave}}</div>
+                    {{else if $g.Luogo}}
+                    <div class="giorno-info">{{$g.Luogo}}</div>
+                    {{end}}
+                    {{if gt $g.TotaleSpese 0.0}}
+                    <div class="giorno-spese">€ {{printf "%.2f" $g.TotaleSpese}}</div>
+                    {{end}}
+                </td>
+                {{end}}
+
+                {{if eq (mod (add $i 1) 7) 0}}</tr>{{end}}
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Pulsanti Anteprima Documenti -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h5>Documenti</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <a href="/stampa-trasferte?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-primary">
+                    <i class="fas fa-file-alt"></i> Anteprima Foglio Trasferte
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="/stampa-note-spese?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-success">
+                    <i class="fas fa-file-invoice-dollar"></i> Anteprima Nota Spese
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- Riepilogo Mensile -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3>Riepilogo Giorni</h3>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr><td>Giorni in Ufficio</td><td><strong>{{index .Data.RiepilogoGiorni "ufficio"}}</strong></td></tr>
+                    <tr><td>Trasferte Giornaliere</td><td><strong>{{index .Data.RiepilogoGiorni "trasferta_giornaliera"}}</strong></td></tr>
+                    <tr><td>Pernotti</td><td><strong>{{index .Data.RiepilogoGiorni "trasferta_pernotto"}}</strong></td></tr>
+                    <tr><td>Trasferte Festive</td><td><strong>{{index .Data.RiepilogoGiorni "trasferta_festiva"}}</strong></td></tr>
+                    <tr><td>Ferie</td><td><strong>{{index .Data.RiepilogoGiorni "ferie"}}</strong></td></tr>
+                    <tr><td>Ore Permesso</td><td><strong>{{.Data.OrePermesso}}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3>Riepilogo Spese</h3>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr><td>Carburante</td><td><strong>€ {{printf "%.2f" (index .Data.SpesePer "carburante")}}</strong></td></tr>
+                    <tr><td>Cibo/Hotel</td><td><strong>€ {{printf "%.2f" (index .Data.SpesePer "cibo_hotel")}}</strong></td></tr>
+                    <tr><td>Pedaggi/Taxi</td><td><strong>€ {{printf "%.2f" (index .Data.SpesePer "pedaggi_taxi")}}</strong></td></tr>
+                    <tr><td>Materiali</td><td><strong>€ {{printf "%.2f" (index .Data.SpesePer "materiali")}}</strong></td></tr>
+                    <tr><td>Varie</td><td><strong>€ {{printf "%.2f" (index .Data.SpesePer "varie")}}</strong></td></tr>
+                    <tr class="totale-row"><td><strong>TOTALE SPESE</strong></td><td><strong>€ {{printf "%.2f" .Data.TotaleSpese}}</strong></td></tr>
+                    <tr class="rimborso-row"><td><strong>DA RIMBORSARE</strong></td><td><strong class="text-danger">€ {{printf "%.2f" .Data.TotaleRimborso}}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Giorno Singolo -->
+<div id="modaleGiorno" class="modal" style="display:none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2 id="modaleGiornoTitolo">Giorno</h2>
+            <span class="modal-close" onclick="chiudiModale()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="formGiornata">
+                <input type="hidden" id="giornata_data" name="data">
+                <input type="hidden" id="giornata_tecnico_id" name="tecnico_id">
+
+                <!-- Tipo Giornata -->
+                <div class="form-group">
+                    <label for="tipo_giornata">Tipo Giornata:</label>
+                    <select id="tipo_giornata" name="tipo_giornata" class="form-control" onchange="tipoGiornataChange()">
+                        <option value="">-- Non impostato --</option>
+                        <option value="ufficio">Ufficio</option>
+                        <option value="trasferta_giornaliera">Trasferta Giornaliera</option>
+                        <option value="trasferta_pernotto">Trasferta con Pernotto</option>
+                        <option value="trasferta_festiva">Trasferta Festiva</option>
+                        <option value="ferie">Ferie</option>
+                        <option value="permesso">Permesso (ore)</option>
+                    </select>
+                </div>
+
+                <!-- Campi Trasferta (nascosti di default) -->
+                <div id="campiTrasferta" style="display:none;">
+                    <div class="form-group">
+                        <label for="luogo">Luogo/Destinazione:</label>
+                        <input type="text" id="luogo" name="luogo" class="form-control" placeholder="Es: Porto di Genova">
+                    </div>
+                    <div class="form-group">
+                        <label for="note_giornata">Lavoro svolto / Note:</label>
+                        <textarea id="note_giornata" name="note" class="form-control" rows="2" placeholder="Descrivi il lavoro svolto in questo giorno"></textarea>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-primary" onclick="salvaGiornata()">Salva Giornata</button>
+                <button type="button" id="btnEliminaGiornata" class="btn btn-danger ml-2" style="display:none;" onclick="eliminaGiornata()">Elimina Giornata</button>
+            </form>
+
+            <hr>
+
+            <!-- Sezione Spese -->
+            <div id="sezioneSpese" style="display:none;">
+                <h3>Spese del Giorno</h3>
+                <div id="listaSpese"></div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h4>Aggiungi Spesa</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="tipo_spesa">Tipo:</label>
+                                <select id="tipo_spesa" class="form-control">
+                                    <option value="carburante">Carburante</option>
+                                    <option value="cibo_hotel">Cibo/Hotel</option>
+                                    <option value="pedaggi_taxi">Pedaggi/Taxi</option>
+                                    <option value="materiali">Acquisto Materiali</option>
+                                    <option value="varie">Varie</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="importo_spesa">Importo €:</label>
+                                <input type="number" id="importo_spesa" class="form-control" step="0.01" min="0">
+                            </div>
+                            <div class="form-group col-md-5">
+                                <label for="metodo_pagamento">Pagamento:</label>
+                                <select id="metodo_pagamento" class="form-control">
+                                    <option value="carta_aziendale">Carta Aziendale</option>
+                                    <option value="carta_personale">Carta Personale (da rimborsare)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="note_spesa">Note spesa:</label>
+                            <input type="text" id="note_spesa" class="form-control" placeholder="Descrizione/dettagli">
+                        </div>
+                        <button type="button" class="btn btn-success" onclick="aggiungiSpesa()">Aggiungi Spesa</button>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <strong>Totale giorno: € <span id="totaleGiornoSpese">0.00</span></strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Range Giorni (trasferta multipla) -->
+<div id="modaleRange" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modaleRangeTitolo">Nuova Trasferta</h2>
+            <span class="modal-close" onclick="chiudiModaleRange()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="alert alert-info">
+                <strong>Trasferta dal <span id="rangeDataInizio"></span> al <span id="rangeDataFine"></span></strong>
+                (<span id="rangeNumGiorni"></span> giorni, <span id="rangeNumPernotti"></span> pernotti)
+            </div>
+
+            <form id="formRange">
+                <div class="form-group">
+                    <label for="range_luogo">Luogo/Destinazione:</label>
+                    <input type="text" id="range_luogo" class="form-control" placeholder="Es: Livorno, Genova...">
+                </div>
+                <div class="form-group">
+                    <label for="range_note">Breve descrizione:</label>
+                    <textarea id="range_note" class="form-control" rows="2" placeholder="Es: Intervento su navi Grimaldi"></textarea>
+                </div>
+
+                <p class="text-muted">Potrai poi cliccare su ogni giorno per aggiungere dettagli e spese.</p>
+
+                <button type="button" class="btn btn-primary btn-lg" onclick="salvaTrasfertaMultipla()">Crea Trasferta</button>
+                <button type="button" class="btn btn-secondary" onclick="chiudiModaleRange()">Annulla</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Nuova Spesa -->
+<div id="modaleNuovaSpesa" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nuova Spesa</h2>
+            <span class="close" onclick="chiudiModaleNuovaSpesa()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="formNuovaSpesa">
+                <div class="form-group">
+                    <label for="spesa_data">Data:</label>
+                    <input type="date" id="spesa_data" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="spesa_tipo">Tipo Spesa:</label>
+                    <select id="spesa_tipo" class="form-control" required>
+                        <option value="">-- Seleziona --</option>
+                        <option value="carburante">Carburante</option>
+                        <option value="materiali">Materiali/Attrezzi</option>
+                        <option value="cibo_hotel">Cibo/Hotel</option>
+                        <option value="pedaggi_taxi">Pedaggi/Taxi/Parcheggi</option>
+                        <option value="varie">Varie</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="spesa_descrizione">Descrizione:</label>
+                    <input type="text" id="spesa_descrizione" class="form-control" placeholder="Es: Gasolio furgone, Cacciaviti, Ritiro Amazon...">
+                </div>
+                <div class="form-group">
+                    <label for="spesa_importo">Importo (€):</label>
+                    <input type="number" id="spesa_importo" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="spesa_pagamento">Metodo Pagamento:</label>
+                    <select id="spesa_pagamento" class="form-control" required>
+                        <option value="carta_aziendale">Carta Aziendale</option>
+                        <option value="carta_personale">Carta Personale (da rimborsare)</option>
+                        <option value="contanti">Contanti</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="salvaNuovaSpesa()">Salva Spesa</button>
+                <button type="button" class="btn btn-secondary" onclick="chiudiModaleNuovaSpesa()">Annulla</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modale Ferie/Permessi -->
+<div id="modaleFeriePermessi" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Ferie / Permesso</h2>
+            <span class="close" onclick="chiudiModaleFeriePermessi()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="formFeriePermessi">
+                <div class="form-group">
+                    <label for="ferie_data">Data:</label>
+                    <input type="date" id="ferie_data" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="ferie_tipo">Tipo:</label>
+                    <select id="ferie_tipo" class="form-control" required onchange="tipoFerieChange()">
+                        <option value="ferie">Ferie (giornata intera)</option>
+                        <option value="permesso">Permesso (ore)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="gruppoOrePermesso" style="display:none;">
+                    <label for="ferie_ore">Ore di permesso:</label>
+                    <select id="ferie_ore" class="form-control">
+                        <option value="1">1 ora</option>
+                        <option value="2">2 ore</option>
+                        <option value="3">3 ore</option>
+                        <option value="4">4 ore</option>
+                        <option value="5">5 ore</option>
+                        <option value="6">6 ore</option>
+                        <option value="7">7 ore</option>
+                        <option value="8">8 ore</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ferie_note">Note (opzionale):</label>
+                    <input type="text" id="ferie_note" class="form-control" placeholder="Es: Visita medica, motivi personali...">
+                </div>
+                <button type="button" class="btn btn-primary" onclick="salvaFeriePermesso()">Salva</button>
+                <button type="button" class="btn btn-secondary" onclick="chiudiModaleFeriePermessi()">Annulla</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.calendario-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.calendario-grid th, .calendario-grid td {
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: center;
+    vertical-align: top;
+    height: 80px;
+}
+.calendario-grid th {
+    background: #f5f5f5;
+    font-weight: bold;
+    height: auto;
+}
+.calendario-grid th.weekend {
+    background: #ffe6e6;
+}
+.calendario-grid .giorno {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.calendario-grid .giorno:hover {
+    box-shadow: inset 0 0 0 2px #007bff;
+}
+.calendario-grid .giorno.selected {
+    box-shadow: inset 0 0 0 3px #28a745 !important;
+}
+.calendario-grid .giorno.in-range {
+    box-shadow: inset 0 0 0 2px #28a745 !important;
+    opacity: 0.8;
+}
+.calendario-grid .giorno.weekend {
+    background: #f9f9f9;
+}
+.calendario-grid .giorno.festivo {
+    border-left: 3px solid #dc3545;
+}
+.calendario-grid .giorno-vuoto {
+    background: #f0f0f0;
+}
+.giorno-numero {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.giorno-info {
+    font-size: 0.75em;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.giorno-spese {
+    font-size: 0.7em;
+    color: #28a745;
+    font-weight: bold;
+}
+
+.legenda-calendario {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.legenda-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.legenda-color {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    border-radius: 3px;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-lg {
+    max-width: 800px;
+}
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-close {
+    font-size: 28px;
+    cursor: pointer;
+    color: #666;
+}
+.modal-close:hover {
+    color: #000;
+}
+.modal-body {
+    padding: 20px;
+}
+
+.totale-row td {
+    border-top: 2px solid #333;
+}
+.rimborso-row td {
+    background: #fff3cd;
+}
+.text-danger {
+    color: #dc3545;
+}
+
+.spesa-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+.spesa-item .spesa-info {
+    flex: 1;
+}
+.spesa-item .spesa-importo {
+    font-weight: bold;
+    margin: 0 15px;
+}
+.spesa-item .spesa-rimborso {
+    color: #dc3545;
+    font-size: 0.8em;
+}
+.spesa-item .btn-elimina {
+    padding: 2px 8px;
+    font-size: 0.8em;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+.col-md-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+@media (max-width: 768px) {
+    .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -5px;
+}
+.form-row .form-group {
+    padding: 0 5px;
+}
+.col-md-3 { flex: 0 0 25%; max-width: 25%; }
+.col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+.col-md-5 { flex: 0 0 41.666%; max-width: 41.666%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+
+.alert-info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+.ml-2 { margin-left: 10px; }
+.btn-lg { padding: 12px 24px; font-size: 1.1em; }
+</style>
+
+<script>
+var giornataCorrente = null;
+var tecnicoID = {{.Data.TecnicoID}};
+
+
+// Variabili per selezione trasferta
+var modalitaSelezione = false;
+var giorniSelezionati = [];
+
+document.addEventListener("DOMContentLoaded", function() {
+    var tecnicoSelect = document.getElementById("tecnico");
+    if (tecnicoSelect) {
+        tecnicoSelect.value = tecnicoID;
+    }
+});
+
+// Inizia modalita selezione per nuova trasferta
+function iniziaSelezioneTrasferta() {
+    modalitaSelezione = true;
+    giorniSelezionati = [];
+    document.getElementById("istruzioniSelezione").style.display = "block";
+    document.getElementById("testoIstruzioni").textContent = "Clicca sui giorni da selezionare per la trasferta";
+    document.getElementById("btnConfermaSelezione").style.display = "none";
+    document.getElementById("btnNuovaTrasferta").disabled = true;
+}
+
+// Click su un giorno del calendario
+function clickGiorno(data, tecID, giorno) {
+    var cella = document.querySelector("[data-data='" + data + "']");
+    
+    if (modalitaSelezione) {
+        // Modalita selezione attiva - aggiungi/rimuovi giorno
+        var idx = giorniSelezionati.indexOf(data);
+        if (idx > -1) {
+            // Rimuovi dalla selezione
+            giorniSelezionati.splice(idx, 1);
+            cella.classList.remove("selected");
+        } else {
+            // Aggiungi alla selezione
+            giorniSelezionati.push(data);
+            cella.classList.add("selected");
+        }
+        
+        // Aggiorna testo e mostra/nascondi pulsante conferma
+        if (giorniSelezionati.length > 0) {
+            giorniSelezionati.sort();
+            document.getElementById("testoIstruzioni").textContent = giorniSelezionati.length + " giorno/i selezionato/i";
+            document.getElementById("btnConfermaSelezione").style.display = "inline-block";
+        } else {
+            document.getElementById("testoIstruzioni").textContent = "Clicca sui giorni da selezionare per la trasferta";
+            document.getElementById("btnConfermaSelezione").style.display = "none";
+        }
+    } else {
+        // Modalita normale - apri modale solo se il giorno ha dati
+        var hasDati = cella.classList.contains("has-data");
+        if (hasDati) {
+            apriModaleGiorno(data, tecID);
+        }
+    }
+}
+
+// Annulla selezione
+function annullaSelezione() {
+    modalitaSelezione = false;
+    giorniSelezionati = [];
+    document.getElementById("istruzioniSelezione").style.display = "none";
+    document.getElementById("btnNuovaTrasferta").disabled = false;
+    document.querySelectorAll(".giorno.selected").forEach(function(el) {
+        el.classList.remove("selected");
+    });
+}
+
+// Conferma selezione e apri modale
+function confermaSelezione() {
+    if (giorniSelezionati.length === 0) return;
+    
+    giorniSelezionati.sort();
+    var dataInizio = giorniSelezionati[0];
+    var dataFine = giorniSelezionati[giorniSelezionati.length - 1];
+    
+    // Nascondi istruzioni
+    document.getElementById("istruzioniSelezione").style.display = "none";
+    document.getElementById("btnNuovaTrasferta").disabled = false;
+    
+    if (giorniSelezionati.length === 1) {
+        // Singolo giorno
+        apriModaleGiorno(dataInizio, tecnicoID);
+        // Rimuovi selezione visiva
+        document.querySelectorAll(".giorno.selected").forEach(function(el) {
+            el.classList.remove("selected");
+        });
+        modalitaSelezione = false;
+        giorniSelezionati = [];
+    } else {
+        // Piu giorni - apri modale range
+        apriModaleRange(dataInizio, dataFine, tecnicoID);
+    }
+}
+
+
+function apriModaleRange(dataInizio, dataFine, tecID) {
+    // Calcola numero giorni e pernotti
+    var d1 = new Date(dataInizio);
+    var d2 = new Date(dataFine);
+    var diffTime = Math.abs(d2 - d1);
+    var numGiorni = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    var numPernotti = numGiorni - 1;
+
+    // Formatta date per visualizzazione
+    var partsInizio = dataInizio.split('-');
+    var partsFine = dataFine.split('-');
+
+    document.getElementById('rangeDataInizio').textContent = partsInizio[2] + '/' + partsInizio[1];
+    document.getElementById('rangeDataFine').textContent = partsFine[2] + '/' + partsFine[1];
+    document.getElementById('rangeNumGiorni').textContent = numGiorni;
+    document.getElementById('rangeNumPernotti').textContent = numPernotti;
+
+    // Salva dati per submit
+    document.getElementById('modaleRange').dataset.dataInizio = dataInizio;
+    document.getElementById('modaleRange').dataset.dataFine = dataFine;
+    document.getElementById('modaleRange').dataset.tecnicoId = tecID;
+
+    // Reset form
+    document.getElementById('range_luogo').value = '';
+    document.getElementById('range_note').value = '';
+
+    document.getElementById('modaleRange').style.display = 'flex';
+}
+
+function chiudiModaleRange() {
+    document.getElementById("modaleRange").style.display = "none";
+    modalitaSelezione = false;
+    giorniSelezionati = [];
+    document.querySelectorAll(".giorno.selected").forEach(function(el) {
+        el.classList.remove("selected");
+    });
+}
+
+function salvaTrasfertaMultipla() {
+    var modal = document.getElementById('modaleRange');
+    var dataInizio = modal.dataset.dataInizio;
+    var dataFine = modal.dataset.dataFine;
+    var tecID = parseInt(modal.dataset.tecnicoId);
+
+    var luogo = document.getElementById('range_luogo').value;
+    var note = document.getElementById('range_note').value;
+
+    if (!luogo) {
+        alert('Inserisci il luogo/destinazione');
+        return;
+    }
+
+    // Crea array di date
+    var date = [];
+    var current = new Date(dataInizio);
+    var end = new Date(dataFine);
+    while (current <= end) {
+        date.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+    }
+
+    // Salva ogni giorno sequenzialmente
+    var salvaSequenziale = function(index) {
+        if (index >= date.length) {
+            chiudiModaleRange();
+            location.reload();
+            return;
+        }
+
+        fetch('/api/calendario/salva-giornata', {
+        credentials: 'same-origin',
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                data: date[index],
+                tecnico_id: tecID,
+                tipo_giornata: 'trasferta_pernotto',
+                luogo: luogo,
+                note: note
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (resp.success) {
+                salvaSequenziale(index + 1);
+            } else {
+                alert('Errore nel salvataggio del giorno ' + date[index]);
+            }
+        })
+        .catch(function(err) {
+            alert('Errore: ' + err);
+        });
+    };
+
+    salvaSequenziale(0);
+}
+
+function apriModaleGiorno(data, tecID) {
+    document.getElementById('modaleGiorno').style.display = 'flex';
+    document.getElementById('giornata_data').value = data;
+    document.getElementById('giornata_tecnico_id').value = tecID;
+
+    // Formatta data per titolo
+    var parts = data.split('-');
+    document.getElementById('modaleGiornoTitolo').textContent = 'Giorno ' + parts[2] + '/' + parts[1] + '/' + parts[0];
+
+    // Carica dati giornata
+    fetch('/api/calendario/giornata?data=' + data + '&tecnico_id=' + tecID, {credentials: 'same-origin'})
+        .then(function(response) { console.log("API response status:", response.status); return response; })
+        .then(r => r.json())
+        .then(g => {
+            giornataCorrente = g; console.log("Giornata caricata:", g); console.log("g.ID=", g.ID);
+            document.getElementById('tipo_giornata').value = g.TipoGiornata || '';
+            document.getElementById('luogo').value = g.Luogo || '';
+            document.getElementById('note_giornata').value = g.Note || '';
+
+            // Solo se gli elementi compagnia_id e nave_id esistono (non in questo form)
+            if (document.getElementById('compagnia_id') && document.getElementById('nave_id')) {
+                if (g.CompagniaID) {
+                    document.getElementById('compagnia_id').value = g.CompagniaID;
+                    caricaNavi(g.NaveID);
+                } else {
+                    document.getElementById('compagnia_id').value = '';
+                    document.getElementById('nave_id').innerHTML = '<option value="">-- Seleziona Compagnia --</option>';
+                }
+            }
+
+            tipoGiornataChange();
+            aggiornaListaSpese(g.Spese || []);
+
+            // Mostra sezione spese solo se giornata salvata
+            if (g.ID) {
+                document.getElementById('sezioneSpese').style.display = 'block';
+                document.getElementById('btnEliminaGiornata').style.display = 'inline-block';
+            } else {
+                document.getElementById('sezioneSpese').style.display = 'none';
+                document.getElementById('btnEliminaGiornata').style.display = 'none';
+            }
+        });
+}
+
+function chiudiModale() {
+    document.getElementById('modaleGiorno').style.display = 'none';
+    location.reload();
+}
+
+function tipoGiornataChange() {
+    var tipo = document.getElementById('tipo_giornata').value;
+    var campiTrasferta = document.getElementById('campiTrasferta');
+
+    if (tipo && tipo !== 'ufficio' && tipo !== 'ferie') {
+        campiTrasferta.style.display = 'block';
+    } else {
+        campiTrasferta.style.display = 'none';
+    }
+}
+
+function caricaNavi(selectedNaveID) {
+    var compagniaEl = document.getElementById('compagnia_id');
+    var naveSelect = document.getElementById('nave_id');
+
+    // Se gli elementi non esistono, esci
+    if (!compagniaEl || !naveSelect) return;
+
+    var compagniaID = compagniaEl.value;
+
+    if (!compagniaID) {
+        naveSelect.innerHTML = '<option value="">-- Seleziona Compagnia --</option>';
+        return;
+    }
+
+    fetch('/api/navi-compagnia?compagnia_id=' + compagniaID)
+        .then(r => r.json())
+        .then(navi => {
+            var html = '<option value="">-- Seleziona --</option>';
+            (navi || []).forEach(function(n) {
+                var selected = (selectedNaveID && n.id == selectedNaveID) ? ' selected' : '';
+                html += '<option value="' + n.id + '"' + selected + '>' + n.nome + '</option>';
+            });
+            naveSelect.innerHTML = html;
+        });
+}
+
+function salvaGiornata() {
+    var luogoEl = document.getElementById('luogo');
+    var noteEl = document.getElementById('note_giornata');
+
+    var data = {
+        data: document.getElementById('giornata_data').value,
+        tecnico_id: parseInt(document.getElementById('giornata_tecnico_id').value),
+        tipo_giornata: document.getElementById('tipo_giornata').value,
+        luogo: luogoEl ? luogoEl.value : '',
+        note: noteEl ? noteEl.value : ''
+    };
+
+    var compagniaEl = document.getElementById('compagnia_id');
+    var naveEl = document.getElementById('nave_id');
+    var compagniaID = compagniaEl ? compagniaEl.value : '';
+    var naveID = naveEl ? naveEl.value : '';
+
+    if (compagniaID) data.compagnia_id = parseInt(compagniaID);
+    if (naveID) data.nave_id = parseInt(naveID);
+
+    fetch('/api/calendario/salva-giornata', {
+        credentials: 'same-origin',
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(resp => {
+        if (resp.success) {
+            giornataCorrente = giornataCorrente || {};
+            giornataCorrente.ID = resp.giornata_id;
+            document.getElementById('sezioneSpese').style.display = 'block';
+                document.getElementById('btnEliminaGiornata').style.display = 'inline-block';
+
+            // Aggiorna colore cella
+            var cella = document.querySelector('[data-data="' + data.data + '"]');
+            if (cella && resp.colore) {
+                cella.style.backgroundColor = resp.colore;
+            }
+
+            alert('Giornata salvata!');
+        } else {
+            alert('Errore nel salvataggio');
+        }
+    });
+}
+
+function aggiornaListaSpese(spese) {
+    var html = '';
+    var totale = 0;
+
+    (spese || []).forEach(function(s) {
+        var tipoLabel = {
+            'carburante': 'Carburante',
+            'cibo_hotel': 'Cibo/Hotel',
+            'pedaggi_taxi': 'Pedaggi/Taxi',
+            'materiali': 'Materiali',
+            'varie': 'Varie'
+        }[s.TipoSpesa] || s.TipoSpesa;
+
+        var rimborso = s.MetodoPagamento === 'carta_personale' ? '<span class="spesa-rimborso">(da rimborsare)</span>' : '';
+
+        html += '<div class="spesa-item">' +
+            '<div class="spesa-info">' + tipoLabel + (s.Note ? ': ' + s.Note : '') + '</div>' +
+            '<div class="spesa-importo">€ ' + s.Importo.toFixed(2) + ' ' + rimborso + '</div>' +
+            '<button class="btn btn-danger btn-elimina" onclick="eliminaSpesa(' + s.ID + ')">X</button>' +
+            '</div>';
+
+        totale += s.Importo;
+    });
+
+    document.getElementById('listaSpese').innerHTML = html || '<p>Nessuna spesa registrata</p>';
+    document.getElementById('totaleGiornoSpese').textContent = totale.toFixed(2);
+}
+
+function aggiungiSpesa() {
+    if (!giornataCorrente || !giornataCorrente.ID) {
+        alert('Salva prima la giornata');
+        return;
+    }
+
+    var importo = parseFloat(document.getElementById('importo_spesa').value);
+    if (!importo || importo <= 0) {
+        alert('Inserisci un importo valido');
+        return;
+    }
+
+    var data = {
+        giornata_id: giornataCorrente.ID,
+        tipo_spesa: document.getElementById('tipo_spesa').value,
+        importo: importo,
+        note: document.getElementById('note_spesa').value,
+        metodo_pagamento: document.getElementById('metodo_pagamento').value
+    };
+
+    fetch('/api/calendario/salva-spesa', {
+        credentials: 'same-origin',
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(resp => {
+        if (resp.success) {
+            // Ricarica spese
+            fetch('/api/calendario/giornata?data=' + giornataCorrente.Data + '&tecnico_id=' + giornataCorrente.TecnicoID, {credentials: 'same-origin'})
+                .then(r => r.json())
+                .then(g => {
+                    aggiornaListaSpese(g.Spese || []);
+                });
+
+            // Pulisci form
+            document.getElementById('importo_spesa').value = '';
+            document.getElementById('note_spesa').value = '';
+        }
+    });
+}
+
+function eliminaSpesa(spesaID) {
+    if (!confirm('Eliminare questa spesa?')) return;
+
+    fetch('/api/calendario/elimina-spesa', {
+        credentials: 'same-origin',
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            spesa_id: spesaID,
+            giornata_id: giornataCorrente.ID
+        })
+    })
+    .then(r => r.json())
+    .then(resp => {
+        if (resp.success) {
+            // Ricarica spese
+            fetch('/api/calendario/giornata?data=' + giornataCorrente.Data + '&tecnico_id=' + giornataCorrente.TecnicoID, {credentials: 'same-origin'})
+                .then(r => r.json())
+                .then(g => {
+                    aggiornaListaSpese(g.Spese || []);
+                });
+        }
+    });
+}
+
+
+function eliminaGiornata() {
+    if (!giornataCorrente || !giornataCorrente.ID) {
+        alert("Nessuna giornata da eliminare");
+        return;
+    }
+    
+    if (!confirm("Sei sicuro di voler eliminare questa giornata e tutte le spese associate?")) {
+        return;
+    }
+    
+    fetch("/api/calendario/elimina-giornata", {
+        credentials: "same-origin",
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            giornata_id: giornataCorrente.ID
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+        if (resp.success) {
+            chiudiModale();
+            location.reload();
+        } else {
+            alert("Errore durante eliminazione");
+        }
+    });
+}
+
+// === FUNZIONI NUOVA SPESA SENZA TRASFERTA ===
+function apriModaleNuovaSpesa() {
+    var modal = document.getElementById("modaleNuovaSpesa");
+    // Imposta data di default a oggi
+    var oggi = new Date().toISOString().split("T")[0];
+    document.getElementById("spesa_data").value = oggi;
+    document.getElementById("spesa_tipo").value = "";
+    document.getElementById("spesa_descrizione").value = "";
+    document.getElementById("spesa_importo").value = "";
+    document.getElementById("spesa_pagamento").value = "carta_aziendale";
+    modal.style.display = "flex";
+}
+
+function chiudiModaleNuovaSpesa() {
+    document.getElementById("modaleNuovaSpesa").style.display = "none";
+}
+
+function salvaNuovaSpesa() {
+    var data = document.getElementById("spesa_data").value;
+    var tipo = document.getElementById("spesa_tipo").value;
+    var descrizione = document.getElementById("spesa_descrizione").value;
+    var importo = parseFloat(document.getElementById("spesa_importo").value);
+    var pagamento = document.getElementById("spesa_pagamento").value;
+    var tecnicoID = {{.Data.TecnicoID}};
+
+    if (!data || !tipo || !importo) {
+        alert("Compila tutti i campi obbligatori");
+        return;
+    }
+
+    // Prima crea/ottiene la giornata, poi aggiungi la spesa
+    fetch("/api/calendario/salva-giornata", {
+        credentials: "same-origin",
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            data: data,
+            tecnico_id: tecnicoID,
+            tipo_giornata: "ufficio"
+        })
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(result) {
+        var giornataID = result.giornata_id;
+        // Ora salva la spesa
+        return fetch("/api/calendario/salva-spesa", {
+            credentials: "same-origin",
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                giornata_id: giornataID,
+                tipo_spesa: tipo,
+                note: descrizione,
+                importo: importo,
+                metodo_pagamento: pagamento
+            })
+        });
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(result) {
+        if (result.success) {
+            chiudiModaleNuovaSpesa();
+            location.reload();
+        } else {
+            alert("Errore: " + (result.error || "Errore sconosciuto"));
+        }
+    })
+    .catch(function(err) {
+        alert("Errore di rete: " + err);
+    });
+}
+
+
+// === FUNZIONI FERIE/PERMESSI ===
+function apriModaleFeriePermessi() {
+    var modal = document.getElementById("modaleFeriePermessi");
+    var oggi = new Date().toISOString().split("T")[0];
+    document.getElementById("ferie_data").value = oggi;
+    document.getElementById("ferie_tipo").value = "ferie";
+    document.getElementById("ferie_ore").value = "1";
+    document.getElementById("ferie_note").value = "";
+    document.getElementById("gruppoOrePermesso").style.display = "none";
+    modal.style.display = "flex";
+}
+
+function chiudiModaleFeriePermessi() {
+    document.getElementById("modaleFeriePermessi").style.display = "none";
+}
+
+function tipoFerieChange() {
+    var tipo = document.getElementById("ferie_tipo").value;
+    if (tipo === "permesso") {
+        document.getElementById("gruppoOrePermesso").style.display = "block";
+    } else {
+        document.getElementById("gruppoOrePermesso").style.display = "none";
+    }
+}
+
+function salvaFeriePermesso() {
+    var data = document.getElementById("ferie_data").value;
+    var tipo = document.getElementById("ferie_tipo").value;
+    var ore = tipo === "permesso" ? parseInt(document.getElementById("ferie_ore").value) : 0;
+    var note = document.getElementById("ferie_note").value;
+
+    if (!data) {
+        alert("Seleziona una data");
+        return;
+    }
+
+    var tipoGiornata = tipo === "ferie" ? "ferie" : "permesso";
+
+    fetch("/api/calendario/salva-giornata", {
+        credentials: "same-origin",
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            data: data,
+            tecnico_id: tecnicoID,
+            tipo_giornata: tipoGiornata,
+            ore_permesso: ore,
+            note: note
+        })
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(result) {
+        if (result.success) {
+            chiudiModaleFeriePermessi();
+            location.reload();
+        } else {
+            alert("Errore: " + (result.error || "Errore sconosciuto"));
+        }
+    })
+    .catch(function(err) {
+        alert("Errore di rete: " + err);
+    });
+}
+
+</script>
+{{end}}

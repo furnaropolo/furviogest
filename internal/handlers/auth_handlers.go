@@ -31,7 +31,19 @@ func InitTemplates(templatesDir string) error {
 		}
 
 		templateFile := filepath.Join(templatesDir, file.Name())
-		tmpl, err := template.ParseFiles(baseFile, templateFile)
+		funcMap := template.FuncMap{
+			"add": func(a, b int) int { return a + b },
+			"sub": func(a, b int) int { return a - b },
+			"mod": func(a, b int) int { return a % b },
+			"seq": func(start, end int) []int {
+				var result []int
+				for i := start; i <= end; i++ {
+					result = append(result, i)
+				}
+				return result
+			},
+		}
+		tmpl, err := template.New(file.Name()).Funcs(funcMap).ParseFiles(baseFile, templateFile)
 		if err != nil {
 			return err
 		}

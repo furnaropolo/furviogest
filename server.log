@@ -1,0 +1,116 @@
+2025/12/07 13:25:55 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
+2025/12/07 13:25:55 Database inizializzato correttamente
+2025/12/07 13:25:55 Caricamento templates da: /home/ies/furviogest/web/templates
+2025/12/07 13:25:55 Server FurvioGest avviato su http://localhost:8080
+2025/12/07 13:25:55 Credenziali predefinite: admin / admin
+2025/12/07 13:25:55 IMPORTANTE: Cambiare la password al primo accesso!
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG: tecnicoID=3, anno=2025, mese=12, giornate trovate=8DEBUG giorno 2025-12-01: tipo=trasferta_giornaliera colore=#fff3cd
+DEBUG giorno 2025-12-02: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-03: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-04: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-05: tipo=ufficio colore=#ffffff
+DEBUG giorno 2025-12-22: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-23: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-24: tipo=permesso colore=#e2d5f7
+2025/12/07 13:26:30 Spesa letta: Data=2025-12-01T00:00:00Z, Tipo=cibo_hotel
+2025/12/07 13:26:30 Spesa letta: Data=2025-12-01T00:00:00Z, Tipo=cibo_hotel
+2025/12/07 13:26:30 Spesa letta: Data=2025-12-05T00:00:00Z, Tipo=pedaggi_taxi
+2025/12/07 13:27:02 Spesa letta: Data=2025-12-01T00:00:00Z, Tipo=cibo_hotel
+2025/12/07 13:27:02 Spesa letta: Data=2025-12-01T00:00:00Z, Tipo=cibo_hotel
+2025/12/07 13:27:02 Spesa letta: Data=2025-12-05T00:00:00Z, Tipo=pedaggi_taxi
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG: tecnicoID=3, anno=2025, mese=12, giornate trovate=8DEBUG giorno 2025-12-01: tipo=trasferta_giornaliera colore=#fff3cd
+DEBUG giorno 2025-12-02: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-03: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-04: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-05: tipo=ufficio colore=#ffffff
+DEBUG giorno 2025-12-22: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-23: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-24: tipo=permesso colore=#e2d5f7
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG: tecnicoID=3, anno=2025, mese=12, giornate trovate=8DEBUG giorno 2025-12-01: tipo=trasferta_giornaliera colore=#fff3cd
+DEBUG giorno 2025-12-02: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-03: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-04: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-05: tipo=ufficio colore=#ffffff
+DEBUG giorno 2025-12-22: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-23: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-24: tipo=permesso colore=#e2d5f7
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG: tecnicoID=3, anno=2025, mese=12, giornate trovate=8DEBUG giorno 2025-12-01: tipo=trasferta_giornaliera colore=#fff3cd
+DEBUG giorno 2025-12-02: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-03: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-04: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-05: tipo=ufficio colore=#ffffff
+DEBUG giorno 2025-12-22: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-23: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-24: tipo=permesso colore=#e2d5f7
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG: tecnicoID=3, anno=2025, mese=12, giornate trovate=8DEBUG giorno 2025-12-01: tipo=trasferta_giornaliera colore=#fff3cd
+DEBUG giorno 2025-12-02: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-03: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-04: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-05: tipo=ufficio colore=#ffffff
+DEBUG giorno 2025-12-22: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-23: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-24: tipo=permesso colore=#e2d5f7
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-01T00:00:00Z tipo=trasferta_giornaliera
+DEBUG carica: data key=2025-12-02T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-03T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-04T00:00:00Z tipo=trasferta_pernotto
+DEBUG carica: data key=2025-12-05T00:00:00Z tipo=ufficio
+DEBUG carica: data key=2025-12-22T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-23T00:00:00Z tipo=permesso
+DEBUG carica: data key=2025-12-24T00:00:00Z tipo=permesso
+DEBUG: tecnicoID=3, anno=2025, mese=12, giornate trovate=8DEBUG giorno 2025-12-01: tipo=trasferta_giornaliera colore=#fff3cd
+DEBUG giorno 2025-12-02: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-03: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-04: tipo=trasferta_pernotto colore=#d4edda
+DEBUG giorno 2025-12-05: tipo=ufficio colore=#ffffff
+DEBUG giorno 2025-12-22: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-23: tipo=permesso colore=#e2d5f7
+DEBUG giorno 2025-12-24: tipo=permesso colore=#e2d5f7

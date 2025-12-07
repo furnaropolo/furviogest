@@ -165,6 +165,8 @@ func NuovoPermesso(w http.ResponseWriter, r *http.Request) {
 	}
 
 	note := strings.TrimSpace(r.FormValue("note"))
+	rientroInGiornata := r.FormValue("rientro_in_giornata") == "1"
+	descrizioneIntervento := strings.TrimSpace(r.FormValue("descrizione_intervento"))
 	tecniciSelezionati := r.Form["tecnici"]
 
 	if len(tecniciSelezionati) == 0 {
@@ -176,9 +178,9 @@ func NuovoPermesso(w http.ResponseWriter, r *http.Request) {
 	// Inserisci la richiesta permesso
 	result, err := database.DB.Exec(`
 		INSERT INTO richieste_permesso (nave_id, porto_id, tecnico_creatore, automezzo_id, 
-			targa_esterna, tipo_durata, data_inizio, data_fine, note)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, naveID, portoID, tecnicoCreatore, automezzoID, targaEsterna, tipoDurata, dataInizio, dataFine, note)
+			targa_esterna, tipo_durata, data_inizio, data_fine, note, descrizione_intervento, rientro_in_giornata)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, naveID, portoID, tecnicoCreatore, automezzoID, targaEsterna, tipoDurata, dataInizio, dataFine, note, descrizioneIntervento, rientroInGiornata)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio: " + err.Error()
@@ -198,6 +200,22 @@ func NuovoPermesso(w http.ResponseWriter, r *http.Request) {
 			`, permessoID, tecnicoID)
 		}
 	}
+
+
+// 	// Se non e previsto il rientro in giornata, genera automaticamente le trasferte
+// 	if !rientroInGiornata {
+// 		// Calcola destinazione dal porto
+// 		var destinazione string
+// 		database.DB.QueryRow("SELECT nome || COALESCE(' - ' || citta, '') FROM porti WHERE id = ?", portoID).Scan(&destinazione)
+// 		
+// 		// Data rientro: se dataFine esiste usala, altrimenti usa dataInizio + 1
+// 		dataRientro := dataInizio.AddDate(0, 0, 1)
+// 		if dataFine != nil {
+// 			dataRientro = *dataFine
+// 		}
+// 		
+// // SCOLLEGATO: 		generaTrasfertePerPermesso(permessoID, tecniciSelezionati, destinazione, dataInizio, dataRientro, naveID, automezzoID)
+// 	}
 
 	http.Redirect(w, r, "/permessi", http.StatusSeeOther)
 }
@@ -238,10 +256,10 @@ func ModificaPermesso(w http.ResponseWriter, r *http.Request) {
 
 		err := database.DB.QueryRow(`
 			SELECT id, nave_id, porto_id, automezzo_id, targa_esterna, 
-				   tipo_durata, data_inizio, data_fine, note
+				   tipo_durata, data_inizio, data_fine, note, rientro_in_giornata
 			FROM richieste_permesso WHERE id = ?
 		`, id).Scan(&p.ID, &p.NaveID, &p.PortoID, &automezzoID, &targaEsterna,
-			&p.TipoDurata, &p.DataInizio, &dataFine, &note)
+			&p.TipoDurata, &p.DataInizio, &dataFine, &note, &p.RientroInGiornata)
 
 		if err != nil {
 			http.Redirect(w, r, "/permessi", http.StatusSeeOther)
@@ -308,6 +326,8 @@ func ModificaPermesso(w http.ResponseWriter, r *http.Request) {
 	}
 
 	note := strings.TrimSpace(r.FormValue("note"))
+	rientroInGiornata := r.FormValue("rientro_in_giornata") == "1"
+	descrizioneIntervento := strings.TrimSpace(r.FormValue("descrizione_intervento"))
 	tecniciSelezionati := r.Form["tecnici"]
 
 	if len(tecniciSelezionati) == 0 {
@@ -321,10 +341,10 @@ func ModificaPermesso(w http.ResponseWriter, r *http.Request) {
 	_, err = database.DB.Exec(`
 		UPDATE richieste_permesso SET 
 			nave_id = ?, porto_id = ?, automezzo_id = ?, targa_esterna = ?,
-			tipo_durata = ?, data_inizio = ?, data_fine = ?, note = ?,
+			tipo_durata = ?, data_inizio = ?, data_fine = ?, note = ?, descrizione_intervento = ?, rientro_in_giornata = ?,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, naveID, portoID, automezzoID, targaEsterna, tipoDurata, dataInizio, dataFine, note, id)
+	`, naveID, portoID, automezzoID, targaEsterna, tipoDurata, dataInizio, dataFine, note, descrizioneIntervento, rientroInGiornata, id)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"
@@ -345,6 +365,25 @@ func ModificaPermesso(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+// 
+// 	// Gestione trasferte in base a rientro_in_giornata
+// 	if rientroInGiornata {
+// 		// Se rientro in giornata, elimina eventuali trasferte collegate
+// // SCOLLEGATO: 		eliminaTrasfertePermesso(id)
+// 	} else {
+// 		// Se non rientro in giornata, genera le trasferte
+// 		var destinazione string
+// 		database.DB.QueryRow("SELECT nome || COALESCE(' - ' || citta, '') FROM porti WHERE id = ?", portoID).Scan(&destinazione)
+// 		
+// 		dataRientro := dataInizio.AddDate(0, 0, 1)
+// 		if dataFine != nil {
+// 			dataRientro = *dataFine
+// 		}
+// 		
+// 		// Prima elimina quelle vecchie poi rigenera
+// // SCOLLEGATO: 		eliminaTrasfertePermesso(id)
+// // SCOLLEGATO: 		generaTrasfertePerPermesso(id, tecniciSelezionati, destinazione, dataInizio, dataRientro, naveID, automezzoID)
+// 	}
 	http.Redirect(w, r, "/permessi", http.StatusSeeOther)
 }
 
@@ -1007,4 +1046,46 @@ func caricaSMTPTecnico(tecnicoID int64) (*email.SMTPConfig, error) {
 		FromName: nomeTecnico,
 		FromAddr: fromAddr,
 	}, nil
+}
+
+// generaTrasfertePerPermesso crea automaticamente le trasferte per ogni tecnico
+// quando il permesso non prevede il rientro in giornata
+// quando il permesso non prevede il rientro in giornata
+func generaTrasfertePerPermesso(permessoID int64, tecniciIDs []string, destinazione string, dataPartenza, dataRientro time.Time, naveID int64, automezzoID *int64) error {
+	// Calcola numero notti
+	giorni := int(dataRientro.Sub(dataPartenza).Hours()/24) + 1
+	numeroNotti := giorni - 1
+	if numeroNotti < 1 {
+		numeroNotti = 1
+	}
+
+	for _, tecnicoIDStr := range tecniciIDs {
+		tecnicoID, err := strconv.ParseInt(tecnicoIDStr, 10, 64)
+		if err != nil {
+			continue
+		}
+
+		// Verifica se esiste gia una trasferta per questo tecnico e permesso
+		var count int
+		database.DB.QueryRow("SELECT COUNT(*) FROM trasferte WHERE richiesta_permesso_id = ? AND tecnico_id = ? AND deleted_at IS NULL", permessoID, tecnicoID).Scan(&count)
+
+		if count > 0 {
+			continue // Trasferta gia esistente
+		}
+
+		// Crea la trasferta
+		_, err = database.DB.Exec("INSERT INTO trasferte (tecnico_id, richiesta_permesso_id, destinazione, data_partenza, data_rientro, pernottamento, numero_notti, nave_id, automezzo_id, note) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, 'Generata automaticamente da richiesta permesso')", tecnicoID, permessoID, destinazione, dataPartenza, dataRientro, numeroNotti, naveID, automezzoID)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// eliminaTrasfertePermesso elimina le trasferte collegate a un permesso
+// quando il rientro in giornata viene cambiato a true
+func eliminaTrasfertePermesso(permessoID int64) error {
+	_, err := database.DB.Exec("UPDATE trasferte SET deleted_at = CURRENT_TIMESTAMP WHERE richiesta_permesso_id = ? AND deleted_at IS NULL", permessoID)
+	return err
 }

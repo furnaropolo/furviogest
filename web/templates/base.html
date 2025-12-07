@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Flatpickr per date in formato europeo -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/it.js"></script>
 </head>
 <body>
     {{if .Session}}
@@ -26,7 +30,7 @@
                 {{else}}
                 <!-- Menu per Tecnico e Guest -->
                 <a href="/" class="navbar-item">Dashboard</a>
-                <div class="navbar-dropdown">
+                <div class="navbar-dropdown"><!-- TRASFERTE -->
                     <a href="#" class="navbar-item dropdown-toggle">Anagrafiche</a>
                     <div class="dropdown-content">
                         <a href="/tecnici" class="dropdown-item">Tecnici</a>
@@ -41,15 +45,7 @@
                 <a href="/attrezzi" class="navbar-item">Attrezzi</a>
                 <a href="/permessi" class="navbar-item">Permessi</a>
                 <a href="/rapporti" class="navbar-item">Rapporti</a>
-                <div class="navbar-dropdown">
-                    <a href="#" class="navbar-item dropdown-toggle">Trasferte</a>
-                    <div class="dropdown-content">
-                        <a href="/trasferte" class="dropdown-item">Lista Trasferte</a>
-                        <a href="/note-spese" class="dropdown-item">Note Spese</a>
-                        <a href="/foglio-mensile" class="dropdown-item">Foglio Mensile</a>
-                    </div>
-                </div>
-                <a href="/ddt" class="navbar-item">DDT</a>
+                <a href="/calendario-trasferte" class="navbar-item">Trasferte e Spese</a>
                 {{if .Session.IsTecnico}}
                 <a href="/amministrazione" class="navbar-item">Amministrazione</a>
                 {{end}}
@@ -91,6 +87,18 @@
     </footer>
 
     <script src="/static/js/main.js"></script>
+    <script>
+    // Inizializza tutti i campi date con Flatpickr in formato italiano
+    document.addEventListener("DOMContentLoaded", function() {
+        flatpickr("input[type=date]", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d/m/Y",
+            locale: "it",
+            allowInput: true
+        });
+    });
+    </script>
 </body>
 </html>
 {{end}}

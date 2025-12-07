@@ -46,6 +46,11 @@ func main() {
 
 	// Crea utente admin predefinito
 	if err := database.CreateDefaultAdmin(auth.HashPassword); err != nil {
+
+	// Crea tabelle calendario trasferte
+	if err := database.AddCalendarioTables(); err != nil {
+		log.Println("Attenzione: errore creazione tabelle calendario:", err)
+	}
 		log.Println("Attenzione: errore creazione admin predefinito:", err)
 	}
 
@@ -219,6 +224,18 @@ func main() {
 	mux.Handle("/ddt/genera-numero", middleware.RequireAuth(http.HandlerFunc(handlers.GeneraNumDDT)))
 	// Foglio Mensile
 	mux.Handle("/foglio-mensile", middleware.RequireAuth(http.HandlerFunc(handlers.FoglioMensile)))
+	// Calendario Trasferte
+	mux.Handle("/calendario-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.CalendarioTrasferte)))
+	mux.Handle("/api/calendario/giornata", middleware.RequireAuth(http.HandlerFunc(handlers.APIDettaglioGiornata)))
+	mux.Handle("/api/calendario/salva-giornata", middleware.RequireAuth(http.HandlerFunc(handlers.APISalvaGiornata)))
+	mux.Handle("/api/calendario/salva-spesa", middleware.RequireAuth(http.HandlerFunc(handlers.APISalvaSpesa)))
+	mux.Handle("/api/calendario/elimina-spesa", middleware.RequireAuth(http.HandlerFunc(handlers.APIEliminaSpesa)))
+	mux.Handle("/api/calendario/elimina-giornata", middleware.RequireAuth(http.HandlerFunc(handlers.APIEliminaGiornata)))
+	mux.Handle("/stampa-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.StampaTrasferte)))
+	mux.Handle("/stampa-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.StampaNoteSpese)))
+	mux.Handle("/email-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailTrasferte)))
+	mux.Handle("/email-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailNoteSpese)))
+	mux.Handle("/api/navi-compagnia", middleware.RequireAuth(http.HandlerFunc(handlers.APINaviCompagnia)))
 	// Avvia il server
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("Server FurvioGest avviato su http://localhost%s", addr)

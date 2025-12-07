@@ -21,12 +21,13 @@ type Trasferta struct {
 	DataRientro   string
 	Pernottamento bool
 	NumeroNotti   int
-	KmPercorsi    int
+	NaveID        int64
 	AutomezzoID   *int64
 	Note          string
 	// Campi join
 	NomeTecnico   string
 	NomeAutomezzo string
+	NomeNave      string
 	TargaAuto     string
 }
 
@@ -44,14 +45,16 @@ func ListaTrasferte(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT t.id, t.tecnico_id, t.rapporto_id, t.destinazione, t.data_partenza, t.data_rientro,
-		       t.pernottamento, t.numero_notti, COALESCE(t.km_percorsi, 0), t.automezzo_id,
+		       t.pernottamento, t.numero_notti, COALESCE(t.nave_id, 0), t.automezzo_id,
 		       COALESCE(t.note, ''),
 		       COALESCE(u.cognome || ' ' || u.nome, '') as tecnico,
 		       COALESCE(a.marca || ' ' || a.modello, '') as automezzo,
-		       COALESCE(a.targa, '') as targa
+		       COALESCE(a.targa, '') as targa,
+		       COALESCE(n.nome, '') as nave
 		FROM trasferte t
 		LEFT JOIN utenti u ON t.tecnico_id = u.id
 		LEFT JOIN automezzi a ON t.automezzo_id = a.id
+		LEFT JOIN navi n ON t.nave_id = n.id
 		WHERE t.deleted_at IS NULL
 	`
 
@@ -86,8 +89,8 @@ func ListaTrasferte(w http.ResponseWriter, r *http.Request) {
 		var pern int
 		var rapID, autoID *int64
 		err := rows.Scan(&t.ID, &t.TecnicoID, &rapID, &t.Destinazione, &t.DataPartenza, &t.DataRientro,
-			&pern, &t.NumeroNotti, &t.KmPercorsi, &autoID, &t.Note,
-			&t.NomeTecnico, &t.NomeAutomezzo, &t.TargaAuto)
+			&pern, &t.NumeroNotti, &t.NaveID, &autoID, &t.Note,
+			&t.NomeTecnico, &t.NomeAutomezzo, &t.TargaAuto, &t.NomeNave)
 		if err != nil {
 			continue
 		}
@@ -128,7 +131,7 @@ func NuovaTrasferta(w http.ResponseWriter, r *http.Request) {
 		dataRientro := r.FormValue("data_rientro")
 		pernottamento := r.FormValue("pernottamento") == "1"
 		numeroNotti, _ := strconv.Atoi(r.FormValue("numero_notti"))
-		kmPercorsi, _ := strconv.Atoi(r.FormValue("km_percorsi"))
+		naveID, _ := strconv.ParseInt(r.FormValue("nave_id"), 10, 64)
 		automezzoIDStr := r.FormValue("automezzo_id")
 		note := r.FormValue("note")
 
@@ -156,10 +159,10 @@ func NuovaTrasferta(w http.ResponseWriter, r *http.Request) {
 
 		_, err := database.DB.Exec(`
 			INSERT INTO trasferte (tecnico_id, rapporto_id, destinazione, data_partenza, data_rientro,
-			                      pernottamento, numero_notti, km_percorsi, automezzo_id, note)
+			                      pernottamento, numero_notti, nave_id, automezzo_id, note)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`, tecnicoID, rapportoID, destinazione, dataPartenza, dataRientro,
-			pernInt, numeroNotti, kmPercorsi, automezzoID, note)
+			pernInt, numeroNotti, naveID, automezzoID, note)
 
 		if err != nil {
 			pageData := NewPageData("Nuova Trasferta", r)
@@ -201,7 +204,7 @@ func ModificaTrasferta(w http.ResponseWriter, r *http.Request) {
 		dataRientro := r.FormValue("data_rientro")
 		pernottamento := r.FormValue("pernottamento") == "1"
 		numeroNotti, _ := strconv.Atoi(r.FormValue("numero_notti"))
-		kmPercorsi, _ := strconv.Atoi(r.FormValue("km_percorsi"))
+		naveID, _ := strconv.ParseInt(r.FormValue("nave_id"), 10, 64)
 		automezzoIDStr := r.FormValue("automezzo_id")
 		note := r.FormValue("note")
 
@@ -229,11 +232,11 @@ func ModificaTrasferta(w http.ResponseWriter, r *http.Request) {
 		_, err := database.DB.Exec(`
 			UPDATE trasferte 
 			SET tecnico_id = ?, rapporto_id = ?, destinazione = ?, data_partenza = ?, data_rientro = ?,
-			    pernottamento = ?, numero_notti = ?, km_percorsi = ?, automezzo_id = ?, note = ?,
+			    pernottamento = ?, numero_notti = ?, nave_id = ?, automezzo_id = ?, note = ?,
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE id = ?
 		`, tecnicoID, rapportoID, destinazione, dataPartenza, dataRientro,
-			pernInt, numeroNotti, kmPercorsi, automezzoID, note, id)
+			pernInt, numeroNotti, naveID, automezzoID, note, id)
 
 		if err != nil {
 			pageData := NewPageData("Modifica Trasferta", r)
@@ -285,6 +288,10 @@ func getTrasfertaFormData(trasfertaID int64, session *auth.Session) map[string]i
 	rapporti := getRapportiRecenti()
 	data["Rapporti"] = rapporti
 
+	// Lista navi
+	navi, _ := caricaNavi()
+	data["Navi"] = navi
+
 	// Trasferta esistente
 	if trasfertaID > 0 {
 		var t Trasferta
@@ -292,10 +299,10 @@ func getTrasfertaFormData(trasfertaID int64, session *auth.Session) map[string]i
 		var rapID, autoID *int64
 		database.DB.QueryRow(`
 			SELECT id, tecnico_id, rapporto_id, destinazione, data_partenza, data_rientro,
-			       pernottamento, numero_notti, COALESCE(km_percorsi, 0), automezzo_id, COALESCE(note, '')
+			       pernottamento, numero_notti, COALESCE(nave_id, 0), automezzo_id, COALESCE(note, '')
 			FROM trasferte WHERE id = ?
 		`, trasfertaID).Scan(&t.ID, &t.TecnicoID, &rapID, &t.Destinazione, &t.DataPartenza, &t.DataRientro,
-			&pern, &t.NumeroNotti, &t.KmPercorsi, &autoID, &t.Note)
+			&pern, &t.NumeroNotti, &t.NaveID, &autoID, &t.Note)
 		t.Pernottamento = pern == 1
 		t.RapportoID = rapID
 		t.AutomezzoID = autoID

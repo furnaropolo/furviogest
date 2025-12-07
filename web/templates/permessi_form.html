@@ -69,6 +69,20 @@
                        value="{{if $permesso}}{{if $permesso.DataFine}}{{$permesso.DataFine.Format "2006-01-02"}}{{end}}{{end}}">
             </div>
         </div>
+        
+        <div class="form-row" style="margin-top: 15px;">
+            <div class="form-group">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" name="rientro_in_giornata" id="rientro_in_giornata" value="1"
+                           {{if $permesso}}{{if $permesso.RientroInGiornata}}checked{{end}}{{else}}checked{{end}}
+                           style="width: 20px; height: 20px;">
+                    <span>Rientro in giornata</span>
+                </label>
+                <small class="form-help" style="margin-top: 5px; display: block;">
+                    Deseleziona se i tecnici dovranno pernottare fuori sede (genera automaticamente foglio trasferta)
+                </small>
+            </div>
+        </div>
     </div>
 
     <div class="form-section">
@@ -113,7 +127,6 @@
         </div>
     </div>
 
-    <div class="form-section">
     <div class="form-section">
         <h3>Descrizione Intervento *</h3>
         <p class="form-help">Descrivi i lavori da effettuare sulla nave (questa informazione sarà inclusa nell'email all'agenzia)</p>

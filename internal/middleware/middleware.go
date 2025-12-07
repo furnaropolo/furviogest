@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"furviogest/internal/auth"
 	"furviogest/internal/models"
 	"net/http"
+	"strings"
 )
 
 type contextKey string
@@ -23,8 +25,20 @@ func GetSession(r *http.Request) *auth.Session {
 // RequireAuth middleware che richiede autenticazione
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Controlla se e una chiamata API (JSON request)
+		isAPI := strings.Contains(r.Header.Get("Content-Type"), "application/json") ||
+			strings.Contains(r.Header.Get("Accept"), "application/json") ||
+			r.Method == "POST" && (strings.HasPrefix(r.URL.Path, "/calendario/") || 
+				strings.HasPrefix(r.URL.Path, "/api/"))
+		
 		cookie, err := r.Cookie("session_token")
 		if err != nil {
+			if isAPI {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "Non autorizzato"})
+				return
+			}
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -38,6 +52,12 @@ func RequireAuth(next http.Handler) http.Handler {
 				Path:   "/",
 				MaxAge: -1,
 			})
+			if isAPI {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "Sessione scaduta"})
+				return
+			}
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -83,7 +103,6 @@ func RequireGuest(next http.Handler) http.Handler {
 // Logging middleware per il logging delle richieste
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Log semplice - può essere esteso
 		next.ServeHTTP(w, r)
 	})
 }

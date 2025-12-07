@@ -204,6 +204,7 @@ type RichiestaPermesso struct {
 	DataFine        *time.Time         `json:"data_fine,omitempty"` // NULL se fine_lavori
 	Note                 string             `json:"note"`
 	DescrizioneIntervento string             `json:"descrizione_intervento"`
+	RientroInGiornata    bool               `json:"rientro_in_giornata"`
 	EmailInviata    bool               `json:"email_inviata"`
 	DataInvioEmail  *time.Time         `json:"data_invio_email,omitempty"`
 	CreatedAt       time.Time          `json:"created_at"`
@@ -271,7 +272,8 @@ type MaterialeRapporto struct {
 type Trasferta struct {
 	ID            int64     `json:"id"`
 	TecnicoID     int64     `json:"tecnico_id"`
-	RapportoID    *int64    `json:"rapporto_id,omitempty"` // Collegamento opzionale al rapporto
+	RapportoID           *int64    `json:"rapporto_id,omitempty"` // Collegamento opzionale al rapporto
+	RichiestaPermessoID *int64    `json:"richiesta_permesso_id,omitempty"` // Collegamento alla richiesta permesso
 	Destinazione  string    `json:"destinazione"`
 	DataPartenza  time.Time `json:"data_partenza"`
 	DataRientro   time.Time `json:"data_rientro"`
@@ -391,6 +393,8 @@ type ImpostazioniAzienda struct {
 	SMTPUser          string    `json:"smtp_user"`
 	SMTPPassword      string    `json:"smtp_password"`
 	SMTPFromName      string    `json:"smtp_from_name"`
+	EmailFoglioTrasferte string    `json:"email_foglio_trasferte"` // Email destinatari foglio trasferte
+	EmailNotaSpese       string    `json:"email_nota_spese"`       // Email destinatari nota spese
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 

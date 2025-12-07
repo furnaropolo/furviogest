@@ -160,6 +160,22 @@ www.azienda.it">{{.Data.Impostazioni.FirmaEmailTesto}}</textarea>
 
     </div>
 
+    <!-- Email Trasferte e Note Spese -->
+    <div class="form-section">
+        <h2>Destinatari Email Trasferte e Spese</h2>
+        <p class="hint">Inserisci gli indirizzi email a cui inviare i fogli trasferte e le note spese mensili. Separa piu indirizzi con virgola.</p>
+        <div class="form-group">
+            <label for="email_foglio_trasferte">Email Destinatari Foglio Trasferte</label>
+            <input type="text" id="email_foglio_trasferte" name="email_foglio_trasferte" value="{{.Data.Impostazioni.EmailFoglioTrasferte}}" placeholder="amministrazione@azienda.it, paghe@studio.it">
+            <small>Chi ricevera il riepilogo mensile delle trasferte</small>
+        </div>
+        <div class="form-group">
+            <label for="email_nota_spese">Email Destinatari Nota Spese</label>
+            <input type="text" id="email_nota_spese" name="email_nota_spese" value="{{.Data.Impostazioni.EmailNotaSpese}}" placeholder="contabilita@azienda.it">
+            <small>Chi ricevera il riepilogo mensile delle spese</small>
+        </div>
+    </div>
+
     <!-- Impostazioni SMTP -->
     <div class="form-section">
         <h2>Impostazioni Email (SMTP)</h2>
