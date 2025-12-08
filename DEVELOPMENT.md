@@ -256,3 +256,20 @@
 - **Scan LLDP/MAC funzionante**:
   - Testato su Zeus Palace con 5 switch
   - Associazione automatica AP ↔ porta switch tramite MAC
+
+### 2025-12-08 (sessione 8)
+- **Nuova sezione Uffici**:
+  - CRUD completo (nome, indirizzo, città, CAP, telefono, email, note)
+  - Gestione rete con AC e Switch (solo backup, no scan)
+  - Backup configurazione manuale e automatico settimanale
+- **Nuova sezione Sale Server**:
+  - CRUD completo (nome, indirizzo, città, CAP, telefono, email, note)
+  - Gestione rete con soli Switch (solo backup, no scan)
+  - Backup configurazione manuale e automatico settimanale
+- **Tabelle DB aggiunte**:
+  - uffici, ac_ufficio, switch_ufficio
+  - sale_server, switch_sala_server
+  - config_backup_ufficio
+- **Integrazione backup settimanale**:
+  - Job settimanale esteso per includere uffici e sale server
+  - Supporto SSH e Telnet per tutti gli apparati

@@ -529,6 +529,108 @@ func AddMonitoringTables() error {
 	CREATE INDEX IF NOT EXISTS idx_ap_ac ON access_point(ac_id);
 	CREATE INDEX IF NOT EXISTS idx_ap_log_ap ON ap_status_log(ap_id);
 	CREATE INDEX IF NOT EXISTS idx_backup_nave ON config_backup(nave_id);
+	-- Tabella uffici
+	CREATE TABLE IF NOT EXISTS uffici (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nome TEXT NOT NULL,
+		indirizzo TEXT,
+		citta TEXT,
+		cap TEXT,
+		telefono TEXT,
+		email TEXT,
+		note TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	-- Access Controller ufficio (solo backup)
+	CREATE TABLE IF NOT EXISTS ac_ufficio (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ufficio_id INTEGER NOT NULL,
+		ip TEXT NOT NULL,
+		ssh_port INTEGER DEFAULT 22,
+		ssh_user TEXT,
+		ssh_pass TEXT,
+		protocollo TEXT DEFAULT 'ssh',
+		modello TEXT,
+		note TEXT,
+		ultimo_backup DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (ufficio_id) REFERENCES uffici(id) ON DELETE CASCADE
+	);
+
+	-- Switch ufficio (solo backup)
+	CREATE TABLE IF NOT EXISTS switch_ufficio (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ufficio_id INTEGER NOT NULL,
+		nome TEXT NOT NULL,
+		marca TEXT DEFAULT 'huawei',
+		modello TEXT,
+		ip TEXT NOT NULL,
+		ssh_port INTEGER DEFAULT 22,
+		ssh_user TEXT,
+		ssh_pass TEXT,
+		protocollo TEXT DEFAULT 'ssh',
+		note TEXT,
+		ultimo_backup DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (ufficio_id) REFERENCES uffici(id) ON DELETE CASCADE
+	);
+
+	-- Tabella sale server
+	CREATE TABLE IF NOT EXISTS sale_server (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nome TEXT NOT NULL,
+		indirizzo TEXT,
+		citta TEXT,
+		cap TEXT,
+		telefono TEXT,
+		email TEXT,
+		note TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	-- Switch sala server (solo backup)
+	CREATE TABLE IF NOT EXISTS switch_sala_server (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		sala_server_id INTEGER NOT NULL,
+		nome TEXT NOT NULL,
+		marca TEXT DEFAULT 'huawei',
+		modello TEXT,
+		ip TEXT NOT NULL,
+		ssh_port INTEGER DEFAULT 22,
+		ssh_user TEXT,
+		ssh_pass TEXT,
+		protocollo TEXT DEFAULT 'ssh',
+		note TEXT,
+		ultimo_backup DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (sala_server_id) REFERENCES sale_server(id) ON DELETE CASCADE
+	);
+
+	-- Backup configurazioni uffici e sale server
+	CREATE TABLE IF NOT EXISTS config_backup_ufficio (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ufficio_id INTEGER,
+		sala_server_id INTEGER,
+		tipo_apparato TEXT NOT NULL,
+		apparato_id INTEGER NOT NULL,
+		nome_apparato TEXT,
+		file_path TEXT NOT NULL,
+		file_size INTEGER,
+		hash_md5 TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_ac_ufficio ON ac_ufficio(ufficio_id);
+	CREATE INDEX IF NOT EXISTS idx_switch_ufficio ON switch_ufficio(ufficio_id);
+	CREATE INDEX IF NOT EXISTS idx_switch_sala ON switch_sala_server(sala_server_id);
+	CREATE INDEX IF NOT EXISTS idx_backup_ufficio ON config_backup_ufficio(ufficio_id);
+	CREATE INDEX IF NOT EXISTS idx_backup_sala ON config_backup_ufficio(sala_server_id);
 	`
 
 	_, err := DB.Exec(schema)

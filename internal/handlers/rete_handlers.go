@@ -1205,6 +1205,14 @@ func RunMonitoringJob() {
 		time.Sleep(5 * time.Second)
 	}
 
+
+	// Backup Uffici
+	log.Println("[Monitoring] Backup uffici...")
+	runBackupUffici()
+
+	// Backup Sale Server
+	log.Println("[Monitoring] Backup sale server...")
+	runBackupSaleServer()
 	log.Println("[Monitoring] Job settimanale completato")
 }
 
@@ -1863,4 +1871,180 @@ func getSwitchHostname(ip string, port int, user, pass, marca, protocollo string
 
 	// Fallback: usa IP
 	return "Switch-" + ip
+}
+
+// runBackupUffici esegue backup di tutti gli uffici
+func runBackupUffici() {
+	// Ottieni tutti gli uffici
+	rows, err := database.DB.Query("SELECT id, nome FROM uffici")
+	if err != nil {
+		log.Printf("[Monitoring] Errore query uffici: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var nome string
+		rows.Scan(&id, &nome)
+
+		log.Printf("[Monitoring] Backup ufficio: %s", nome)
+
+		// Backup AC ufficio
+		var acID int64
+		err := database.DB.QueryRow("SELECT id FROM ac_ufficio WHERE ufficio_id = ?", id).Scan(&acID)
+		if err == nil {
+			runBackupUfficioBatch(id, 0, "ac", acID)
+		}
+
+		// Backup switch ufficio
+		swRows, _ := database.DB.Query("SELECT id, nome FROM switch_ufficio WHERE ufficio_id = ?", id)
+		if swRows != nil {
+			for swRows.Next() {
+				var swID int64
+				var swNome string
+				swRows.Scan(&swID, &swNome)
+				log.Printf("[Monitoring] - Backup switch %s", swNome)
+				runBackupUfficioBatch(id, 0, "switch", swID)
+			}
+			swRows.Close()
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// runBackupSaleServer esegue backup di tutte le sale server
+func runBackupSaleServer() {
+	// Ottieni tutte le sale server
+	rows, err := database.DB.Query("SELECT id, nome FROM sale_server")
+	if err != nil {
+		log.Printf("[Monitoring] Errore query sale server: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var nome string
+		rows.Scan(&id, &nome)
+
+		log.Printf("[Monitoring] Backup sala server: %s", nome)
+
+		// Backup switch sala server
+		swRows, _ := database.DB.Query("SELECT id, nome FROM switch_sala_server WHERE sala_server_id = ?", id)
+		if swRows != nil {
+			for swRows.Next() {
+				var swID int64
+				var swNome string
+				swRows.Scan(&swID, &swNome)
+				log.Printf("[Monitoring] - Backup switch %s", swNome)
+				runBackupUfficioBatch(0, id, "switch", swID)
+			}
+			swRows.Close()
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// runBackupUfficioBatch esegue backup per un apparato ufficio/sala server
+func runBackupUfficioBatch(ufficioID, salaServerID int64, tipo string, apparatoID int64) {
+	var ip, sshUser, sshPass, nome, protocollo string
+	var sshPort int
+	var cmdStr string
+	var tabella string
+
+	if ufficioID > 0 {
+		if tipo == "ac" {
+			tabella = "ac_ufficio"
+			err := database.DB.QueryRow("SELECT ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh') FROM ac_ufficio WHERE id = ?", apparatoID).
+				Scan(&ip, &sshPort, &sshUser, &sshPass, &protocollo)
+			if err != nil {
+				return
+			}
+			nome = "AC"
+			cmdStr = "display current-configuration"
+		} else {
+			tabella = "switch_ufficio"
+			var marca string
+			err := database.DB.QueryRow("SELECT nome, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), marca FROM switch_ufficio WHERE id = ?", apparatoID).
+				Scan(&nome, &ip, &sshPort, &sshUser, &sshPass, &protocollo, &marca)
+			if err != nil {
+				return
+			}
+			if marca == "huawei" {
+				cmdStr = "display current-configuration"
+			} else {
+				cmdStr = "show running-config"
+			}
+		}
+	} else {
+		tabella = "switch_sala_server"
+		var marca string
+		err := database.DB.QueryRow("SELECT nome, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), marca FROM switch_sala_server WHERE id = ?", apparatoID).
+			Scan(&nome, &ip, &sshPort, &sshUser, &sshPass, &protocollo, &marca)
+		if err != nil {
+			return
+		}
+		if marca == "huawei" {
+			cmdStr = "display current-configuration"
+		} else {
+			cmdStr = "show running-config"
+		}
+	}
+
+	// Esegui backup
+	var output string
+	var err error
+	if protocollo == "telnet" {
+		output, err = executeTelnetCommand(ip, sshUser, sshPass, cmdStr)
+	} else {
+		output, err = executeSSHBackup(ip, sshPort, sshUser, sshPass, cmdStr)
+	}
+
+	if err != nil {
+		log.Printf("[Monitoring] Errore backup %s: %v", nome, err)
+		return
+	}
+
+	// Calcola hash
+	hash := md5.Sum([]byte(output))
+	hashStr := hex.EncodeToString(hash[:])
+
+	// Salva file
+	var backupDir string
+	if ufficioID > 0 {
+		backupDir = filepath.Join("data", "backups", fmt.Sprintf("ufficio_%d", ufficioID))
+	} else {
+		backupDir = filepath.Join("data", "backups", fmt.Sprintf("sala_server_%d", salaServerID))
+	}
+	os.MkdirAll(backupDir, 0755)
+
+	timestamp := time.Now().Format("20060102_150405")
+	filename := fmt.Sprintf("%s_%s_%s.cfg", tipo, nome, timestamp)
+	filePath := filepath.Join(backupDir, filename)
+
+	err = os.WriteFile(filePath, []byte(output), 0644)
+	if err != nil {
+		log.Printf("[Monitoring] Errore salvataggio backup %s: %v", nome, err)
+		return
+	}
+
+	// Inserisci record DB
+	var ufficioIDPtr, salaServerIDPtr interface{}
+	if ufficioID > 0 {
+		ufficioIDPtr = ufficioID
+	}
+	if salaServerID > 0 {
+		salaServerIDPtr = salaServerID
+	}
+
+	database.DB.Exec("INSERT INTO config_backup_ufficio (ufficio_id, sala_server_id, tipo_apparato, apparato_id, nome_apparato, file_path, file_size, hash_md5) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		ufficioIDPtr, salaServerIDPtr, tipo, apparatoID, nome, filePath, len(output), hashStr)
+
+	// Aggiorna timestamp
+	database.DB.Exec(fmt.Sprintf("UPDATE %s SET ultimo_backup = CURRENT_TIMESTAMP WHERE id = ?", tabella), apparatoID)
+
+	log.Printf("[Monitoring] Backup %s salvato", nome)
 }

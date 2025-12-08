@@ -183,6 +183,32 @@ func main() {
 	mux.Handle("/api/rete/test-ssh", middleware.RequireAuth(http.HandlerFunc(handlers.APITestSSH)))
 	mux.Handle("/api/rete/export-ap-csv", middleware.RequireAuth(http.HandlerFunc(handlers.APIExportAPCSV)))
 
+	// Uffici
+	mux.Handle("/uffici", middleware.RequireAuth(http.HandlerFunc(handlers.ListaUffici)))
+	mux.Handle("/uffici/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoUfficio))))
+	mux.Handle("/uffici/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaUfficio))))
+	mux.Handle("/uffici/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaUfficio))))
+	mux.Handle("/uffici/rete/", middleware.RequireAuth(http.HandlerFunc(handlers.GestioneReteUfficio)))
+	mux.Handle("/uffici/ac/salva/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.SalvaACUfficio))))
+	mux.Handle("/uffici/ac/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaACUfficio))))
+	mux.Handle("/uffici/switch/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoSwitchUfficio))))
+	mux.Handle("/uffici/switch/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaSwitchUfficio))))
+	mux.Handle("/uffici/switch/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaSwitchUfficio))))
+
+	// Sale Server
+	mux.Handle("/sale-server", middleware.RequireAuth(http.HandlerFunc(handlers.ListaSaleServer)))
+	mux.Handle("/sale-server/nuova", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaSalaServer))))
+	mux.Handle("/sale-server/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaSalaServer))))
+	mux.Handle("/sale-server/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaSalaServer))))
+	mux.Handle("/sale-server/rete/", middleware.RequireAuth(http.HandlerFunc(handlers.GestioneReteSalaServer)))
+	mux.Handle("/sale-server/switch/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoSwitchSalaServer))))
+	mux.Handle("/sale-server/switch/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaSwitchSalaServer))))
+	mux.Handle("/sale-server/switch/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaSwitchSalaServer))))
+
+	// API Backup Uffici e Sale Server
+	mux.Handle("/api/rete/backup-config-ufficio", middleware.RequireAuth(http.HandlerFunc(handlers.APIBackupConfigUfficio)))
+	mux.Handle("/api/rete/download-backup-ufficio/", middleware.RequireAuth(http.HandlerFunc(handlers.APIDownloadBackupUfficio)))
+
 	// Attrezzi e Consumabili
 	mux.Handle("/attrezzi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaAttrezzi)))
 	mux.Handle("/attrezzi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoAttrezzo))))

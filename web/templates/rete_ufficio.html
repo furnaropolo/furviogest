@@ -1,0 +1,317 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-router me-2"></i>Gestione Rete - {{.Data.Ufficio.Nome}}</h2>
+            <p class="text-muted mb-0">{{.Data.Ufficio.Indirizzo}} - {{.Data.Ufficio.Citta}}</p>
+        </div>
+        <a href="/uffici" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Torna agli Uffici</a>
+    </div>
+
+    <!-- SEZIONE ACCESS CONTROLLER -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-router me-2"></i>Access Controller (AC) - Max 1</h5>
+            {{if not .Data.AC}}
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalAC">
+                <i class="bi bi-plus-lg me-1"></i>Aggiungi AC
+            </button>
+            {{end}}
+        </div>
+        <div class="card-body">
+            {{if .Data.AC}}
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <table class="table table-sm mb-0">
+                        <tr><th style="width:120px">IP:</th><td><code>{{.Data.AC.IP}}:{{.Data.AC.SSHPort}}</code></td></tr>
+                        <tr><th>Protocollo:</th><td>{{.Data.AC.Protocollo}}</td></tr>
+                        <tr><th>Modello:</th><td>{{.Data.AC.Modello}}</td></tr>
+                        <tr><th>Note:</th><td>{{.Data.AC.Note}}</td></tr>
+                        {{if .Data.AC.UltimoBackup}}<tr><th>Ultimo Backup:</th><td>{{.Data.AC.UltimoBackup}}</td></tr>{{end}}
+                    </table>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="btn-group-vertical">
+                        <button class="btn btn-outline-info btn-sm" onclick="testConnessione('ac', {{.Data.AC.ID}}, '{{.Data.AC.IP}}', {{.Data.AC.SSHPort}}, '{{.Data.AC.SSHUser}}', '{{.Data.AC.SSHPass}}', '{{.Data.AC.Protocollo}}')"><i class="bi bi-plug me-1"></i>Test Connessione</button>
+                        <button class="btn btn-outline-success btn-sm" onclick="backupConfig('ac_ufficio', {{.Data.AC.ID}})"><i class="bi bi-download me-1"></i>Backup Config</button>
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAC"><i class="bi bi-pencil me-1"></i>Modifica</button>
+                        <a href="/uffici/ac/elimina/{{.Data.Ufficio.ID}}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Eliminare AC?')"><i class="bi bi-trash me-1"></i>Elimina</a>
+                    </div>
+                </div>
+            </div>
+            {{else}}
+            <p class="text-muted mb-0 text-center py-3">
+                <i class="bi bi-info-circle me-1"></i>Nessun Access Controller configurato.
+            </p>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- SEZIONE SWITCH -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Switch ({{len .Data.Switches}})</h5>
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalSwitch" onclick="resetSwitchForm()">
+                <i class="bi bi-plus-lg me-1"></i>Aggiungi Switch
+            </button>
+        </div>
+        <div class="card-body">
+            {{if .Data.Switches}}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Marca</th>
+                            <th>IP</th>
+                            <th>Modello</th>
+                            <th>Ultimo Backup</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data.Switches}}
+                        <tr>
+                            <td><strong>{{.Nome}}</strong></td>
+                            <td><span class="badge bg-{{if eq .Marca "huawei"}}warning text-dark{{else}}info{{end}}">{{.Marca}}</span></td>
+                            <td><code>{{.IP}}:{{.SSHPort}}</code></td>
+                            <td>{{.Modello}}</td>
+                            <td><small>{{.UltimoBackup}}</small></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-info" onclick="testConnessione('switch', {{.ID}}, '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Protocollo}}')" title="Test Connessione"><i class="bi bi-plug"></i></button>
+                                    <button class="btn btn-outline-success" onclick="backupConfig('switch_ufficio', {{.ID}})" title="Backup Config"><i class="bi bi-download"></i></button>
+                                    <button class="btn btn-outline-primary" onclick="editSwitch({{.ID}}, '{{.Nome}}', '{{.Marca}}', '{{.Modello}}', '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Note}}', '{{.Protocollo}}')" title="Modifica"><i class="bi bi-pencil"></i></button>
+                                    <a href="/uffici/switch/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo switch?')" title="Elimina"><i class="bi bi-trash"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="text-muted mb-0 text-center py-3">
+                <i class="bi bi-info-circle me-1"></i>Nessuno switch configurato.
+            </p>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- SEZIONE BACKUP -->
+    {{if .Data.Backups}}
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-archive me-2"></i>Backup Configurazioni</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Apparato</th>
+                            <th>Dimensione</th>
+                            <th>Download</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data.Backups}}
+                        <tr>
+                            <td>{{.CreatedAt}}</td>
+                            <td>{{if eq .TipoApparato "ac"}}<span class="badge bg-primary">AC</span>{{else}}<span class="badge bg-success">Switch</span>{{end}}</td>
+                            <td>{{.NomeApparato}}</td>
+                            <td>{{.FileSize}} bytes</td>
+                            <td><a href="/api/rete/download-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a></td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{end}}
+</div>
+
+<!-- Modal AC -->
+<div class="modal fade" id="modalAC" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/uffici/ac/salva/{{.Data.Ufficio.ID}}" method="POST">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">{{if .Data.AC}}Modifica{{else}}Aggiungi{{end}} Access Controller</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Indirizzo IP *</label>
+                            <input type="text" class="form-control" name="ip" value="{{if .Data.AC}}{{.Data.AC.IP}}{{end}}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Porta</label>
+                            <input type="number" class="form-control" name="ssh_port" value="{{if .Data.AC}}{{.Data.AC.SSHPort}}{{else}}22{{end}}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Protocollo</label>
+                            <select class="form-select" name="protocollo">
+                                <option value="ssh" {{if and .Data.AC (eq .Data.AC.Protocollo "ssh")}}selected{{end}}>SSH</option>
+                                <option value="telnet" {{if and .Data.AC (eq .Data.AC.Protocollo "telnet")}}selected{{end}}>Telnet</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Username *</label>
+                            <input type="text" class="form-control" name="ssh_user" value="{{if .Data.AC}}{{.Data.AC.SSHUser}}{{else}}admin{{end}}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password *</label>
+                            <input type="password" class="form-control" name="ssh_pass" value="{{if .Data.AC}}{{.Data.AC.SSHPass}}{{end}}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Note</label>
+                            <input type="text" class="form-control" name="note" value="{{if .Data.AC}}{{.Data.AC.Note}}{{end}}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Switch -->
+<div class="modal fade" id="modalSwitch" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formSwitch" method="POST">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="modalSwitchTitle">Aggiungi Switch</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Marca *</label>
+                            <select class="form-select" name="marca" id="sw_marca" required>
+                                <option value="huawei">Huawei</option>
+                                <option value="hp">HP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Protocollo</label>
+                            <select class="form-select" name="protocollo" id="sw_protocollo">
+                                <option value="ssh">SSH</option>
+                                <option value="telnet">Telnet</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Indirizzo IP *</label>
+                            <input type="text" class="form-control" name="ip" id="sw_ip" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Porta</label>
+                            <input type="number" class="form-control" name="ssh_port" id="sw_ssh_port" value="22">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Username *</label>
+                            <input type="text" class="form-control" name="ssh_user" id="sw_ssh_user" value="admin" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password *</label>
+                            <input type="password" class="form-control" name="ssh_pass" id="sw_ssh_pass" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Modello</label>
+                            <input type="text" class="form-control" name="modello" id="sw_modello">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Note</label>
+                            <input type="text" class="form-control" name="note" id="sw_note">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-success">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="toast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">Messaggio</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastBody"></div>
+    </div>
+</div>
+
+<script>
+const ufficioID = {{.Data.Ufficio.ID}};
+
+function showToast(title, message, isError) {
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastBody').textContent = message;
+    const toast = document.getElementById('toast');
+    toast.classList.remove('bg-success', 'bg-danger', 'text-white');
+    if (isError) toast.classList.add('bg-danger', 'text-white');
+    new bootstrap.Toast(toast).show();
+}
+
+function testConnessione(tipo, id, ip, port, user, pass, protocollo) {
+    showToast('Test', 'Connessione in corso...', false);
+    fetch('/api/rete/test-ssh?ip=' + ip + '&port=' + port + '&user=' + user + '&pass=' + encodeURIComponent(pass) + '&protocollo=' + protocollo)
+        .then(r => r.json())
+        .then(data => showToast('Test Connessione', data.message, !data.success));
+}
+
+function backupConfig(tipo, id) {
+    showToast('Backup', 'Backup in corso...', false);
+    fetch('/api/rete/backup-config-ufficio?tipo=' + tipo + '&id=' + id)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Backup', data.message, !data.success);
+            if (data.success) setTimeout(() => location.reload(), 1500);
+        });
+}
+
+function resetSwitchForm() {
+    document.getElementById('modalSwitchTitle').textContent = 'Aggiungi Switch';
+    document.getElementById('formSwitch').action = '/uffici/switch/nuovo/' + ufficioID;
+    document.getElementById('sw_marca').value = 'huawei';
+    document.getElementById('sw_protocollo').value = 'ssh';
+    document.getElementById('sw_modello').value = '';
+    document.getElementById('sw_ip').value = '';
+    document.getElementById('sw_ssh_port').value = '22';
+    document.getElementById('sw_ssh_user').value = 'admin';
+    document.getElementById('sw_ssh_pass').value = '';
+    document.getElementById('sw_note').value = '';
+}
+
+document.getElementById('sw_protocollo').addEventListener('change', function() {
+    document.getElementById('sw_ssh_port').value = this.value === 'telnet' ? '23' : '22';
+});
+
+function editSwitch(id, nome, marca, modello, ip, port, user, pass, note, protocollo) {
+    document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch: ' + nome;
+    document.getElementById('formSwitch').action = '/uffici/switch/modifica/' + id;
+    document.getElementById('sw_marca').value = marca;
+    document.getElementById('sw_protocollo').value = protocollo || 'ssh';
+    document.getElementById('sw_modello').value = modello;
+    document.getElementById('sw_ip').value = ip;
+    document.getElementById('sw_ssh_port').value = port;
+    document.getElementById('sw_ssh_user').value = user;
+    document.getElementById('sw_ssh_pass').value = pass;
+    document.getElementById('sw_note').value = note;
+    new bootstrap.Modal(document.getElementById('modalSwitch')).show();
+}
+</script>
+{{end}}

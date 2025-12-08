@@ -1,0 +1,51 @@
+{{define "content"}}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-building me-2"></i>{{if .Data.ID}}Modifica{{else}}Nuovo{{end}} Ufficio</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Nome *</label>
+                                <input type="text" class="form-control" name="nome" value="{{.Data.Nome}}" required>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Indirizzo</label>
+                                <input type="text" class="form-control" name="indirizzo" value="{{.Data.Indirizzo}}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">CAP</label>
+                                <input type="text" class="form-control" name="cap" value="{{.Data.CAP}}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Città</label>
+                                <input type="text" class="form-control" name="citta" value="{{.Data.Citta}}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Telefono</label>
+                                <input type="text" class="form-control" name="telefono" value="{{.Data.Telefono}}">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email" value="{{.Data.Email}}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Note</label>
+                                <textarea class="form-control" name="note" rows="3">{{.Data.Note}}</textarea>
+                            </div>
+                        </div>
+                        <div class="mt-4 d-flex justify-content-between">
+                            <a href="/uffici" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Annulla</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salva</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
