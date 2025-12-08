@@ -341,3 +341,20 @@
 1. Testare upload logo compagnie e visualizzazione in lista navi
 2. Completare test backup configurazione su uffici/sale server reali
 3. Revisione Rapporto di Intervento (priorità alta da backlog)
+
+### 2025-12-08 (sessione 11)
+- **Gestione Guasti Nave - Selezione Tecnico**:
+  - Aggiunta selezione tecnico obbligatoria quando si cambia stato a 'preso_in_carico'
+  - Aggiunta selezione tecnico obbligatoria quando si cambia stato a 'risolto'
+  - Campo note per presa in carico (opzionale)
+  - Campo descrizione risoluzione (obbligatorio)
+  - Visualizzazione tecnico e note nella card del guasto
+- **Fix sezione AP Fault**:
+  - Cambiato da classe 'alert' a 'card' per evitare auto-hide JavaScript
+  - La sezione AP in fault/offline ora rimane visibile permanentemente
+- **Aggiornamenti DB**:
+  - guasti_nave: aggiunti campi tecnico_presa_in_carico_id, data_presa_in_carico, note_presa_in_carico
+
+## TODO - Prossima sessione
+1. Testare se i fault AP vengono mostrati anche nella richiesta permessi
+2. Revisione Rapporto di Intervento (priorità alta da backlog)
