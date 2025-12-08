@@ -296,3 +296,17 @@
   - /guasti-nave/modifica/{id} - modifica guasto
   - /guasti-nave/elimina/{id} - elimina guasto
   - /guasti-nave/storico - storico guasti
+
+## TODO - Prossima sessione
+1. **TEST Segnalazione Guasti Nave**:
+   - Testare lista navi con conteggio guasti
+   - Testare inserimento nuovo guasto manuale
+   - Testare modifica stato guasto (aperto → preso in carico → risolto)
+   - Testare storico guasti con filtro date
+   - Testare auto-inserimento guasto quando AP va in fault (scan AP)
+   - Testare auto-chiusura guasto quando AP torna online
+
+2. **TEST Uffici e Sale Server** (se non già testato):
+   - Testare CRUD uffici
+   - Testare CRUD sale server
+   - Testare backup configurazione switch/AC
