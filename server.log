@@ -1,7 +1,8 @@
-2025/12/08 11:44:58 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
-2025/12/08 11:44:58 Database inizializzato correttamente
-2025/12/08 11:44:58 Caricamento templates da: /home/ies/furviogest/web/templates
-2025/12/08 11:44:58 [Monitoring] Scheduler monitoraggio settimanale avviato
-2025/12/08 11:44:58 Server FurvioGest avviato su http://localhost:8080
-2025/12/08 11:44:58 Credenziali predefinite: admin / admin
-2025/12/08 11:44:58 IMPORTANTE: Cambiare la password al primo accesso!
+2025/12/08 20:59:22 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
+2025/12/08 20:59:22 Database inizializzato correttamente
+2025/12/08 20:59:22 Caricamento templates da: /home/ies/furviogest/web/templates
+2025/12/08 20:59:22 [Monitoring] Scheduler monitoraggio settimanale avviato
+2025/12/08 20:59:22 Server FurvioGest avviato su http://localhost:8080
+2025/12/08 20:59:22 Credenziali predefinite: admin / admin
+2025/12/08 20:59:22 IMPORTANTE: Cambiare la password al primo accesso!
+2025/12/08 20:59:22 Errore avvio server:listen tcp :8080: bind: address already in use

@@ -834,7 +834,7 @@ func getSwitchesByNave(naveID int64) []SwitchNave {
 	var switches []SwitchNave
 	rows, err := database.DB.Query(`
 		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh')
-		FROM switch_nave WHERE nave_id = ? ORDER BY nome
+		FROM switch_nave WHERE nave_id = ? ORDER BY ap_name
 	`, naveID)
 	if err != nil {
 		return switches
@@ -1125,10 +1125,37 @@ func APIGetAPFault(w http.ResponseWriter, r *http.Request) {
 	naveIDStr := r.URL.Query().Get("nave_id")
 	naveID, _ := strconv.ParseInt(naveIDStr, 10, 64)
 
-	count := countAPByStatus(naveID, "fault")
-	
+	// Recupera AP in fault e offline
+	rows, err := database.DB.Query(`
+		SELECT id, ap_name, ap_mac, ap_ip, stato 
+		FROM access_point 
+		WHERE nave_id = ? AND (stato = 'fault' OR stato = 'offline')
+		ORDER BY ap_name
+	`, naveID)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"count": 0, "ap_list": []interface{}{}})
+		return
+	}
+	defer rows.Close()
+
+	type APInfo struct {
+		ID     int64  `json:"id"`
+		Name   string `json:"name"`
+		MAC    string `json:"mac"`
+		IP     string `json:"ip"`
+		Status string `json:"status"`
+	}
+
+	var apList []APInfo
+	for rows.Next() {
+		var ap APInfo
+		rows.Scan(&ap.ID, &ap.Name, &ap.MAC, &ap.IP, &ap.Status)
+		apList = append(apList, ap)
+	}
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"count": count,
+		"count":   len(apList),
+		"ap_list": apList,
 	})
 }
 

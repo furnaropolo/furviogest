@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="page-header">
-    <h1>Dettaglio Richiesta Permesso #{{.Data.ID}}</h1>
+    <h1>Dettaglio Richiesta Permesso</h1>
     <div class="header-actions">
         {{if $.Session.IsTecnico}}
         <a href="/permessi/modifica/{{.Data.ID}}" class="btn btn-warning">Modifica</a>
@@ -9,16 +9,32 @@
     </div>
 </div>
 
+<!-- Alert AP Fault -->
+<div id="apFaultAlert" class="alert alert-danger" style="display: none;">
+    <strong>Attenzione!</strong>
+    Su questa nave ci sono <strong id="apFaultCount">0</strong> Access Point offline/fault:
+    <span id="apFaultDetails"></span>
+    <a href="/navi/rete/{{.Data.Nave.ID}}" target="_blank" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">Vedi Rete Nave</a>
+</div>
+
+<!-- Alert Guasti Aperti -->
+<div id="guastiAlert" class="alert alert-warning" style="display: none;">
+    <strong>Guasti Segnalati!</strong>
+    Su questa nave ci sono <strong id="guastiCount">0</strong> guasti aperti:
+    <ul id="guastiList"></ul>
+    <a href="/guasti-nave/{{.Data.Nave.ID}}" target="_blank" class="btn btn-sm btn-outline-warning">Gestisci Guasti</a>
+</div>
+
 <div class="detail-grid">
     <div class="detail-card">
         <h3>Informazioni Nave</h3>
         <dl>
             <dt>Compagnia</dt>
             <dd>{{.Data.Compagnia.Nome}}</dd>
-            
+
             <dt>Nave</dt>
             <dd><strong>{{.Data.Nave.Nome}}</strong></dd>
-            
+
             {{if .Data.Nave.IMO}}
             <dt>IMO</dt>
             <dd>{{.Data.Nave.IMO}}</dd>
@@ -31,22 +47,22 @@
         <dl>
             <dt>Porto</dt>
             <dd><strong>{{.Data.Porto.Nome}}</strong></dd>
-            
+
             {{if .Data.Porto.Citta}}
-            <dt>Località</dt>
+            <dt>Localita</dt>
             <dd>{{.Data.Porto.Citta}}{{if .Data.Porto.Paese}}, {{.Data.Porto.Paese}}{{end}}</dd>
             {{end}}
-            
+
             {{if .Data.Porto.NomeAgenzia}}
             <dt>Agenzia</dt>
             <dd>{{.Data.Porto.NomeAgenzia}}</dd>
             {{end}}
-            
+
             {{if .Data.Porto.EmailAgenzia}}
             <dt>Email Agenzia</dt>
             <dd><a href="mailto:{{.Data.Porto.EmailAgenzia}}">{{.Data.Porto.EmailAgenzia}}</a></dd>
             {{end}}
-            
+
             {{if .Data.Porto.TelefonoAgenzia}}
             <dt>Telefono Agenzia</dt>
             <dd><a href="tel:{{.Data.Porto.TelefonoAgenzia}}">{{.Data.Porto.TelefonoAgenzia}}</a></dd>
@@ -67,10 +83,10 @@
                     <span class="badge badge-warning">Fino a Fine Lavori</span>
                 {{end}}
             </dd>
-            
+
             <dt>Data Inizio</dt>
             <dd><strong>{{.Data.DataInizio.Format "02/01/2006"}}</strong></dd>
-            
+
             {{if .Data.DataFine}}
             <dt>Data Fine</dt>
             <dd><strong>{{.Data.DataFine.Format "02/01/2006"}}</strong></dd>
@@ -84,7 +100,7 @@
             <dt>Email Inviata</dt>
             <dd>
                 {{if .Data.EmailInviata}}
-                    <span class="badge badge-success">Sì</span>
+                    <span class="badge badge-success">Si</span>
                     {{if .Data.DataInvioEmail}}
                     <br><small>il {{.Data.DataInvioEmail.Format "02/01/2006 15:04"}}</small>
                     {{end}}
@@ -92,10 +108,10 @@
                     <span class="badge badge-secondary">No</span>
                 {{end}}
             </dd>
-            
+
             <dt>Creato da</dt>
             <dd>{{.Data.NomeTecnico}}</dd>
-            
+
             <dt>Data Creazione</dt>
             <dd>{{.Data.CreatedAt.Format "02/01/2006 15:04"}}</dd>
         </dl>
@@ -123,7 +139,7 @@
     <h3>Veicolo</h3>
     {{if .Data.Automezzo}}
     <p>
-        <strong>Automezzo Aziendale:</strong> {{.Data.Automezzo.Targa}} 
+        <strong>Automezzo Aziendale:</strong> {{.Data.Automezzo.Targa}}
         ({{.Data.Automezzo.Marca}} {{.Data.Automezzo.Modello}})
     </p>
     {{else if .Data.TargaEsterna}}
@@ -146,18 +162,95 @@
     {{if $.Session.IsTecnico}}
     {{if not .Data.EmailInviata}}
     <a href="/permessi/anteprima-email/{{.Data.ID}}" class="btn btn-success">
-    
         Anteprima & Invia Email
     </a>
     {{end}}
     <a href="/permessi/modifica/{{.Data.ID}}" class="btn btn-warning">Modifica</a>
-    <a href="/permessi/elimina/{{.Data.ID}}" class="btn btn-danger" 
+    <a href="/permessi/elimina/{{.Data.ID}}" class="btn btn-danger"
        onclick="return confirm('Eliminare questa richiesta?')">Elimina</a>
     {{end}}
     <a href="/permessi" class="btn btn-secondary">Torna alla Lista</a>
 </div>
 
+<script>
+// Carica guasti e AP fault al caricamento pagina
+document.addEventListener('DOMContentLoaded', function() {
+    const naveID = {{.Data.Nave.ID}};
+
+    // Check AP Fault
+    fetch('/api/rete/ap-fault?nave_id=' + naveID)
+        .then(r => r.json())
+        .then(data => {
+            if (data.count > 0) {
+                document.getElementById('apFaultCount').textContent = data.count;
+                document.getElementById('apFaultAlert').style.display = 'block';
+                let details = data.ap_list.map(ap => "<b>" + ap.name + "</b>").join(", ");
+                document.getElementById("apFaultDetails").innerHTML = details;
+            }
+        })
+        .catch(() => {});
+
+    // Check Guasti Aperti
+    fetch('/api/guasti-nave?nave_id=' + naveID)
+        .then(r => r.json())
+        .then(data => {
+            if (data.count > 0) {
+                document.getElementById('guastiCount').textContent = data.count;
+                let list = data.guasti.map(g => "<li><span class='badge bg-" + (g.gravita === 'alta' ? 'danger' : (g.gravita === 'media' ? 'warning text-dark' : 'secondary')) + "'>" + g.gravita.toUpperCase() + "</span> " + g.descrizione + "</li>").join("");
+                document.getElementById('guastiList').innerHTML = list;
+                document.getElementById('guastiAlert').style.display = 'block';
+            }
+        })
+        .catch(() => {});
+});
+</script>
+
 <style>
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+.alert ul {
+    margin: 10px 0 10px 20px;
+    padding: 0;
+}
+.alert .badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    margin-right: 5px;
+}
+.bg-danger { background-color: #dc3545; color: white; }
+.bg-warning { background-color: #ffc107; color: #333; }
+.bg-secondary { background-color: #6c757d; color: white; }
+.btn-outline-danger {
+    color: #721c24;
+    border: 1px solid #721c24;
+    background: transparent;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+.btn-outline-warning {
+    color: #856404;
+    border: 1px solid #856404;
+    background: transparent;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
 .detail-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

@@ -509,7 +509,7 @@ func DettaglioPermesso(w http.ResponseWriter, r *http.Request) {
 		JOIN compagnie c ON n.compagnia_id = c.id
 		WHERE n.id = ?
 	`, p.NaveID).Scan(&dettagli.Nave.ID, &dettagli.Nave.Nome, &dettagli.Nave.IMO,
-		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome, &dettagli.Compagnia.EmailDestinatari)
+		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome)
 
 	data.Data = dettagli
 	renderTemplate(w, "permessi_dettaglio.html", data)
@@ -940,7 +940,7 @@ func caricaPermessoCompleto(id int64) (*PermessoConDettagli, error) {
 		SELECT n.id, n.nome, n.imo, n.email_master, n.email_direttore_macchina, n.email_ispettore, c.id, c.nome, COALESCE(c.email_destinatari, 'solo_agenzia')
 		FROM navi n JOIN compagnie c ON n.compagnia_id = c.id WHERE n.id = ?
 	`, p.NaveID).Scan(&dettagli.Nave.ID, &dettagli.Nave.Nome, &imoNave, &emailMaster, &emailDDM, &emailIspettore,
-		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome, &dettagli.Compagnia.EmailDestinatari)
+		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome)
 	if imoNave.Valid {
 		dettagli.Nave.IMO = imoNave.String
 	}

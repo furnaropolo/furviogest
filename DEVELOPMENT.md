@@ -358,3 +358,27 @@
 ## TODO - Prossima sessione
 1. Testare se i fault AP vengono mostrati anche nella richiesta permessi
 2. Revisione Rapporto di Intervento (priorità alta da backlog)
+
+### 2025-12-08 (sessione 12)
+- **Alert Guasti e AP Fault nel Dettaglio Permesso**:
+  - Aggiunto alert rosso per AP in stato offline/fault quando si visualizza il dettaglio permesso
+  - Aggiunto alert giallo per guasti aperti sulla nave
+  - Alert caricati via API JavaScript al caricamento pagina
+  - Link diretti a "Vedi Rete Nave" e "Gestisci Guasti"
+  - Gli alert sono solo informativi per uso interno, non inclusi nell'email
+- **Fix visualizzazione dati nel Dettaglio Permesso**:
+  - Corretto errore Scan nella query nave/compagnia (mismatch numero campi)
+  - Ora vengono visualizzati correttamente: nome nave, compagnia, IMO
+- **Rimosso #ID dal titolo**:
+  - Il titolo ora mostra solo "Dettaglio Richiesta Permesso" senza il numero
+- **Migliorato API AP Fault**:
+  - /api/rete/ap-fault ora restituisce anche la lista degli AP (nome, MAC, IP, stato)
+  - Supporta sia stato 'fault' che 'offline'
+- **Fix CSS alert nel form permessi**:
+  - Aggiunti stili per .alert-warning e badge
+
+## TODO - Prossima sessione
+1. **TEST Alert Guasti/AP nel Dettaglio Permesso**:
+   - Verificare che gli alert appaiano correttamente per Mega Andrea
+   - Verificare che i link funzionino
+2. **Revisione Rapporto di Intervento** (priorità alta da backlog)

@@ -212,7 +212,6 @@ document.getElementById('nave_id').addEventListener('change', function() {
         .catch(() => { guastiAlert.style.display = 'none'; });
 });
 
-});
 
 // Gestione visibilità data fine in base al tipo durata
 document.getElementById('tipo_durata').addEventListener('change', function() {
@@ -280,5 +279,32 @@ document.getElementById('nave_id').dispatchEvent(new Event('change'));
     color: #721c24;
     font-weight: bold;
 }
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+.alert-warning a {
+    color: #856404;
+    font-weight: bold;
+}
+.alert-warning ul {
+    margin-bottom: 10px;
+    padding-left: 20px;
+}
+.badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    display: inline-block;
+}
+.bg-danger { background-color: #dc3545; color: white; }
+.bg-warning { background-color: #ffc107; color: #333; }
+.bg-secondary { background-color: #6c757d; color: white; }
+.text-dark { color: #333 !important; }
+.me-2 { margin-right: 8px; }
 </style>
 {{end}}
