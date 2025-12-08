@@ -838,7 +838,7 @@ func ListaNavi(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
 		SELECT n.id, n.compagnia_id, n.nome, n.imo, n.email_master, n.email_direttore_macchina,
 		       n.email_ispettore, n.note, n.ferma_per_lavori, n.data_inizio_lavori, 
-		       n.data_fine_lavori_prevista, n.created_at, c.nome as nome_compagnia, 
+		       n.data_fine_lavori_prevista, n.created_at, COALESCE(n.foto, '') as foto, c.nome as nome_compagnia, 
 		       c.id as cid, COALESCE(c.logo, '') as logo
 		FROM navi n
 		JOIN compagnie c ON n.compagnia_id = c.id
@@ -874,7 +874,7 @@ func ListaNavi(w http.ResponseWriter, r *http.Request) {
 		
 		err := rows.Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &emailMaster, &emailDirettore,
 			&emailIspettore, &note, &n.FermaPerLavori, &dataInizioLavori, &dataFineLavori,
-			&n.CreatedAt, &n.NomeCompagnia, &compagniaID, &compagniaLogo)
+			&n.CreatedAt, &n.Foto, &n.NomeCompagnia, &compagniaID, &compagniaLogo)
 		if err != nil {
 			continue
 		}
@@ -1020,6 +1020,19 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+
+	// Gestione upload foto
+	var lastID int64
+	database.DB.QueryRow("SELECT last_insert_rowid()").Scan(&lastID)
+	file, header, fotoErr := r.FormFile("foto")
+	if fotoErr == nil && header.Size > 0 {
+		defer file.Close()
+		fotoPath := saveNaveFoto(lastID, file, header)
+		if fotoPath != "" {
+			database.DB.Exec("UPDATE navi SET foto = ? WHERE id = ?", fotoPath, lastID)
+		}
+	}
+
 	http.Redirect(w, r, "/navi", http.StatusSeeOther)
 }
 
@@ -1149,6 +1162,17 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+
+	// Gestione upload foto
+	file, header, fotoErr := r.FormFile("foto")
+	if fotoErr == nil && header.Size > 0 {
+		defer file.Close()
+		fotoPath := saveNaveFoto(id, file, header)
+		if fotoPath != "" {
+			database.DB.Exec("UPDATE navi SET foto = ? WHERE id = ?", fotoPath, id)
+		}
+	}
+
 	http.Redirect(w, r, "/navi", http.StatusSeeOther)
 }
 
@@ -1162,6 +1186,54 @@ func EliminaNave(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(pathParts[3], 10, 64)
 	database.DB.Exec("DELETE FROM navi WHERE id = ?", id)
 	http.Redirect(w, r, "/navi", http.StatusSeeOther)
+}
+
+// saveNaveFoto salva la foto di una nave
+func saveNaveFoto(naveID int64, file multipart.File, header *multipart.FileHeader) string {
+	uploadDir := filepath.Join("uploads", "navi")
+	os.MkdirAll(uploadDir, 0755)
+
+	ext := filepath.Ext(header.Filename)
+	filename := fmt.Sprintf("foto_%d%s", naveID, ext)
+	filePath := filepath.Join(uploadDir, filename)
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		return ""
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		return ""
+	}
+
+	return filePath
+}
+
+// ServeNaveFoto serve la foto di una nave
+func ServeNaveFoto(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.NotFound(w, r)
+		return
+	}
+
+	id, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	var fotoPath sql.NullString
+	database.DB.QueryRow("SELECT foto FROM navi WHERE id = ?", id).Scan(&fotoPath)
+
+	if !fotoPath.Valid || fotoPath.String == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.ServeFile(w, r, fotoPath.String)
 }
 
 // Funzioni helper per uploads

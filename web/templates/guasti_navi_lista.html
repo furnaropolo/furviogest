@@ -12,22 +12,32 @@
                 <tr>
                     <th>Nave</th>
                     <th>Compagnia</th>
+                    <th>AP Fault</th>
                     <th>Guasti Aperti</th>
                     <th>Azioni</th>
                 </tr>
             </thead>
             <tbody>
                 {{range .Data}}
-                <tr class="{{if gt .GuastiAlti 0}}table-danger{{else if gt .GuastiAperti 0}}table-warning{{end}}">
+                <tr class="{{if gt .APFault 0}}table-danger{{else if gt .GuastiAlti 0}}table-danger{{else if gt .GuastiAperti 0}}table-warning{{end}}">
                     <td><strong>{{.Nome}}</strong></td>
                     <td>{{.Compagnia}}</td>
+                    <td>
+                        {{if gt .APFault 0}}
+                            <span class="badge bg-danger fs-6">
+                                <i class="bi bi-wifi-off me-1"></i>{{.APFault}} AP
+                            </span>
+                        {{else}}
+                            <span class="text-success"><i class="bi bi-wifi me-1"></i>OK</span>
+                        {{end}}
+                    </td>
                     <td>
                         {{if gt .GuastiAperti 0}}
                             <span class="badge bg-{{if gt .GuastiAlti 0}}danger{{else}}warning text-dark{{end}} fs-6">
                                 {{.GuastiAperti}} guast{{if eq .GuastiAperti 1}}o{{else}}i{{end}}
                             </span>
                             {{if gt .GuastiAlti 0}}
-                            <span class="badge bg-danger ms-1">{{.GuastiAlti}} alta priorità</span>
+                            <span class="badge bg-danger ms-1">{{.GuastiAlti}} alta priorita</span>
                             {{end}}
                         {{else}}
                             <span class="text-success"><i class="bi bi-check-circle me-1"></i>Nessun guasto</span>

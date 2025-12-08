@@ -123,6 +123,7 @@ type Nave struct {
 	ObserviumSSHPass     string    `json:"observium_ssh_pass,omitempty"`
 	ObserviumSSHPort     int       `json:"observium_ssh_port,omitempty"`
 	SNMPCommunity        string    `json:"snmp_community,omitempty"`
+	Foto             string    `json:"foto,omitempty"`
 }
 
 // TipoProdotto indica se il prodotto è per WiFi, GSM o entrambi
@@ -475,6 +476,7 @@ type ApparatoNave struct {
 	Firmware      string
 	Location      string
 	SNMPCommunity string
+	Foto             string    `json:"foto,omitempty"`
 	SSHUser       string
 	SSHPass       string
 	SSHPort       int
@@ -510,6 +512,7 @@ type ObserviumConfig struct {
 	SSHPass      string
 	SSHPort      int
 	SNMPCommunity string
+	Foto             string    `json:"foto,omitempty"`
 }
 
 // DeviceDiscovery risultato discovery

@@ -10,6 +10,13 @@
     Su questa nave ci sono <strong id="apFaultCount">0</strong> Access Point in stato FAULT:<br><small id="apFaultDetails"></small>
     <a href="#" id="apFaultLink" target="_blank">Visualizza dettagli</a>
 </div>
+<!-- Alert Guasti Nave (nascosto di default) -->
+<div id="guastiAlert" class="alert alert-warning" style="display: none;">
+    <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Guasti Segnalati!</strong>
+    Su questa nave ci sono <strong id="guastiCount">0</strong> guasti aperti:
+    <ul id="guastiList" class="mb-1 mt-2"></ul>
+    <a href="#" id="guastiLink" target="_blank" class="btn btn-sm btn-warning">Gestisci Guasti</a>
+</div>
 
 <form method="POST" class="form-card">
     <div class="form-section">
@@ -163,30 +170,48 @@
 // Controlla AP fault quando si seleziona una nave
 document.getElementById('nave_id').addEventListener('change', function() {
     const naveID = this.value;
-    const alert = document.getElementById('apFaultAlert');
+    const apAlert = document.getElementById('apFaultAlert');
+    const guastiAlert = document.getElementById('guastiAlert');
     
     if (!naveID) {
-        alert.style.display = 'none';
+        apAlert.style.display = 'none';
+        guastiAlert.style.display = 'none';
         return;
     }
     
+    // Check AP Fault
     fetch('/api/rete/ap-fault?nave_id=' + naveID)
         .then(r => r.json())
         .then(data => {
             if (data.count > 0) {
                 document.getElementById('apFaultCount').textContent = data.count;
                 document.getElementById('apFaultLink').href = '/navi/rete/' + naveID;
-                alert.style.display = 'block';
-                // Mostra dettagli AP
-                let details = data.ap_list.map(ap => "<b>" + ap.name + "</b> (" + (ap.model || "N/D") + ")").join(", ");
+                apAlert.style.display = 'block';
+                let details = data.ap_list.map(ap => "<b>" + ap.name + "</b>").join(", ");
                 document.getElementById("apFaultDetails").innerHTML = details;
             } else {
-                alert.style.display = 'none';
+                apAlert.style.display = 'none';
             }
         })
-        .catch(() => {
-            alert.style.display = 'none';
-        });
+        .catch(() => { apAlert.style.display = 'none'; });
+    
+    // Check Guasti Aperti
+    fetch('/api/guasti-nave?nave_id=' + naveID)
+        .then(r => r.json())
+        .then(data => {
+            if (data.count > 0) {
+                document.getElementById('guastiCount').textContent = data.count;
+                document.getElementById('guastiLink').href = '/guasti-nave/' + naveID;
+                let list = data.guasti.map(g => "<li><span class=\"badge bg-" + (g.gravita === 'alta' ? 'danger' : (g.gravita === 'media' ? 'warning text-dark' : 'secondary')) + " me-2\">" + g.gravita.toUpperCase() + "</span>" + g.descrizione + "</li>").join("");
+                document.getElementById('guastiList').innerHTML = list;
+                guastiAlert.style.display = 'block';
+            } else {
+                guastiAlert.style.display = 'none';
+            }
+        })
+        .catch(() => { guastiAlert.style.display = 'none'; });
+});
+
 });
 
 // Gestione visibilità data fine in base al tipo durata

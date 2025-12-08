@@ -124,6 +124,7 @@ func main() {
 	mux.Handle("/compagnie/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaCompagnia))))
 	mux.Handle("/compagnie/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaCompagnia))))
 	mux.Handle("/compagnie/logo/", http.HandlerFunc(handlers.ServeCompagniaLogo))
+	mux.Handle("/navi/foto/", http.HandlerFunc(handlers.ServeNaveFoto))
 
 	// Anagrafica Navi
 	mux.Handle("/navi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNavi)))
@@ -177,6 +178,7 @@ func main() {
 	mux.Handle("/api/rete/scan-ap", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanAccessPoints)))
 	mux.Handle("/api/rete/backup-config", middleware.RequireAuth(http.HandlerFunc(handlers.APIBackupConfig)))
 	mux.Handle("/api/rete/scan-lldp", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanLLDP)))
+	mux.Handle("/api/guasti-nave", middleware.RequireAuth(http.HandlerFunc(handlers.APIGuastiNave)))
 	mux.Handle("/api/rete/switch-version", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetSwitchVersion)))
 	mux.Handle("/api/rete/ap-fault", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetAPFault)))
 	mux.Handle("/api/rete/ac-version", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetACVersion)))

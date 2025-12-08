@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -17,22 +18,26 @@ import (
 // ============================================
 
 type GuastoNave struct {
-	ID                      int64
-	NaveID                  int64
-	NaveNome                string
-	Tipo                    string // manuale o ap_fault
-	APID                    *int64
-	APNome                  string
-	Gravita                 string // bassa, media, alta
-	Descrizione             string
-	Stato                   string // aperto, preso_in_carico, risolto
-	TecnicoAperturaID       *int64
-	TecnicoAperturaNome     string
-	DataApertura            string
-	TecnicoRisoluzioneID    *int64
-	TecnicoRisoluzioneNome  string
-	DataRisoluzione         string
-	DescrizioneRisoluzione  string
+	ID                       int64
+	NaveID                   int64
+	NaveNome                 string
+	Tipo                     string // manuale o ap_fault
+	APID                     *int64
+	APNome                   string
+	Gravita                  string // bassa, media, alta
+	Descrizione              string
+	Stato                    string // aperto, preso_in_carico, risolto
+	TecnicoAperturaID        *int64
+	TecnicoAperturaNome      string
+	DataApertura             string
+	TecnicoPresaInCaricoID   *int64
+	TecnicoPresaInCaricoNome string
+	DataPresaInCarico        string
+	NotaPresaInCarico        string
+	TecnicoRisoluzioneID     *int64
+	TecnicoRisoluzioneNome   string
+	DataRisoluzione          string
+	DescrizioneRisoluzione   string
 }
 
 type NaveGuastiCount struct {
@@ -41,12 +46,24 @@ type NaveGuastiCount struct {
 	Compagnia    string
 	GuastiAperti int
 	GuastiAlti   int
+	APFault      int
 }
 
 type GuastiNavePageData struct {
-	Nave    NaveInfo
-	Guasti  []GuastoNave
-	Tecnici []TecnicoSelect
+	Nave     NaveInfo
+	Guasti   []GuastoNave
+	APFaults []APFaultInfo
+	Tecnici  []TecnicoSelect
+}
+
+type APFaultInfo struct {
+	ID       int64
+	APName   string
+	APMac    string
+	IP       string
+	Stato    string
+	Switch   string
+	Porta    string
 }
 
 type TecnicoSelect struct {
@@ -70,10 +87,11 @@ func ListaNaviGuasti(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
 		SELECT n.id, n.nome, COALESCE(c.nome, '') as compagnia,
 			(SELECT COUNT(*) FROM guasti_nave g WHERE g.nave_id = n.id AND g.stato != 'risolto') as guasti_aperti,
-			(SELECT COUNT(*) FROM guasti_nave g WHERE g.nave_id = n.id AND g.stato != 'risolto' AND g.gravita = 'alta') as guasti_alti
+			(SELECT COUNT(*) FROM guasti_nave g WHERE g.nave_id = n.id AND g.stato != 'risolto' AND g.gravita = 'alta') as guasti_alti,
+			(SELECT COUNT(*) FROM access_point ap WHERE ap.nave_id = n.id AND (LOWER(ap.stato) = 'fault' OR LOWER(ap.stato) = 'offline')) as ap_fault
 		FROM navi n
 		LEFT JOIN compagnie c ON n.compagnia_id = c.id
-		ORDER BY guasti_alti DESC, guasti_aperti DESC, n.nome
+		ORDER BY ap_fault DESC, guasti_alti DESC, guasti_aperti DESC, n.nome
 	`)
 	if err != nil {
 		http.Error(w, "Errore caricamento navi", http.StatusInternalServerError)
@@ -84,7 +102,7 @@ func ListaNaviGuasti(w http.ResponseWriter, r *http.Request) {
 	var navi []NaveGuastiCount
 	for rows.Next() {
 		var n NaveGuastiCount
-		rows.Scan(&n.ID, &n.Nome, &n.Compagnia, &n.GuastiAperti, &n.GuastiAlti)
+		rows.Scan(&n.ID, &n.Nome, &n.Compagnia, &n.GuastiAperti, &n.GuastiAlti, &n.APFault)
 		navi = append(navi, n)
 	}
 
@@ -124,13 +142,17 @@ func GuastiNave(w http.ResponseWriter, r *http.Request) {
 	// Carica guasti non risolti
 	guasti := getGuastiNave(naveID, false)
 
+	// Carica AP in fault/offline dalla tabella access_point
+	apFaults := getAPFaults(naveID)
+
 	// Carica tecnici per dropdown
 	tecnici := getTecniciSelect()
 
 	pageData := GuastiNavePageData{
-		Nave:    nave,
-		Guasti:  guasti,
-		Tecnici: tecnici,
+		Nave:     nave,
+		Guasti:   guasti,
+		APFaults: apFaults,
+		Tecnici:  tecnici,
 	}
 
 	data := NewPageData("Guasti - "+nave.Nome, r)
@@ -200,13 +222,29 @@ func ModificaGuasto(w http.ResponseWriter, r *http.Request) {
 	stato := r.FormValue("stato")
 	gravita := r.FormValue("gravita")
 	descrizioneRisoluzione := strings.TrimSpace(r.FormValue("descrizione_risoluzione"))
+	tecnicoPresaInCaricoID := r.FormValue("tecnico_presa_in_carico_id")
+	notePresaInCarico := strings.TrimSpace(r.FormValue("note_presa_in_carico"))
+	tecnicoRisoluzioneID := r.FormValue("tecnico_risoluzione_id")
 
-	// Se risolto, imposta data e tecnico risoluzione
-	if stato == "risolto" {
-		session := middleware.GetSession(r)
-		var tecnicoID interface{}
-		if session != nil && session.UserID > 0 {
-			tecnicoID = session.UserID
+	// Gestisci in base allo stato
+	if stato == "preso_in_carico" {
+		var tecID interface{}
+		if tecnicoPresaInCaricoID != "" {
+			tecID, _ = strconv.ParseInt(tecnicoPresaInCaricoID, 10, 64)
+		}
+
+		database.DB.Exec(`
+			UPDATE guasti_nave 
+			SET stato = ?, gravita = ?, 
+			    tecnico_presa_in_carico_id = ?, data_presa_in_carico = CURRENT_TIMESTAMP,
+			    note_presa_in_carico = ?,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?
+		`, stato, gravita, tecID, notePresaInCarico, guastoID)
+	} else if stato == "risolto" {
+		var tecID interface{}
+		if tecnicoRisoluzioneID != "" {
+			tecID, _ = strconv.ParseInt(tecnicoRisoluzioneID, 10, 64)
 		}
 
 		database.DB.Exec(`
@@ -215,7 +253,7 @@ func ModificaGuasto(w http.ResponseWriter, r *http.Request) {
 			    tecnico_risoluzione_id = ?, data_risoluzione = CURRENT_TIMESTAMP,
 			    updated_at = CURRENT_TIMESTAMP
 			WHERE id = ?
-		`, stato, gravita, descrizioneRisoluzione, tecnicoID, guastoID)
+		`, stato, gravita, descrizioneRisoluzione, tecID, guastoID)
 	} else {
 		database.DB.Exec(`
 			UPDATE guasti_nave 
@@ -267,7 +305,11 @@ func StoricoGuasti(w http.ResponseWriter, r *http.Request) {
 		SELECT g.id, g.nave_id, n.nome as nave_nome, g.tipo, g.ap_id, 
 		       COALESCE(ap.ap_name, '') as ap_nome, g.gravita, g.descrizione, g.stato,
 		       g.tecnico_apertura_id, COALESCE(ua.nome || ' ' || ua.cognome, '') as tecnico_apertura,
-		       g.data_apertura, g.tecnico_risoluzione_id, 
+		       g.data_apertura,
+		       g.tecnico_presa_in_carico_id, COALESCE(up.nome || ' ' || up.cognome, '') as tecnico_presa_in_carico,
+		       COALESCE(g.data_presa_in_carico, '') as data_presa_in_carico,
+		       COALESCE(g.note_presa_in_carico, '') as note_presa_in_carico,
+		       g.tecnico_risoluzione_id, 
 		       COALESCE(ur.nome || ' ' || ur.cognome, '') as tecnico_risoluzione,
 		       COALESCE(g.data_risoluzione, '') as data_risoluzione,
 		       COALESCE(g.descrizione_risoluzione, '') as descrizione_risoluzione
@@ -275,6 +317,7 @@ func StoricoGuasti(w http.ResponseWriter, r *http.Request) {
 		JOIN navi n ON g.nave_id = n.id
 		LEFT JOIN access_point ap ON g.ap_id = ap.id
 		LEFT JOIN utenti ua ON g.tecnico_apertura_id = ua.id
+		LEFT JOIN utenti up ON g.tecnico_presa_in_carico_id = up.id
 		LEFT JOIN utenti ur ON g.tecnico_risoluzione_id = ur.id
 		WHERE g.stato = 'risolto'
 		AND DATE(g.data_risoluzione) >= DATE(?)
@@ -291,10 +334,12 @@ func StoricoGuasti(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var g GuastoNave
 		var apID sql.NullInt64
-		var tecAperturaID, tecRisoluzioneID sql.NullInt64
+		var tecAperturaID, tecPresaInCaricoID, tecRisoluzioneID sql.NullInt64
 		rows.Scan(&g.ID, &g.NaveID, &g.NaveNome, &g.Tipo, &apID, &g.APNome,
 			&g.Gravita, &g.Descrizione, &g.Stato, &tecAperturaID, &g.TecnicoAperturaNome,
-			&g.DataApertura, &tecRisoluzioneID, &g.TecnicoRisoluzioneNome,
+			&g.DataApertura, &tecPresaInCaricoID, &g.TecnicoPresaInCaricoNome,
+			&g.DataPresaInCarico, &g.NotaPresaInCarico,
+			&tecRisoluzioneID, &g.TecnicoRisoluzioneNome,
 			&g.DataRisoluzione, &g.DescrizioneRisoluzione)
 		if apID.Valid {
 			g.APID = &apID.Int64
@@ -323,7 +368,11 @@ func getGuastiNave(naveID int64, includiRisolti bool) []GuastoNave {
 		SELECT g.id, g.nave_id, n.nome as nave_nome, g.tipo, g.ap_id, 
 		       COALESCE(ap.ap_name, '') as ap_nome, g.gravita, g.descrizione, g.stato,
 		       g.tecnico_apertura_id, COALESCE(ua.nome || ' ' || ua.cognome, '') as tecnico_apertura,
-		       g.data_apertura, g.tecnico_risoluzione_id, 
+		       g.data_apertura,
+		       g.tecnico_presa_in_carico_id, COALESCE(up.nome || ' ' || up.cognome, '') as tecnico_presa_in_carico,
+		       COALESCE(g.data_presa_in_carico, '') as data_presa_in_carico,
+		       COALESCE(g.note_presa_in_carico, '') as note_presa_in_carico,
+		       g.tecnico_risoluzione_id, 
 		       COALESCE(ur.nome || ' ' || ur.cognome, '') as tecnico_risoluzione,
 		       COALESCE(g.data_risoluzione, '') as data_risoluzione,
 		       COALESCE(g.descrizione_risoluzione, '') as descrizione_risoluzione
@@ -331,6 +380,7 @@ func getGuastiNave(naveID int64, includiRisolti bool) []GuastoNave {
 		JOIN navi n ON g.nave_id = n.id
 		LEFT JOIN access_point ap ON g.ap_id = ap.id
 		LEFT JOIN utenti ua ON g.tecnico_apertura_id = ua.id
+		LEFT JOIN utenti up ON g.tecnico_presa_in_carico_id = up.id
 		LEFT JOIN utenti ur ON g.tecnico_risoluzione_id = ur.id
 		WHERE g.nave_id = ?
 	`
@@ -348,10 +398,12 @@ func getGuastiNave(naveID int64, includiRisolti bool) []GuastoNave {
 	for rows.Next() {
 		var g GuastoNave
 		var apID sql.NullInt64
-		var tecAperturaID, tecRisoluzioneID sql.NullInt64
+		var tecAperturaID, tecPresaInCaricoID, tecRisoluzioneID sql.NullInt64
 		rows.Scan(&g.ID, &g.NaveID, &g.NaveNome, &g.Tipo, &apID, &g.APNome,
 			&g.Gravita, &g.Descrizione, &g.Stato, &tecAperturaID, &g.TecnicoAperturaNome,
-			&g.DataApertura, &tecRisoluzioneID, &g.TecnicoRisoluzioneNome,
+			&g.DataApertura, &tecPresaInCaricoID, &g.TecnicoPresaInCaricoNome,
+			&g.DataPresaInCarico, &g.NotaPresaInCarico,
+			&tecRisoluzioneID, &g.TecnicoRisoluzioneNome,
 			&g.DataRisoluzione, &g.DescrizioneRisoluzione)
 		if apID.Valid {
 			g.APID = &apID.Int64
@@ -398,9 +450,75 @@ func CreaGuastoAPFault(naveID int64, apID int64, apNome string) {
 // ChiudiGuastoAPFault chiude automaticamente un guasto AP quando torna online
 func ChiudiGuastoAPFault(naveID int64, apID int64) {
 	database.DB.Exec(`
-		UPDATE guasti_nave 
-		SET stato = 'risolto', data_risoluzione = CURRENT_TIMESTAMP, 
+		UPDATE guasti_nave
+		SET stato = 'risolto', data_risoluzione = CURRENT_TIMESTAMP,
 		    descrizione_risoluzione = 'AP tornato online - chiuso automaticamente'
 		WHERE nave_id = ? AND ap_id = ? AND tipo = 'ap_fault' AND stato != 'risolto'
 	`, naveID, apID)
+}
+
+// getAPFaults restituisce gli AP in stato fault o offline per una nave
+func getAPFaults(naveID int64) []APFaultInfo {
+	var apFaults []APFaultInfo
+
+	rows, err := database.DB.Query(`
+		SELECT ap.id, COALESCE(ap.ap_name, ''), COALESCE(ap.ap_mac, ''),
+		       COALESCE(ap.ap_ip, ''), COALESCE(ap.stato, ''),
+		       '', COALESCE(ap.switch_port, '')
+		FROM access_point ap
+		WHERE ap.nave_id = ? AND (LOWER(ap.stato) = 'fault' OR LOWER(ap.stato) = 'offline')
+		ORDER BY ap.ap_name
+	`, naveID)
+	if err != nil {
+		return apFaults
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ap APFaultInfo
+		rows.Scan(&ap.ID, &ap.APName, &ap.APMac, &ap.IP, &ap.Stato, &ap.Switch, &ap.Porta)
+		apFaults = append(apFaults, ap)
+	}
+	return apFaults
+}
+
+// APIGuastiNave restituisce i guasti aperti per una nave (per AJAX)
+func APIGuastiNave(w http.ResponseWriter, r *http.Request) {
+	naveID := r.URL.Query().Get("nave_id")
+	if naveID == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{"count": 0, "guasti": []interface{}{}})
+		return
+	}
+
+	rows, err := database.DB.Query(`
+		SELECT id, gravita, descrizione, stato 
+		FROM guasti_nave 
+		WHERE nave_id = ? AND stato != 'risolto'
+		ORDER BY CASE gravita WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END
+	`, naveID)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"count": 0, "guasti": []interface{}{}})
+		return
+	}
+	defer rows.Close()
+
+	type GuastoInfo struct {
+		ID          int64  `json:"id"`
+		Gravita     string `json:"gravita"`
+		Descrizione string `json:"descrizione"`
+		Stato       string `json:"stato"`
+	}
+
+	var guasti []GuastoInfo
+	for rows.Next() {
+		var g GuastoInfo
+		rows.Scan(&g.ID, &g.Gravita, &g.Descrizione, &g.Stato)
+		guasti = append(guasti, g)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"count":  len(guasti),
+		"guasti": guasti,
+	})
 }

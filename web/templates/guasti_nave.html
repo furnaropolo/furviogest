@@ -15,7 +15,45 @@
         </div>
     </div>
 
+    {{if .Data.APFaults}}
+    <div class="card border-danger mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-wifi-off me-2"></i>Access Point in Fault/Offline ({{len .Data.APFaults}})</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-2">I seguenti AP risultano in stato FAULT o OFFLINE dall'Access Controller:</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>AP</th>
+                            <th>MAC</th>
+                            <th>IP</th>
+                            <th>Stato</th>
+                            <th>Switch</th>
+                            <th>Porta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data.APFaults}}
+                        <tr>
+                            <td><strong>{{.APName}}</strong></td>
+                            <td><code>{{.APMac}}</code></td>
+                            <td>{{if .IP}}{{.IP}}{{else}}-{{end}}</td>
+                            <td><span class="badge bg-{{if eq .Stato "fault"}}danger{{else}}warning{{end}}">{{if eq .Stato "fault"}}FAULT{{else}}OFFLINE{{end}}</span></td>
+                            <td>{{if .Switch}}{{.Switch}}{{else}}-{{end}}</td>
+                            <td>{{if .Porta}}{{.Porta}}{{else}}-{{end}}</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
     {{if .Data.Guasti}}
+    <h5 class="mb-3"><i class="bi bi-wrench me-2"></i>Guasti Segnalati</h5>
     <div class="row">
         {{range .Data.Guasti}}
         <div class="col-md-6 col-lg-4 mb-3">
@@ -35,6 +73,13 @@
                     <p class="card-text"><strong>AP:</strong> {{.APNome}}</p>
                     {{end}}
                     <p class="card-text">{{.Descrizione}}</p>
+                    {{if .TecnicoPresaInCaricoNome}}
+                    <hr>
+                    <small class="text-primary">
+                        <i class="bi bi-person-check me-1"></i><strong>Preso in carico:</strong> {{.TecnicoPresaInCaricoNome}}
+                        {{if .NotaPresaInCarico}}<br><i class="bi bi-chat-left-text me-1"></i>{{.NotaPresaInCarico}}{{end}}
+                    </small>
+                    {{end}}
                     <hr>
                     <small class="text-muted">
                         <i class="bi bi-calendar me-1"></i>{{.DataApertura}}<br>
@@ -58,9 +103,11 @@
         {{end}}
     </div>
     {{else}}
-    <div class="alert alert-success">
-        <i class="bi bi-check-circle me-2"></i>Nessun guasto attivo per questa nave.
-    </div>
+        {{if not .Data.APFaults}}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-2"></i>Nessun guasto attivo per questa nave.
+        </div>
+        {{end}}
     {{end}}
 </div>
 
@@ -75,7 +122,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Gravità *</label>
+                        <label class="form-label">Gravita *</label>
                         <select class="form-select" name="gravita" required>
                             <option value="bassa">Bassa</option>
                             <option value="media" selected>Media</option>
@@ -114,7 +161,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Gravità</label>
+                        <label class="form-label">Gravita</label>
                         <select class="form-select" name="gravita" id="edit_gravita">
                             <option value="bassa">Bassa</option>
                             <option value="media">Media</option>
@@ -123,15 +170,45 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Stato</label>
-                        <select class="form-select" name="stato" id="edit_stato" onchange="toggleRisoluzione()">
+                        <select class="form-select" name="stato" id="edit_stato" onchange="toggleCampiStato()">
                             <option value="aperto">Aperto</option>
                             <option value="preso_in_carico">Preso in carico</option>
                             <option value="risolto">Risolto</option>
                         </select>
                     </div>
-                    <div class="mb-3" id="div_risoluzione" style="display:none;">
-                        <label class="form-label">Descrizione Risoluzione *</label>
-                        <textarea class="form-control" name="descrizione_risoluzione" id="edit_risoluzione" rows="3" placeholder="Descrivi come è stato risolto..."></textarea>
+
+                    <!-- Campi per Presa in Carico -->
+                    <div id="div_presa_in_carico" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Tecnico Presa in Carico *</label>
+                            <select class="form-select" name="tecnico_presa_in_carico_id" id="edit_tecnico_pic">
+                                <option value="">-- Seleziona Tecnico --</option>
+                                {{range .Data.Tecnici}}
+                                <option value="{{.ID}}">{{.Nome}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Note Presa in Carico</label>
+                            <textarea class="form-control" name="note_presa_in_carico" id="edit_note_pic" rows="2" placeholder="Note aggiuntive..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Campi per Risoluzione -->
+                    <div id="div_risoluzione" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Tecnico Risoluzione *</label>
+                            <select class="form-select" name="tecnico_risoluzione_id" id="edit_tecnico_ris">
+                                <option value="">-- Seleziona Tecnico --</option>
+                                {{range .Data.Tecnici}}
+                                <option value="{{.ID}}">{{.Nome}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrizione Risoluzione *</label>
+                            <textarea class="form-control" name="descrizione_risoluzione" id="edit_risoluzione" rows="3" placeholder="Descrivi come e stato risolto..."></textarea>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -148,21 +225,36 @@ function editGuasto(id, gravita, stato) {
     document.getElementById('formModificaGuasto').action = '/guasti-nave/modifica/' + id;
     document.getElementById('edit_gravita').value = gravita;
     document.getElementById('edit_stato').value = stato;
+    document.getElementById('edit_tecnico_pic').value = '';
+    document.getElementById('edit_note_pic').value = '';
+    document.getElementById('edit_tecnico_ris').value = '';
     document.getElementById('edit_risoluzione').value = '';
-    toggleRisoluzione();
+    toggleCampiStato();
     new bootstrap.Modal(document.getElementById('modalModificaGuasto')).show();
 }
 
-function toggleRisoluzione() {
+function toggleCampiStato() {
     const stato = document.getElementById('edit_stato').value;
+    const divPic = document.getElementById('div_presa_in_carico');
     const divRis = document.getElementById('div_risoluzione');
+    const tecnicoPic = document.getElementById('edit_tecnico_pic');
+    const tecnicoRis = document.getElementById('edit_tecnico_ris');
     const textRis = document.getElementById('edit_risoluzione');
-    if (stato === 'risolto') {
+
+    // Reset
+    divPic.style.display = 'none';
+    divRis.style.display = 'none';
+    tecnicoPic.required = false;
+    tecnicoRis.required = false;
+    textRis.required = false;
+
+    if (stato === 'preso_in_carico') {
+        divPic.style.display = 'block';
+        tecnicoPic.required = true;
+    } else if (stato === 'risolto') {
         divRis.style.display = 'block';
+        tecnicoRis.required = true;
         textRis.required = true;
-    } else {
-        divRis.style.display = 'none';
-        textRis.required = false;
     }
 }
 </script>

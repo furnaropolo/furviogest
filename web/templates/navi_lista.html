@@ -6,7 +6,7 @@
     <div class="header-actions">
         {{if .Session.IsTecnico}}
         <a href="/orari/upload" class="btn btn-secondary">Upload Orari Corsica</a>
-        <a href="/navi/nuovo" class="btn btn-primary">Nuova Nave</a>
+        <a href="/navi/nuovo" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuova Nave</a>
         {{end}}
     </div>
 </div>
@@ -18,88 +18,83 @@
         <input type="checkbox" id="filterLavori" onchange="filterNavi()">
         Mostra solo ferme per lavori
     </label>
-    <button class="btn btn-sm btn-outline-secondary" onclick="expandAll()"><i class="bi bi-arrows-expand"></i> Espandi</button>
-    <button class="btn btn-sm btn-outline-secondary" onclick="collapseAll()"><i class="bi bi-arrows-collapse"></i> Chiudi</button>
 </div>
 
-<div class="accordion" id="accordionNavi">
+<!-- Pulsanti Compagnie -->
+<div class="compagnie-buttons mb-4">
+    <button class="btn btn-compagnia active" data-compagnia="all" onclick="showCompagnia('all')">
+        <i class="bi bi-grid-3x3-gap"></i> Tutte
+    </button>
     {{range .Data}}
-    <div class="accordion-item compagnia-group">
-        <h2 class="accordion-header">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{.ID}}" aria-expanded="true">
-                <div class="d-flex align-items-center w-100">
-                    <div class="compagnia-logo-box me-3">
-                        {{if .Logo}}
-                        <img src="/compagnie/logo/{{.ID}}" alt="Logo {{.Nome}}" class="compagnia-logo">
-                        {{else}}
-                        <div class="compagnia-logo-placeholder">
-                            <i class="bi bi-building"></i>
-                        </div>
-                        {{end}}
-                    </div>
-                    <div class="flex-grow-1">
-                        <strong>{{.Nome}}</strong>
-                        <span class="badge bg-primary ms-2">{{len .Navi}} navi</span>
-                    </div>
-                </div>
-            </button>
-        </h2>
-        <div id="collapse{{.ID}}" class="accordion-collapse collapse show">
-            <div class="accordion-body p-0">
-                <table class="table table-striped table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 100px;">Stato</th>
-                            <th>Nome</th>
-                            <th>IMO</th>
-                            <th>Email Master</th>
-                            <th style="width: 150px;">Lavori</th>
-                            <th style="width: 280px;">Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range .Navi}}
-                        <tr class="nave-row" data-ferma="{{if .FermaPerLavori}}1{{else}}0{{end}}" data-nome="{{.Nome | lower}}">
-                            <td>
-                                {{if .FermaPerLavori}}
-                                <span class="badge bg-warning text-dark" title="Non raggiungibile da remoto">IN CANTIERE</span>
-                                {{else}}
-                                <span class="badge bg-success">ATTIVA</span>
-                                {{end}}
-                            </td>
-                            <td><strong><a href="/navi/dettaglio/{{.ID}}">{{.Nome}}</a></strong></td>
-                            <td>{{.IMO}}</td>
-                            <td>{{if .EmailMaster}}<a href="mailto:{{.EmailMaster}}">{{.EmailMaster}}</a>{{end}}</td>
-                            <td>
-                                {{if .FermaPerLavori}}
-                                    {{if .DataInizioLavori}}
-                                    <small>Dal: {{.DataInizioLavori.Format "02/01/2006"}}</small><br>
-                                    {{end}}
-                                    {{if .DataFineLavoriPrev}}
-                                    <small>Fine: {{.DataFineLavoriPrev.Format "02/01/2006"}}</small>
-                                    {{end}}
-                                {{else}}
-                                -
-                                {{end}}
-                            </td>
-                            <td class="table-actions">
-                                <a href="/navi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli"><i class="bi bi-info-circle"></i></a>
-                                <a href="/navi/rete/{{.ID}}" class="btn btn-sm btn-primary" title="Rete"><i class="bi bi-wifi"></i></a>
-                                <a href="/guasti-nave/{{.ID}}" class="btn btn-sm btn-danger" title="Guasti"><i class="bi bi-exclamation-triangle"></i></a>
-                                {{if $.Session.IsTecnico}}
-                                <a href="/navi/modifica/{{.ID}}" class="btn btn-sm btn-secondary" title="Modifica"><i class="bi bi-pencil"></i></a>
-                                <a href="/navi/elimina/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Sei sicuro?')" title="Elimina"><i class="bi bi-trash"></i></a>
-                                {{end}}
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <button class="btn btn-compagnia" data-compagnia="{{.ID}}" onclick="showCompagnia({{.ID}})">
+        {{if .Logo}}
+        <img src="/compagnie/logo/{{.ID}}" alt="{{.Nome}}" class="btn-logo">
+        {{else}}
+        <i class="bi bi-building"></i>
+        {{end}}
+        {{.Nome}} <span class="badge bg-primary">{{len .Navi}}</span>
+    </button>
     {{end}}
 </div>
+
+<!-- Lista Navi per Compagnia -->
+{{range .Data}}
+<div class="compagnia-section" data-compagnia-id="{{.ID}}">
+    <div class="compagnia-header">
+        {{if .Logo}}
+        <img src="/compagnie/logo/{{.ID}}" alt="{{.Nome}}" class="compagnia-header-logo">
+        {{end}}
+        <h3>{{.Nome}}</h3>
+        <span class="badge bg-primary">{{len .Navi}} navi</span>
+    </div>
+
+    <div class="navi-grid">
+        {{range .Navi}}
+        <div class="nave-card" data-ferma="{{if .FermaPerLavori}}1{{else}}0{{end}}" data-nome="{{.Nome | lower}}">
+            <div class="nave-card-header">
+                {{if .Foto}}
+                <img src="/navi/foto/{{.ID}}" alt="{{.Nome}}" class="nave-thumb">
+                {{else}}
+                <div class="nave-thumb-placeholder">
+                    <i class="bi bi-ship"></i>
+                </div>
+                {{end}}
+                <div class="nave-status">
+                    {{if .FermaPerLavori}}
+                    <span class="badge bg-warning text-dark">IN CANTIERE</span>
+                    {{else}}
+                    <span class="badge bg-success">ATTIVA</span>
+                    {{end}}
+                </div>
+            </div>
+            <div class="nave-card-body">
+                <h4><a href="/navi/dettaglio/{{.ID}}">{{.Nome}}</a></h4>
+                {{if .IMO}}<small class="text-muted">IMO: {{.IMO}}</small>{{end}}
+                {{if .FermaPerLavori}}
+                <div class="lavori-info mt-2">
+                    {{if .DataInizioLavori}}
+                    <small><i class="bi bi-calendar"></i> Dal: {{.DataInizioLavori.Format "02/01/2006"}}</small>
+                    {{end}}
+                    {{if .DataFineLavoriPrev}}
+                    <small><i class="bi bi-calendar-check"></i> Fine: {{.DataFineLavoriPrev.Format "02/01/2006"}}</small>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            <div class="nave-card-footer">
+                <a href="/navi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli"><i class="bi bi-info-circle"></i></a>
+                <a href="/navi/rete/{{.ID}}" class="btn btn-sm btn-primary" title="Rete"><i class="bi bi-wifi"></i></a>
+                <a href="/guasti-nave/{{.ID}}" class="btn btn-sm btn-danger" title="Guasti"><i class="bi bi-exclamation-triangle"></i></a>
+                {{if $.Session.IsTecnico}}
+                <a href="/navi/modifica/{{.ID}}" class="btn btn-sm btn-secondary" title="Modifica"><i class="bi bi-pencil"></i></a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
 {{else}}
 <div class="empty-state">
     <h3>Nessuna nave trovata</h3>
@@ -113,42 +108,59 @@
 <script>
 document.getElementById('searchInput').addEventListener('keyup', filterNavi);
 
+var activeCompagnia = 'all';
+
+function showCompagnia(compagniaId) {
+    activeCompagnia = compagniaId;
+
+    // Aggiorna pulsanti
+    document.querySelectorAll('.btn-compagnia').forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+    document.querySelector('[data-compagnia="' + compagniaId + '"]').classList.add('active');
+
+    // Mostra/nascondi sezioni
+    document.querySelectorAll('.compagnia-section').forEach(function(section) {
+        if (compagniaId === 'all' || section.getAttribute('data-compagnia-id') == compagniaId) {
+            section.style.display = '';
+        } else {
+            section.style.display = 'none';
+        }
+    });
+
+    filterNavi();
+}
+
 function filterNavi() {
     var searchFilter = document.getElementById('searchInput').value.toLowerCase();
     var onlyFerme = document.getElementById('filterLavori').checked;
-    var rows = document.querySelectorAll('.nave-row');
-    
-    rows.forEach(function(row) {
-        var nome = row.getAttribute('data-nome');
-        var isFerma = row.getAttribute('data-ferma') === '1';
-        var matchSearch = nome.includes(searchFilter);
-        var matchFerma = !onlyFerme || isFerma;
-        
-        row.style.display = (matchSearch && matchFerma) ? '' : 'none';
-    });
-    
-    // Nascondi compagnie senza navi visibili
-    document.querySelectorAll('.compagnia-group').forEach(function(group) {
-        var visibleRows = group.querySelectorAll('.nave-row:not([style*="display: none"])');
-        group.style.display = visibleRows.length > 0 ? '' : 'none';
-    });
-}
 
-function expandAll() {
-    document.querySelectorAll('.accordion-collapse').forEach(function(el) {
-        el.classList.add('show');
-    });
-    document.querySelectorAll('.accordion-button').forEach(function(el) {
-        el.classList.remove('collapsed');
-    });
-}
+    document.querySelectorAll('.compagnia-section').forEach(function(section) {
+        if (activeCompagnia !== 'all' && section.getAttribute('data-compagnia-id') != activeCompagnia) {
+            return;
+        }
 
-function collapseAll() {
-    document.querySelectorAll('.accordion-collapse').forEach(function(el) {
-        el.classList.remove('show');
-    });
-    document.querySelectorAll('.accordion-button').forEach(function(el) {
-        el.classList.add('collapsed');
+        var cards = section.querySelectorAll('.nave-card');
+        var visibleCount = 0;
+
+        cards.forEach(function(card) {
+            var nome = card.getAttribute('data-nome');
+            var isFerma = card.getAttribute('data-ferma') === '1';
+            var matchSearch = nome.includes(searchFilter);
+            var matchFerma = !onlyFerme || isFerma;
+
+            if (matchSearch && matchFerma) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Nascondi sezione se nessuna nave visibile
+        if (activeCompagnia === 'all') {
+            section.style.display = visibleCount > 0 ? '' : 'none';
+        }
     });
 }
 </script>
@@ -179,59 +191,164 @@ function collapseAll() {
     gap: 0.5rem;
     cursor: pointer;
 }
-.accordion-button {
-    font-size: 1.1rem;
-    background-color: #f8f9fa;
-    padding: 0.75rem 1rem;
+
+/* Pulsanti Compagnie */
+.compagnie-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
 }
-.accordion-button:not(.collapsed) {
-    background-color: #e7f1ff;
-    color: #0c63e4;
-}
-.accordion-item {
-    margin-bottom: 0.5rem;
-    border-radius: 0.5rem;
-    overflow: hidden;
-}
-.compagnia-logo-box {
-    width: 60px;
-    height: 40px;
+.btn-compagnia {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid #dee2e6;
     background: white;
-    border-radius: 4px;
-    padding: 4px;
-    border: 1px solid #dee2e6;
+    border-radius: 25px;
+    font-weight: 500;
+    transition: all 0.2s;
 }
-.compagnia-logo {
-    max-width: 100%;
-    max-height: 100%;
+.btn-compagnia:hover {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+.btn-compagnia.active {
+    border-color: #0d6efd;
+    background: #0d6efd;
+    color: white;
+}
+.btn-compagnia.active .badge {
+    background: white !important;
+    color: #0d6efd;
+}
+.btn-logo {
+    height: 24px;
+    width: auto;
+    max-width: 60px;
     object-fit: contain;
 }
-.compagnia-logo-placeholder {
+
+/* Sezioni Compagnia */
+.compagnia-section {
+    margin-bottom: 2rem;
+}
+.compagnia-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px 8px 0 0;
+}
+.compagnia-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.compagnia-header-logo {
+    height: 30px;
+    width: auto;
+    max-width: 80px;
+    object-fit: contain;
+    background: white;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+/* Griglia Navi */
+.navi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Card Nave */
+.nave-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.nave-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.nave-card-header {
+    position: relative;
+    height: 120px;
+    background: #e9ecef;
+}
+.nave-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.nave-thumb-placeholder {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #adb5bd;
-    font-size: 1.5rem;
+    font-size: 3rem;
 }
-.table-actions {
-    white-space: nowrap;
+.nave-status {
+    position: absolute;
+    top: 8px;
+    right: 8px;
 }
-.table-actions .btn {
-    margin-right: 0.25rem;
+.nave-card-body {
+    padding: 1rem;
 }
-.btn-info {
-    background: #17a2b8;
-    color: white;
-    border-color: #17a2b8;
+.nave-card-body h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.1rem;
 }
-.btn-info:hover {
-    background: #138496;
-    color: white;
+.nave-card-body h4 a {
+    color: #212529;
+    text-decoration: none;
+}
+.nave-card-body h4 a:hover {
+    color: #0d6efd;
+}
+.lavori-info {
+    font-size: 0.85rem;
+    color: #856404;
+    background: #fff3cd;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+.lavori-info small {
+    display: block;
+}
+.nave-card-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+.nave-card-footer .btn {
+    flex: 1;
+    max-width: 50px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .navi-grid {
+        grid-template-columns: 1fr;
+    }
+    .compagnie-buttons {
+        justify-content: center;
+    }
 }
 </style>
 {{end}}

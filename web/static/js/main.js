@@ -10,8 +10,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Auto-hide alerts dopo 5 secondi
-    document.querySelectorAll('.alert').forEach(function(alert) {
+    // Auto-hide alerts dopo 5 secondi (solo quelli dismissibili, non quelli persistenti)
+    document.querySelectorAll('.alert:not(.alert-persistent)').forEach(function(alert) {
+        // Non rimuovere gli alert che contengono tabelle o sono sezioni informative
+        if (alert.querySelector('table') || alert.querySelector('h5')) {
+            return;
+        }
         setTimeout(function() {
             alert.style.opacity = '0';
             alert.style.transition = 'opacity 0.5s';

@@ -6,7 +6,7 @@
 </div>
 
 <div class="form-container">
-    <form method="POST" class="form">
+    <form method="POST" enctype="multipart/form-data" class="form">
         <div class="form-row">
             <div class="form-group">
                 <label for="compagnia_id">Compagnia *</label>
@@ -26,6 +26,21 @@
         <div class="form-group">
             <label for="imo">Numero IMO</label>
             <input type="text" id="imo" name="imo" value="{{.Data.Nave.IMO}}" placeholder="es. 9876543">
+        </div>
+
+        <!-- Sezione Foto -->
+        <div class="form-section foto-section">
+            <h3><i class="bi bi-camera"></i> Foto Nave</h3>
+            {{if .Data.Nave.Foto}}
+            <div class="current-foto mb-3">
+                <img src="/navi/foto/{{.Data.Nave.ID}}" alt="Foto {{.Data.Nave.Nome}}" class="nave-foto-preview">
+            </div>
+            {{end}}
+            <div class="form-group">
+                <label for="foto">{{if .Data.Nave.Foto}}Cambia foto{{else}}Carica foto{{end}}</label>
+                <input type="file" id="foto" name="foto" accept="image/*" class="form-control">
+                <small class="form-help">Formati: JPG, PNG, GIF (max 10MB)</small>
+            </div>
         </div>
 
         <h3 class="mt-3 mb-2">Contatti Nave</h3>
@@ -65,19 +80,19 @@
             <h3>Stato Nave</h3>
             <div class="form-group checkbox-group">
                 <label class="checkbox-label">
-                    <input type="checkbox" id="ferma_per_lavori" name="ferma_per_lavori" 
+                    <input type="checkbox" id="ferma_per_lavori" name="ferma_per_lavori"
                            {{if .Data.Nave.FermaPerLavori}}checked{{end}}
                            onchange="toggleDateLavori()">
                     <span class="checkbox-text">Ferma per lavori</span>
                 </label>
-                <small class="form-help">Spunta se la nave e' in cantiere/manutenzione e gli apparati non sono raggiungibili da remoto</small>
+                <small class="form-help">Spunta se la nave e in cantiere/manutenzione e gli apparati non sono raggiungibili da remoto</small>
             </div>
 
             <div id="date-lavori" class="date-lavori-section" style="{{if not .Data.Nave.FermaPerLavori}}display:none{{end}}">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="data_inizio_lavori">Data Inizio Lavori</label>
-                        <input type="date" id="data_inizio_lavori" name="data_inizio_lavori" 
+                        <input type="date" id="data_inizio_lavori" name="data_inizio_lavori"
                                value="{{if .Data.Nave.DataInizioLavori}}{{.Data.Nave.DataInizioLavori.Format "2006-01-02"}}{{end}}">
                     </div>
                     <div class="form-group">
@@ -105,27 +120,45 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{{if .Data.Nave.ID}}Salva Modifiche{{else}}Crea Nave{{end}}</button>
-            <a href="/anagrafiche/navi" class="btn btn-secondary">Annulla</a>
+            <a href="/navi" class="btn btn-secondary">Annulla</a>
         </div>
     </form>
 </div>
 
 <script>
 function toggleDateLavori() {
-    var checkbox = document.getElementById('ferma_per_lavori');
-    var dateSection = document.getElementById('date-lavori');
+    var checkbox = document.getElementById("ferma_per_lavori");
+    var dateSection = document.getElementById("date-lavori");
     if (checkbox.checked) {
-        dateSection.style.display = 'block';
+        dateSection.style.display = "block";
     } else {
-        dateSection.style.display = 'none';
-        document.getElementById('data_inizio_lavori').value = '';
-        document.getElementById('data_fine_lavori_prevista').value = '';
-        document.getElementById('porto_lavori_id').value = '';
+        dateSection.style.display = "none";
+        document.getElementById("data_inizio_lavori").value = "";
+        document.getElementById("data_fine_lavori_prevista").value = "";
+        document.getElementById("porto_lavori_id").value = "";
     }
 }
 </script>
 
 <style>
+.foto-section {
+    background: #e7f1ff;
+    border: 1px solid #0d6efd;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+}
+.foto-section h3 {
+    margin-top: 0;
+    color: #0d6efd;
+}
+.nave-foto-preview {
+    max-width: 300px;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+}
 .stato-lavori {
     background: #fff3cd;
     border: 1px solid #ffc107;
