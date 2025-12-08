@@ -279,6 +279,13 @@ func main() {
 	mux.Handle("/email-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailTrasferte)))
 	mux.Handle("/email-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailNoteSpese)))
 	mux.Handle("/api/navi-compagnia", middleware.RequireAuth(http.HandlerFunc(handlers.APINaviCompagnia)))
+	// Guasti Nave
+	mux.Handle("/guasti-nave", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNaviGuasti)))
+	mux.Handle("/guasti-nave/", middleware.RequireAuth(http.HandlerFunc(handlers.GuastiNave)))
+	mux.Handle("/guasti-nave/nuovo/", middleware.RequireAuth(http.HandlerFunc(handlers.NuovoGuasto)))
+	mux.Handle("/guasti-nave/modifica/", middleware.RequireAuth(http.HandlerFunc(handlers.ModificaGuasto)))
+	mux.Handle("/guasti-nave/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaGuasto))))
+	mux.Handle("/guasti-nave/storico", middleware.RequireAuth(http.HandlerFunc(handlers.StoricoGuasti)))
 
 	// Avvia il server
 	addr := fmt.Sprintf(":%d", *port)

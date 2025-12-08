@@ -1,0 +1,169 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-exclamation-triangle me-2"></i>Guasti - {{.Data.Nave.Nome}}</h2>
+            <p class="text-muted mb-0">{{.Data.Nave.NomeCompagnia}}</p>
+        </div>
+        <div>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalNuovoGuasto">
+                <i class="bi bi-plus-lg me-1"></i>Segnala Guasto
+            </button>
+            <a href="/guasti-nave" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-arrow-left me-1"></i>Torna alla Lista
+            </a>
+        </div>
+    </div>
+
+    {{if .Data.Guasti}}
+    <div class="row">
+        {{range .Data.Guasti}}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card border-{{if eq .Gravita "alta"}}danger{{else if eq .Gravita "media"}}warning{{else}}secondary{{end}}">
+                <div class="card-header bg-{{if eq .Gravita "alta"}}danger{{else if eq .Gravita "media"}}warning{{else}}secondary{{end}} {{if eq .Gravita "alta"}}text-white{{else if eq .Gravita "media"}}text-dark{{else}}text-white{{end}}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>
+                            {{if eq .Tipo "ap_fault"}}<i class="bi bi-wifi-off me-1"></i>AP Fault{{else}}<i class="bi bi-wrench me-1"></i>Guasto{{end}}
+                        </span>
+                        <span class="badge bg-{{if eq .Stato "aperto"}}danger{{else if eq .Stato "preso_in_carico"}}primary{{else}}success{{end}}">
+                            {{if eq .Stato "aperto"}}Aperto{{else if eq .Stato "preso_in_carico"}}Preso in carico{{else}}Risolto{{end}}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {{if eq .Tipo "ap_fault"}}
+                    <p class="card-text"><strong>AP:</strong> {{.APNome}}</p>
+                    {{end}}
+                    <p class="card-text">{{.Descrizione}}</p>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="bi bi-calendar me-1"></i>{{.DataApertura}}<br>
+                        {{if .TecnicoAperturaNome}}<i class="bi bi-person me-1"></i>{{.TecnicoAperturaNome}}{{end}}
+                    </small>
+                </div>
+                <div class="card-footer">
+                    <div class="btn-group btn-group-sm w-100">
+                        <button class="btn btn-outline-primary" onclick="editGuasto({{.ID}}, '{{.Gravita}}', '{{.Stato}}')" title="Modifica">
+                            <i class="bi bi-pencil"></i> Modifica
+                        </button>
+                        {{if ne .Tipo "ap_fault"}}
+                        <a href="/guasti-nave/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo guasto?')" title="Elimina">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle me-2"></i>Nessun guasto attivo per questa nave.
+    </div>
+    {{end}}
+</div>
+
+<!-- Modal Nuovo Guasto -->
+<div class="modal fade" id="modalNuovoGuasto" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/guasti-nave/nuovo/{{.Data.Nave.ID}}" method="POST">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Segnala Nuovo Guasto</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Gravità *</label>
+                        <select class="form-select" name="gravita" required>
+                            <option value="bassa">Bassa</option>
+                            <option value="media" selected>Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stato</label>
+                        <select class="form-select" name="stato">
+                            <option value="aperto" selected>Aperto</option>
+                            <option value="preso_in_carico">Preso in carico</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descrizione Problema *</label>
+                        <textarea class="form-control" name="descrizione" rows="4" required placeholder="Descrivi il problema..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-danger">Segnala Guasto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Guasto -->
+<div class="modal fade" id="modalModificaGuasto" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formModificaGuasto" method="POST">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Modifica Guasto</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Gravità</label>
+                        <select class="form-select" name="gravita" id="edit_gravita">
+                            <option value="bassa">Bassa</option>
+                            <option value="media">Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stato</label>
+                        <select class="form-select" name="stato" id="edit_stato" onchange="toggleRisoluzione()">
+                            <option value="aperto">Aperto</option>
+                            <option value="preso_in_carico">Preso in carico</option>
+                            <option value="risolto">Risolto</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="div_risoluzione" style="display:none;">
+                        <label class="form-label">Descrizione Risoluzione *</label>
+                        <textarea class="form-control" name="descrizione_risoluzione" id="edit_risoluzione" rows="3" placeholder="Descrivi come è stato risolto..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editGuasto(id, gravita, stato) {
+    document.getElementById('formModificaGuasto').action = '/guasti-nave/modifica/' + id;
+    document.getElementById('edit_gravita').value = gravita;
+    document.getElementById('edit_stato').value = stato;
+    document.getElementById('edit_risoluzione').value = '';
+    toggleRisoluzione();
+    new bootstrap.Modal(document.getElementById('modalModificaGuasto')).show();
+}
+
+function toggleRisoluzione() {
+    const stato = document.getElementById('edit_stato').value;
+    const divRis = document.getElementById('div_risoluzione');
+    const textRis = document.getElementById('edit_risoluzione');
+    if (stato === 'risolto') {
+        divRis.style.display = 'block';
+        textRis.required = true;
+    } else {
+        divRis.style.display = 'none';
+        textRis.required = false;
+    }
+}
+</script>
+{{end}}

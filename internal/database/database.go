@@ -631,6 +631,31 @@ func AddMonitoringTables() error {
 	CREATE INDEX IF NOT EXISTS idx_switch_sala ON switch_sala_server(sala_server_id);
 	CREATE INDEX IF NOT EXISTS idx_backup_ufficio ON config_backup_ufficio(ufficio_id);
 	CREATE INDEX IF NOT EXISTS idx_backup_sala ON config_backup_ufficio(sala_server_id);
+	-- Tabella guasti nave
+	CREATE TABLE IF NOT EXISTS guasti_nave (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nave_id INTEGER NOT NULL,
+		tipo TEXT NOT NULL DEFAULT 'manuale',  -- manuale o ap_fault
+		ap_id INTEGER,  -- riferimento AP se tipo = ap_fault
+		gravita TEXT NOT NULL DEFAULT 'media' CHECK(gravita IN ('bassa', 'media', 'alta')),
+		descrizione TEXT NOT NULL,
+		stato TEXT NOT NULL DEFAULT 'aperto' CHECK(stato IN ('aperto', 'preso_in_carico', 'risolto')),
+		tecnico_apertura_id INTEGER,
+		data_apertura DATETIME DEFAULT CURRENT_TIMESTAMP,
+		tecnico_risoluzione_id INTEGER,
+		data_risoluzione DATETIME,
+		descrizione_risoluzione TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE CASCADE,
+		FOREIGN KEY (ap_id) REFERENCES access_point(id) ON DELETE SET NULL,
+		FOREIGN KEY (tecnico_apertura_id) REFERENCES utenti(id),
+		FOREIGN KEY (tecnico_risoluzione_id) REFERENCES utenti(id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_guasti_nave ON guasti_nave(nave_id);
+	CREATE INDEX IF NOT EXISTS idx_guasti_stato ON guasti_nave(stato);
+	CREATE INDEX IF NOT EXISTS idx_guasti_data ON guasti_nave(data_apertura);
 	`
 
 	_, err := DB.Exec(schema)

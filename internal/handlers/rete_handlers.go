@@ -1093,6 +1093,13 @@ func updateOrCreateAP(naveID, acID int64, ap map[string]string) {
 			database.DB.Exec(`
 				INSERT INTO ap_status_log (ap_id, stato, dettaglio) VALUES (?, ?, ?)
 			`, existingID, stato, fmt.Sprintf("Cambio stato: %s -> %s", oldStato, stato))
+
+			// Gestione automatica guasti
+			if stato == "fault" && oldStato != "fault" {
+				CreaGuastoAPFault(naveID, existingID, name)
+			} else if oldStato == "fault" && stato != "fault" {
+				ChiudiGuastoAPFault(naveID, existingID)
+			}
 		}
 	}
 }

@@ -273,3 +273,26 @@
 - **Integrazione backup settimanale**:
   - Job settimanale esteso per includere uffici e sale server
   - Supporto SSH e Telnet per tutti gli apparati
+
+### 2025-12-08 (sessione 9)
+- **Nuova sezione Segnalazione Guasti Nave**:
+  - Lista navi con conteggio guasti attivi e badge colore per gravità
+  - Pagina guasti per singola nave con card colorate (rosso=alta, giallo=media, grigio=bassa)
+  - Ogni guasto ha: data apertura, gravità (bassa/media/alta), descrizione, stato (aperto/preso in carico/risolto)
+  - Quando risolto: data risoluzione, tecnico che ha risolto, descrizione risoluzione
+  - **Auto-inserimento AP fault**: quando uno scan AP rileva un AP in fault, viene creato automaticamente un guasto
+  - **Auto-chiusura AP fault**: quando l'AP torna online, il guasto viene chiuso automaticamente con descrizione "AP tornato online"
+  - **Storico guasti**: filtro per data inizio/fine, statistiche per gravità
+- **Tabelle DB aggiunte**:
+  - guasti_nave (id, nave_id, tipo, ap_id, gravita, descrizione, stato, tecnico_apertura_id, data_apertura, tecnico_risoluzione_id, data_risoluzione, descrizione_risoluzione)
+- **Templates creati**:
+  - guasti_navi_lista.html - lista navi con conteggio
+  - guasti_nave.html - guasti singola nave con CRUD
+  - guasti_storico.html - storico con filtro date
+- **Routes aggiunte**:
+  - /guasti-nave - lista navi
+  - /guasti-nave/{id} - guasti nave
+  - /guasti-nave/nuovo/{id} - nuovo guasto
+  - /guasti-nave/modifica/{id} - modifica guasto
+  - /guasti-nave/elimina/{id} - elimina guasto
+  - /guasti-nave/storico - storico guasti
