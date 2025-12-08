@@ -310,3 +310,34 @@
    - Testare CRUD uffici
    - Testare CRUD sale server
    - Testare backup configurazione switch/AC
+
+### 2025-12-08 (sessione 10)
+- **TEST Segnalazione Guasti Nave** - COMPLETATO:
+  - ✅ Lista navi con conteggio guasti e badge colorati per gravità
+  - ✅ Inserimento nuovo guasto manuale (form modale con gravità e descrizione)
+  - ✅ Modifica stato guasto (aperto → preso in carico → risolto)
+  - ✅ Storico guasti con filtro date (fix: allineati nomi parametri form data_da/data_a)
+  - ✅ Auto-inserimento guasto quando AP in fault (testato con simulazione DB)
+  - ✅ Auto-chiusura guasto quando AP torna online (descrizione automatica)
+- **TEST Uffici e Sale Server** - COMPLETATO:
+  - ✅ CRUD Uffici (creazione, modifica, lista)
+  - ✅ Gestione rete Uffici (AC + Switch con backup)
+  - ✅ CRUD Sale Server (creazione, modifica, lista)
+  - ✅ Gestione rete Sale Server (solo Switch con backup)
+- **Miglioramento Lista Navi**:
+  - Navi ora raggruppate per compagnia in accordion collassabili
+  - Spazio per logo compagnia in ogni header accordion
+  - Pulsanti "Espandi tutti" / "Chiudi tutti"
+  - Filtro ricerca nasconde automaticamente compagnie vuote
+- **Ampliamento Anagrafica Compagnie**:
+  - Nuovi campi sede legale: città, CAP, provincia, P.IVA, codice fiscale
+  - Upload logo compagnia
+  - Form riorganizzato in sezioni card (Dati, Sede Legale, Contatti, Logo)
+  - Route /compagnie/logo/{id} per servire i loghi
+- **Aggiornamenti DB**:
+  - Tabella compagnie: aggiunti campi citta, cap, provincia, piva, codice_fiscale, logo
+
+## TODO - Prossima sessione
+1. Testare upload logo compagnie e visualizzazione in lista navi
+2. Completare test backup configurazione su uffici/sale server reali
+3. Revisione Rapporto di Intervento (priorità alta da backlog)

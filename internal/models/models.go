@@ -75,17 +75,22 @@ type Automezzo struct {
 
 // Compagnia rappresenta una compagnia di navigazione
 type Compagnia struct {
-	ID        int64     `json:"id"`
-	Nome      string    `json:"nome"`
-	Indirizzo string    `json:"indirizzo"`
-	Telefono  string    `json:"telefono"`
-	Email     string    `json:"email"`
-	Note              string `json:"note"`
-	EmailDestinatari  string `json:"email_destinatari"` // solo_agenzia o tutti`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	Nome             string    `json:"nome"`
+	Indirizzo        string    `json:"indirizzo"`
+	Citta            string    `json:"citta"`
+	CAP              string    `json:"cap"`
+	Provincia        string    `json:"provincia"`
+	PIVA             string    `json:"piva"`
+	CodiceFiscale    string    `json:"codice_fiscale"`
+	Telefono         string    `json:"telefono"`
+	Email            string    `json:"email"`
+	Logo             string    `json:"logo"`
+	Note             string    `json:"note"`
+	EmailDestinatari string    `json:"email_destinatari"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
-
 // Nave rappresenta una nave di una compagnia
 type Nave struct {
 	ID                   int64     `json:"id"`

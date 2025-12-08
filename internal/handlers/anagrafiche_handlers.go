@@ -6,6 +6,7 @@ import (
 	"furviogest/internal/database"
 	"furviogest/internal/models"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -614,6 +615,11 @@ func NuovaCompagnia(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
+	citta := strings.TrimSpace(r.FormValue("citta"))
+	cap := strings.TrimSpace(r.FormValue("cap"))
+	provincia := strings.TrimSpace(r.FormValue("provincia"))
+	piva := strings.TrimSpace(r.FormValue("piva"))
+	codiceFiscale := strings.TrimSpace(r.FormValue("codice_fiscale"))
 	telefono := strings.TrimSpace(r.FormValue("telefono"))
 	emailVal := strings.TrimSpace(r.FormValue("email"))
 	note := strings.TrimSpace(r.FormValue("note"))
@@ -628,15 +634,27 @@ func NuovaCompagnia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := database.DB.Exec(`
-		INSERT INTO compagnie (nome, indirizzo, telefono, email, note, email_destinatari)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, nome, indirizzo, telefono, emailVal, note, emailDestinatari)
+	// Inserisci compagnia
+	result, err := database.DB.Exec(`
+		INSERT INTO compagnie (nome, indirizzo, citta, cap, provincia, piva, codice_fiscale, telefono, email, note, email_destinatari)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, nome, indirizzo, citta, cap, provincia, piva, codiceFiscale, telefono, emailVal, note, emailDestinatari)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"
 		renderTemplate(w, "compagnie_form.html", data)
 		return
+	}
+
+	// Gestisci upload logo
+	file, header, err := r.FormFile("logo")
+	if err == nil && header != nil {
+		defer file.Close()
+		compagniaID, _ := result.LastInsertId()
+		logoPath := saveCompagniaLogo(compagniaID, file, header)
+		if logoPath != "" {
+			database.DB.Exec("UPDATE compagnie SET logo = ? WHERE id = ?", logoPath, compagniaID)
+		}
 	}
 
 	http.Redirect(w, r, "/compagnie", http.StatusSeeOther)
@@ -659,33 +677,29 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		var c models.Compagnia
-		var indirizzo, telefono, emailVal, note, emailDest sql.NullString
+		var indirizzo, citta, cap, provincia, piva, cf, telefono, emailVal, note, emailDest, logo sql.NullString
 		err := database.DB.QueryRow(`
-			SELECT id, nome, indirizzo, telefono, email, note, COALESCE(email_destinatari, 'solo_agenzia')
+			SELECT id, nome, indirizzo, citta, cap, provincia, piva, codice_fiscale, 
+			       telefono, email, note, COALESCE(email_destinatari, 'solo_agenzia'), logo
 			FROM compagnie WHERE id = ?
-		`, id).Scan(&c.ID, &c.Nome, &indirizzo, &telefono, &emailVal, &note, &emailDest)
+		`, id).Scan(&c.ID, &c.Nome, &indirizzo, &citta, &cap, &provincia, &piva, &cf,
+			&telefono, &emailVal, &note, &emailDest, &logo)
 
 		if err != nil {
 			http.Redirect(w, r, "/compagnie", http.StatusSeeOther)
 			return
 		}
-		if indirizzo.Valid {
-			c.Indirizzo = indirizzo.String
-		}
-		if telefono.Valid {
-			c.Telefono = telefono.String
-		}
-		if emailVal.Valid {
-			c.Email = emailVal.String
-		}
-		if note.Valid {
-			c.Note = note.String
-		}
-		if emailDest.Valid {
-			c.EmailDestinatari = emailDest.String
-		} else {
-			c.EmailDestinatari = "solo_agenzia"
-		}
+		if indirizzo.Valid { c.Indirizzo = indirizzo.String }
+		if citta.Valid { c.Citta = citta.String }
+		if cap.Valid { c.CAP = cap.String }
+		if provincia.Valid { c.Provincia = provincia.String }
+		if piva.Valid { c.PIVA = piva.String }
+		if cf.Valid { c.CodiceFiscale = cf.String }
+		if telefono.Valid { c.Telefono = telefono.String }
+		if emailVal.Valid { c.Email = emailVal.String }
+		if note.Valid { c.Note = note.String }
+		if emailDest.Valid { c.EmailDestinatari = emailDest.String } else { c.EmailDestinatari = "solo_agenzia" }
+		if logo.Valid { c.Logo = logo.String }
 
 		data.Data = c
 		renderTemplate(w, "compagnie_form.html", data)
@@ -695,6 +709,11 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
+	citta := strings.TrimSpace(r.FormValue("citta"))
+	cap := strings.TrimSpace(r.FormValue("cap"))
+	provincia := strings.TrimSpace(r.FormValue("provincia"))
+	piva := strings.TrimSpace(r.FormValue("piva"))
+	codiceFiscale := strings.TrimSpace(r.FormValue("codice_fiscale"))
 	telefono := strings.TrimSpace(r.FormValue("telefono"))
 	emailVal := strings.TrimSpace(r.FormValue("email"))
 	note := strings.TrimSpace(r.FormValue("note"))
@@ -710,9 +729,11 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = database.DB.Exec(`
-		UPDATE compagnie SET nome = ?, indirizzo = ?, telefono = ?, email = ?, note = ?, email_destinatari = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE compagnie SET nome = ?, indirizzo = ?, citta = ?, cap = ?, provincia = ?, 
+		       piva = ?, codice_fiscale = ?, telefono = ?, email = ?, note = ?, 
+		       email_destinatari = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, nome, indirizzo, telefono, emailVal, note, emailDestinatari, id)
+	`, nome, indirizzo, citta, cap, provincia, piva, codiceFiscale, telefono, emailVal, note, emailDestinatari, id)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio"
@@ -720,9 +741,70 @@ func ModificaCompagnia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Gestisci upload logo
+	file, header, err := r.FormFile("logo")
+	if err == nil && header != nil {
+		defer file.Close()
+		logoPath := saveCompagniaLogo(id, file, header)
+		if logoPath != "" {
+			database.DB.Exec("UPDATE compagnie SET logo = ? WHERE id = ?", logoPath, id)
+		}
+	}
+
 	http.Redirect(w, r, "/compagnie", http.StatusSeeOther)
 }
 
+// saveCompagniaLogo salva il logo della compagnia
+func saveCompagniaLogo(compagniaID int64, file multipart.File, header *multipart.FileHeader) string {
+	// Crea directory se non esiste
+	uploadDir := filepath.Join("uploads", "compagnie")
+	os.MkdirAll(uploadDir, 0755)
+
+	// Estensione file
+	ext := filepath.Ext(header.Filename)
+	filename := fmt.Sprintf("logo_%d%s", compagniaID, ext)
+	filePath := filepath.Join(uploadDir, filename)
+
+	// Crea file destinazione
+	dst, err := os.Create(filePath)
+	if err != nil {
+		return ""
+	}
+	defer dst.Close()
+
+	// Copia contenuto
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		return ""
+	}
+
+	return filePath
+}
+
+// ServeCompagniaLogo serve il logo di una compagnia
+func ServeCompagniaLogo(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.NotFound(w, r)
+		return
+	}
+
+	id, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	var logoPath sql.NullString
+	database.DB.QueryRow("SELECT logo FROM compagnie WHERE id = ?", id).Scan(&logoPath)
+
+	if !logoPath.Valid || logoPath.String == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.ServeFile(w, r, logoPath.String)
+}
 func EliminaCompagnia(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 4 {
@@ -756,7 +838,8 @@ func ListaNavi(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query(`
 		SELECT n.id, n.compagnia_id, n.nome, n.imo, n.email_master, n.email_direttore_macchina,
 		       n.email_ispettore, n.note, n.ferma_per_lavori, n.data_inizio_lavori, 
-		       n.data_fine_lavori_prevista, n.created_at, c.nome as nome_compagnia
+		       n.data_fine_lavori_prevista, n.created_at, c.nome as nome_compagnia, 
+		       c.id as cid, COALESCE(c.logo, '') as logo
 		FROM navi n
 		JOIN compagnie c ON n.compagnia_id = c.id
 		ORDER BY c.nome, n.nome
@@ -768,42 +851,77 @@ func ListaNavi(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var navi []models.Nave
+	// Struct per compagnia con info complete
+	type CompagniaInfo struct {
+		ID   int64
+		Nome string
+		Logo string
+	}
+
+	// Mappa per raggruppare le navi per compagnia
+	naviPerCompagnia := make(map[int64][]models.Nave)
+	compagniaInfo := make(map[int64]CompagniaInfo)
+	// Slice per mantenere l'ordine delle compagnie
+	var ordineCompagnie []int64
+	compagnieViste := make(map[int64]bool)
+
 	for rows.Next() {
 		var n models.Nave
 		var imo, emailMaster, emailDirettore, emailIspettore, note sql.NullString
 		var dataInizioLavori, dataFineLavori sql.NullTime
+		var compagniaID int64
+		var compagniaNome, compagniaLogo string
+		
 		err := rows.Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &emailMaster, &emailDirettore,
 			&emailIspettore, &note, &n.FermaPerLavori, &dataInizioLavori, &dataFineLavori,
-			&n.CreatedAt, &n.NomeCompagnia)
+			&n.CreatedAt, &n.NomeCompagnia, &compagniaID, &compagniaLogo)
 		if err != nil {
 			continue
 		}
-		if imo.Valid {
-			n.IMO = imo.String
+		compagniaNome = n.NomeCompagnia
+		
+		if imo.Valid { n.IMO = imo.String }
+		if emailMaster.Valid { n.EmailMaster = emailMaster.String }
+		if emailDirettore.Valid { n.EmailDirettoreMacchina = emailDirettore.String }
+		if emailIspettore.Valid { n.EmailIspettore = emailIspettore.String }
+		if note.Valid { n.Note = note.String }
+		if dataInizioLavori.Valid { n.DataInizioLavori = &dataInizioLavori.Time }
+		if dataFineLavori.Valid { n.DataFineLavoriPrev = &dataFineLavori.Time }
+
+		// Aggiungi alla mappa per compagnia
+		naviPerCompagnia[compagniaID] = append(naviPerCompagnia[compagniaID], n)
+		
+		// Mantieni ordine e info compagnie
+		if !compagnieViste[compagniaID] {
+			ordineCompagnie = append(ordineCompagnie, compagniaID)
+			compagnieViste[compagniaID] = true
+			compagniaInfo[compagniaID] = CompagniaInfo{
+				ID:   compagniaID,
+				Nome: compagniaNome,
+				Logo: compagniaLogo,
+			}
 		}
-		if emailMaster.Valid {
-			n.EmailMaster = emailMaster.String
-		}
-		if emailDirettore.Valid {
-			n.EmailDirettoreMacchina = emailDirettore.String
-		}
-		if emailIspettore.Valid {
-			n.EmailIspettore = emailIspettore.String
-		}
-		if note.Valid {
-			n.Note = note.String
-		}
-		if dataInizioLavori.Valid {
-			n.DataInizioLavori = &dataInizioLavori.Time
-		}
-		if dataFineLavori.Valid {
-			n.DataFineLavoriPrev = &dataFineLavori.Time
-		}
-		navi = append(navi, n)
 	}
 
-	data.Data = navi
+	// Crea una slice ordinata per il template
+	type CompagniaNavi struct {
+		ID   int64
+		Nome string
+		Logo string
+		Navi []models.Nave
+	}
+	var naviOrdinate []CompagniaNavi
+	for _, cid := range ordineCompagnie {
+		info := compagniaInfo[cid]
+		naviOrdinate = append(naviOrdinate, CompagniaNavi{
+			ID:   info.ID,
+			Nome: info.Nome,
+			Logo: info.Logo,
+			Navi: naviPerCompagnia[cid],
+		})
+	}
+
+	data.Data = naviOrdinate
 	renderTemplate(w, "navi_lista.html", data)
 }
 

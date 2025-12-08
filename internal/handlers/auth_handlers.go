@@ -36,6 +36,10 @@ func InitTemplates(templatesDir string) error {
 			"add": func(a, b int) int { return a + b },
 			"sub": func(a, b int) int { return a - b },
 			"mod": func(a, b int) int { return a % b },
+			"lower": strings.ToLower,
+			"slugify": func(s string) string {
+				return strings.ReplaceAll(strings.ToLower(s), " ", "-")
+			},
 			"seq": func(start, end int) []int {
 				var result []int
 				for i := start; i <= end; i++ {

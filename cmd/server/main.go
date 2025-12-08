@@ -123,6 +123,7 @@ func main() {
 	mux.Handle("/compagnie/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaCompagnia))))
 	mux.Handle("/compagnie/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaCompagnia))))
 	mux.Handle("/compagnie/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaCompagnia))))
+	mux.Handle("/compagnie/logo/", http.HandlerFunc(handlers.ServeCompagniaLogo))
 
 	// Anagrafica Navi
 	mux.Handle("/navi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNavi)))
