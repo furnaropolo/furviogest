@@ -35,6 +35,8 @@ type AccessController struct {
 	Note         string
 	UltimoCheck  string
 	UltimoBackup string
+	Protocollo   string // ssh o telnet
+	Modello      string
 }
 
 type SwitchNave struct {
@@ -50,6 +52,7 @@ type SwitchNave struct {
 	Note         string
 	UltimoCheck  string
 	UltimoBackup string
+	Protocollo   string // ssh o telnet
 }
 
 type AccessPoint struct {
@@ -104,11 +107,20 @@ type NaveInfo struct {
 // GestioneReteNave mostra la pagina gestione rete di una nave
 
 // executeSSHCommand esegue un comando SSH usando expect per compatibilità Huawei
+// executeSwitchCommand esegue comando usando il protocollo configurato (ssh o telnet)
+func executeSwitchCommand(sw *SwitchNave, command string) (string, error) {
+	if sw.Protocollo == "telnet" {
+		return executeTelnetCommand(sw.IP, sw.SSHUser, sw.SSHPass, command)
+	}
+	// Default: SSH con fallback a telnet
+	return executeSSHBackup(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, command)
+}
+
 func executeSSHCommand(ip string, port int, user, pass, command string) (string, error) {
 	expectScript := fmt.Sprintf(`
 log_user 1
-set timeout 120
-spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p %d %s@%s
+set timeout 180
+spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p %d %s@%s
 
 expect {
     "assword:" {
@@ -144,7 +156,9 @@ expect {
     -re {<[^>]+>} {
         send "quit\r"
     }
-    timeout {}
+    timeout {
+        send "quit\r"
+    }
 }
 
 expect eof
@@ -228,6 +242,10 @@ func SalvaAccessController(w http.ResponseWriter, r *http.Request) {
 	sshUser := strings.TrimSpace(r.FormValue("ssh_user"))
 	sshPass := strings.TrimSpace(r.FormValue("ssh_pass"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	protocollo := r.FormValue("protocollo")
+	if protocollo == "" {
+		protocollo = "ssh"
+	}
 
 	// Verifica se esiste già un AC per questa nave
 	var existingID int64
@@ -260,6 +278,19 @@ func EliminaAccessController(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/navi/ac/elimina/")
 	naveID, _ := strconv.ParseInt(path, 10, 64)
 
+	// Elimina i file di backup dal disco
+	rows, _ := database.DB.Query("SELECT file_path FROM config_backup WHERE nave_id = ? AND tipo_apparato = 'ac'", naveID)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var filePath string
+			rows.Scan(&filePath)
+			os.Remove(filePath)
+		}
+	}
+	// Elimina i record di backup dal database per AC
+	database.DB.Exec("DELETE FROM config_backup WHERE nave_id = ? AND tipo_apparato = 'ac'", naveID)
+
 	database.DB.Exec("DELETE FROM access_controller WHERE nave_id = ?", naveID)
 	// Elimina anche gli AP associati
 	database.DB.Exec("DELETE FROM access_point WHERE nave_id = ?", naveID)
@@ -289,11 +320,15 @@ func NuovoSwitch(w http.ResponseWriter, r *http.Request) {
 	sshUser := strings.TrimSpace(r.FormValue("ssh_user"))
 	sshPass := strings.TrimSpace(r.FormValue("ssh_pass"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	protocollo := r.FormValue("protocollo")
+	if protocollo == "" {
+		protocollo = "ssh"
+	}
 
 	_, err := database.DB.Exec(`
-		INSERT INTO switch_nave (nave_id, nome, marca, modello, ip, ssh_port, ssh_user, ssh_pass, note)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, naveID, nome, marca, modello, ip, sshPort, sshUser, sshPass, note)
+		INSERT INTO switch_nave (nave_id, nome, marca, modello, ip, ssh_port, ssh_user, ssh_pass, note, protocollo)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, naveID, nome, marca, modello, ip, sshPort, sshUser, sshPass, note, protocollo)
 
 	if err != nil {
 		http.Error(w, "Errore salvataggio: "+err.Error(), http.StatusInternalServerError)
@@ -326,11 +361,15 @@ func ModificaSwitch(w http.ResponseWriter, r *http.Request) {
 	sshUser := strings.TrimSpace(r.FormValue("ssh_user"))
 	sshPass := strings.TrimSpace(r.FormValue("ssh_pass"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	protocollo := r.FormValue("protocollo")
+	if protocollo == "" {
+		protocollo = "ssh"
+	}
 
 	_, err := database.DB.Exec(`
-		UPDATE switch_nave SET nome = ?, marca = ?, modello = ?, ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE switch_nave SET nome = ?, marca = ?, modello = ?, ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, protocollo = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, nome, marca, modello, ip, sshPort, sshUser, sshPass, note, switchID)
+	`, nome, marca, modello, ip, sshPort, sshUser, sshPass, note, protocollo, switchID)
 
 	if err != nil {
 		http.Error(w, "Errore salvataggio: "+err.Error(), http.StatusInternalServerError)
@@ -454,7 +493,7 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Esegui comando SSH usando expect
-	output, err := executeSSHCommand(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, cmdStr)
+	output, err := executeSwitchCommand(sw, cmdStr)
 	if err != nil {
 		result["message"] = "Errore connessione SSH: " + err.Error()
 		json.NewEncoder(w).Encode(result)
@@ -489,6 +528,7 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 // APIBackupConfig esegue backup configurazione
 func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	log.Printf("[BACKUP] Richiesta backup: tipo=%s id=%s", r.URL.Query().Get("tipo"), r.URL.Query().Get("id"))
 
 	tipoApparato := r.URL.Query().Get("tipo") // ac o switch
 	apparatoIDStr := r.URL.Query().Get("id")
@@ -501,6 +541,7 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 
 	var ip, sshUser, sshPass, nome string
 	var sshPort int
+	var currentSwitch *SwitchNave
 	var naveID int64
 	var cmdStr string
 
@@ -522,19 +563,19 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 		nome = "AC"
 		cmdStr = "display current-configuration"
 	} else {
-		sw := getSwitchByID(apparatoID)
-		if sw == nil {
+		currentSwitch = getSwitchByID(apparatoID)
+		if currentSwitch == nil {
 			result["message"] = "Switch non trovato"
 			json.NewEncoder(w).Encode(result)
 			return
 		}
-		ip = sw.IP
-		sshUser = sw.SSHUser
-		sshPass = sw.SSHPass
-		sshPort = sw.SSHPort
-		naveID = sw.NaveID
-		nome = sw.Nome
-		if sw.Marca == "huawei" {
+		ip = currentSwitch.IP
+		sshUser = currentSwitch.SSHUser
+		sshPass = currentSwitch.SSHPass
+		sshPort = currentSwitch.SSHPort
+		naveID = currentSwitch.NaveID
+		nome = currentSwitch.Nome
+		if currentSwitch.Marca == "huawei" {
 			cmdStr = "display current-configuration"
 		} else {
 			cmdStr = "show running-config"
@@ -542,7 +583,14 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Esegui comando backup usando expect
-	output, err := executeSSHCommand(ip, sshPort, sshUser, sshPass, cmdStr)
+	var output string
+	var err error
+	if currentSwitch != nil {
+		output, err = executeSwitchCommand(currentSwitch, cmdStr)
+	} else {
+		output, err = executeSSHBackup(ip, sshPort, sshUser, sshPass, cmdStr)
+	}
+	log.Printf("[BACKUP] Switch %s output len: %d, err: %v", nome, len(output), err)
 	if err != nil {
 		result["message"] = "Errore backup: " + err.Error()
 		json.NewEncoder(w).Encode(result)
@@ -600,6 +648,17 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 		database.DB.Exec("UPDATE access_controller SET ultimo_backup = CURRENT_TIMESTAMP WHERE id = ?", apparatoID)
 	} else {
 		database.DB.Exec("UPDATE switch_nave SET ultimo_backup = CURRENT_TIMESTAMP WHERE id = ?", apparatoID)
+		// Estrai e aggiorna modello se non presente
+		// Recupera modello se non presente
+		var currentModello string
+		database.DB.QueryRow("SELECT COALESCE(modello, '') FROM switch_nave WHERE id = ?", apparatoID).Scan(&currentModello)
+		if currentModello == "" {
+			versionOutput, _ := executeSSHCommand(ip, sshPort, sshUser, sshPass, "display version")
+			_, model := parseVersionOutput(versionOutput, "huawei")
+			if model != "" {
+				database.DB.Exec("UPDATE switch_nave SET modello = ? WHERE id = ?", model, apparatoID)
+			}
+		}
 	}
 
 	result["success"] = true
@@ -646,6 +705,7 @@ func APITestSSH(w http.ResponseWriter, r *http.Request) {
 	port := r.URL.Query().Get("port")
 	user := r.URL.Query().Get("user")
 	pass := r.URL.Query().Get("pass")
+	protocollo := r.URL.Query().Get("protocollo")
 
 	if port == "" {
 		port = "22"
@@ -658,8 +718,8 @@ func APITestSSH(w http.ResponseWriter, r *http.Request) {
 
 	// Usa expect per compatibilità con Huawei
 	expectScript := fmt.Sprintf(`
-set timeout 15
-spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -p %s %s@%s
+set timeout 60
+spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p %s %s@%s
 expect {
     "*assword*" { send "%s\r"; exp_continue }
     "<*>" { exit 0 }
@@ -682,7 +742,7 @@ expect {
 	
 	if exitCode == 0 && (strings.Contains(outputStr, "<") || strings.Contains(outputStr, ">") || strings.Contains(outputStr, "Huawei") || strings.Contains(outputStr, "HUAWEI")) {
 		result["success"] = true
-		result["message"] = "Connessione SSH riuscita"
+		if protocollo == "telnet" { result["message"] = "Connessione Telnet riuscita" } else { result["message"] = "Connessione SSH riuscita" }
 	} else if exitCode == 1 || strings.Contains(outputStr, "Permission denied") {
 		result["message"] = "Password errata o utente non valido"
 	} else if exitCode == 2 || strings.Contains(outputStr, "Connection refused") {
@@ -719,9 +779,9 @@ func getAccessControllerByNave(naveID int64) *AccessController {
 	var ac AccessController
 	var ultimoCheck, ultimoBackup sql.NullString
 	err := database.DB.QueryRow(`
-		SELECT id, nave_id, ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup
+		SELECT id, nave_id, ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(modello, '')
 		FROM access_controller WHERE nave_id = ?
-	`, naveID).Scan(&ac.ID, &ac.NaveID, &ac.IP, &ac.SSHPort, &ac.SSHUser, &ac.SSHPass, &ac.Note, &ultimoCheck, &ultimoBackup)
+	`, naveID).Scan(&ac.ID, &ac.NaveID, &ac.IP, &ac.SSHPort, &ac.SSHUser, &ac.SSHPass, &ac.Note, &ultimoCheck, &ultimoBackup, &ac.Modello)
 	if err != nil {
 		return nil
 	}
@@ -737,7 +797,7 @@ func getAccessControllerByNave(naveID int64) *AccessController {
 func getSwitchesByNave(naveID int64) []SwitchNave {
 	var switches []SwitchNave
 	rows, err := database.DB.Query(`
-		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup
+		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh')
 		FROM switch_nave WHERE nave_id = ? ORDER BY nome
 	`, naveID)
 	if err != nil {
@@ -748,7 +808,7 @@ func getSwitchesByNave(naveID int64) []SwitchNave {
 	for rows.Next() {
 		var sw SwitchNave
 		var ultimoCheck, ultimoBackup sql.NullString
-		rows.Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup)
+		rows.Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup, &sw.Protocollo)
 		if ultimoCheck.Valid {
 			sw.UltimoCheck = ultimoCheck.String
 		}
@@ -764,9 +824,9 @@ func getSwitchByID(id int64) *SwitchNave {
 	var sw SwitchNave
 	var ultimoCheck, ultimoBackup sql.NullString
 	err := database.DB.QueryRow(`
-		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup
+		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh')
 		FROM switch_nave WHERE id = ?
-	`, id).Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup)
+	`, id).Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup, &sw.Protocollo)
 	if err != nil {
 		return nil
 	}
@@ -1138,7 +1198,7 @@ func runScanMACBatch(naveID int64, sw *SwitchNave) {
 		cmdStr = "show mac-address"
 	}
 
-	output, err := executeSSHCommand(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, cmdStr)
+	output, err := executeSwitchCommand(sw, cmdStr)
 	if err != nil {
 		log.Printf("[Monitoring] Errore scan MAC switch %d: %v", sw.ID, err)
 		return
@@ -1193,7 +1253,8 @@ func runBackupBatch(naveID int64, tipoApparato string, apparatoID int64) {
 		}
 	}
 
-	output, err := executeSSHCommand(ip, sshPort, sshUser, sshPass, cmdStr)
+	output, err := executeSSHBackup(ip, sshPort, sshUser, sshPass, cmdStr)
+	log.Printf("[BACKUP] Switch %s output len: %d, err: %v", nome, len(output), err)
 	if err != nil {
 		log.Printf("[Monitoring] Errore backup %s %d: %v", tipoApparato, apparatoID, err)
 		return
@@ -1240,6 +1301,17 @@ func runBackupBatch(naveID int64, tipoApparato string, apparatoID int64) {
 		database.DB.Exec("UPDATE access_controller SET ultimo_backup = CURRENT_TIMESTAMP WHERE id = ?", apparatoID)
 	} else {
 		database.DB.Exec("UPDATE switch_nave SET ultimo_backup = CURRENT_TIMESTAMP WHERE id = ?", apparatoID)
+		// Estrai e aggiorna modello se non presente
+		// Recupera modello se non presente
+		var currentModello string
+		database.DB.QueryRow("SELECT COALESCE(modello, '') FROM switch_nave WHERE id = ?", apparatoID).Scan(&currentModello)
+		if currentModello == "" {
+			versionOutput, _ := executeSSHCommand(ip, sshPort, sshUser, sshPass, "display version")
+			_, model := parseVersionOutput(versionOutput, "huawei")
+			if model != "" {
+				database.DB.Exec("UPDATE switch_nave SET modello = ? WHERE id = ?", model, apparatoID)
+			}
+		}
 	}
 
 	log.Printf("[Monitoring] Backup %s %s salvato", tipoApparato, nome)
@@ -1338,4 +1410,381 @@ func APIExportAPCSV(w http.ResponseWriter, r *http.Request) {
 			ap.UltimoCheck)
 		w.Write([]byte(line))
 	}
+}
+
+// APIScanLLDP esegue scan LLDP su tutti gli switch della nave e associa gli AP alle porte
+func APIScanLLDP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	naveIDStr := r.URL.Query().Get("nave_id")
+	naveID, _ := strconv.ParseInt(naveIDStr, 10, 64)
+
+	result := map[string]interface{}{
+		"success":    false,
+		"message":    "",
+		"ap_trovati": 0,
+		"dettagli":   []map[string]string{},
+	}
+
+	// Verifica nave
+	nave := getNaveInfoByID(naveID)
+	if nave.ID == 0 {
+		result["message"] = "Nave non trovata"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Ottieni tutti gli switch della nave
+	switches := getSwitchesByNave(naveID)
+	if len(switches) == 0 {
+		result["message"] = "Nessuno switch configurato per questa nave"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	var totalEntries int
+	var errors []string
+
+	for _, sw := range switches {
+		// Esegui comando LLDP
+		output, err := executeSSHBackup(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, "display mac-address")
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", sw.Nome, err))
+			continue
+		}
+
+		// Parse output LLDP
+		entries := parseHuaweiMacTable(string(output))
+		for _, entry := range entries {
+			updateAPSwitchPort(naveID, sw.ID, entry["mac"], entry["port"])
+		}
+		totalEntries += len(entries)
+		log.Printf("[MAC] Switch %s: trovate %d entry", sw.Nome, len(entries))
+
+		// Aggiorna timestamp switch
+		database.DB.Exec("UPDATE switch_nave SET ultimo_check = CURRENT_TIMESTAMP WHERE id = ?", sw.ID)
+	}
+
+
+	result["success"] = len(errors) == 0 || totalEntries > 0
+	result["ap_trovati"] = totalEntries
+	result["dettagli"] = []map[string]string{}
+
+	if len(errors) > 0 {
+		result["message"] = fmt.Sprintf("Trovati %d AP. Errori su: %s", totalEntries, strings.Join(errors, ", "))
+	} else {
+		result["message"] = fmt.Sprintf("Scan LLDP completato. Trovati %d AP su %d switch", totalEntries, len(switches))
+	}
+
+	json.NewEncoder(w).Encode(result)
+}
+
+// parseHuaweiLLDPOutput parsa output "display lldp neighbor brief" e estrae gli AP
+func parseHuaweiLLDPOutput(output string, switchID int64, switchNome string) []map[string]string {
+	var aps []map[string]string
+
+	lines := strings.Split(output, "\n")
+	// Formato:
+	// Local Intf       Neighbor Dev             Neighbor Intf             Exptime(s)
+	// GE0/0/17         AP-06                    GE0/0/0                   118
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Salta header e righe vuote
+		if line == "" || strings.HasPrefix(line, "Local") || strings.Contains(line, "spawn") ||
+			strings.Contains(line, "assword") || strings.Contains(line, "Info:") {
+			continue
+		}
+
+		// Parse: porta locale, nome neighbor, porta neighbor, expire
+		fields := strings.Fields(line)
+		if len(fields) >= 3 {
+			localPort := fields[0]
+			neighborName := fields[1]
+
+			// Filtra solo AP (nome inizia con AP-)
+			if strings.HasPrefix(neighborName, "AP-") || strings.HasPrefix(neighborName, "AP_") {
+				ap := map[string]string{
+					"ap_name":     neighborName,
+					"port":        localPort,
+					"switch_id":   fmt.Sprintf("%d", switchID),
+					"switch_nome": switchNome,
+				}
+				aps = append(aps, ap)
+			}
+		}
+	}
+
+	return aps
+}
+
+// APIGetSwitchVersion ottiene la versione firmware di uno switch
+func APIGetSwitchVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switchIDStr := r.URL.Query().Get("switch_id")
+	switchID, _ := strconv.ParseInt(switchIDStr, 10, 64)
+
+	result := map[string]interface{}{
+		"success": false,
+		"message": "",
+		"version": "",
+		"model":   "",
+	}
+
+	sw := getSwitchByID(switchID)
+	if sw == nil {
+		result["message"] = "Switch non trovato"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Comando per ottenere versione
+	var cmdStr string
+	if sw.Marca == "huawei" {
+		cmdStr = "display version"
+	} else {
+		cmdStr = "show version"
+	}
+
+	output, err := executeSwitchCommand(sw, cmdStr)
+	if err != nil {
+		result["message"] = "Errore connessione: " + err.Error()
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Parse versione
+	version, model := parseVersionOutput(string(output), sw.Marca)
+
+	// Aggiorna modello nel DB se trovato
+	if model != "" && sw.Modello == "" {
+		database.DB.Exec("UPDATE switch_nave SET modello = ? WHERE id = ?", model, switchID)
+	}
+
+	result["success"] = true
+	result["version"] = version
+	result["model"] = model
+	result["message"] = "Versione ottenuta"
+
+	json.NewEncoder(w).Encode(result)
+}
+
+// parseVersionOutput estrae versione e modello dall output Huawei
+func parseVersionOutput(output, marca string) (string, string) {
+	var version, model string
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if marca == "huawei" {
+			// Versione: VRP (R) software, Version 5.170 (S5735 V200R021C00SPC100)
+			if strings.Contains(line, "VRP") && strings.Contains(line, "Version") && !strings.HasPrefix(line, "Software") {
+				re := regexp.MustCompile(`\(([A-Z0-9]+)\s+([A-Z0-9]+)\)`)
+				if m := re.FindStringSubmatch(line); len(m) > 2 {
+					version = m[2]
+				}
+			}
+			// Modello: HUAWEI S5735-L24P4S-A1 Routing Switch
+			if strings.Contains(line, "HUAWEI") && strings.Contains(line, "Switch") {
+				re := regexp.MustCompile(`HUAWEI\s+([A-Z0-9-]+)`)
+				if m := re.FindStringSubmatch(line); len(m) > 1 {
+					model = m[1]
+				}
+			}
+		} else {
+			if strings.Contains(line, "Software Version") {
+				parts := strings.Split(line, ":")
+				if len(parts) > 1 {
+					version = strings.TrimSpace(parts[1])
+				}
+			}
+		}
+	}
+	return version, model
+}
+
+
+// APIGetACVersion ottiene la versione firmware dell AC
+func APIGetACVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	acIDStr := r.URL.Query().Get("ac_id")
+	acID, _ := strconv.ParseInt(acIDStr, 10, 64)
+
+	result := map[string]interface{}{
+		"success": false,
+		"message": "",
+		"version": "",
+		"model":   "",
+	}
+
+	var ac AccessController
+	err := database.DB.QueryRow(`
+		SELECT id, ip, ssh_port, ssh_user, ssh_pass FROM access_controller WHERE id = ?
+	`, acID).Scan(&ac.ID, &ac.IP, &ac.SSHPort, &ac.SSHUser, &ac.SSHPass)
+
+	if err != nil {
+		result["message"] = "AC non trovato"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	output, err := executeSSHCommand(ac.IP, ac.SSHPort, ac.SSHUser, ac.SSHPass, "display version")
+	if err != nil {
+		result["message"] = "Errore connessione: " + err.Error()
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	version, model := parseACVersionOutput(string(output))
+
+	if model != "" {
+		database.DB.Exec("UPDATE access_controller SET modello = ? WHERE id = ?", model, acID)
+	}
+
+	result["success"] = true
+	result["version"] = version
+	result["model"] = model
+	result["message"] = "Versione ottenuta"
+
+	json.NewEncoder(w).Encode(result)
+}
+
+// parseACVersionOutput estrae versione e modello dall output AC Huawei
+func parseACVersionOutput(output string) (string, string) {
+	var version, model string
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		// VRP (R) software, Version 5.170 (AC6508 V200R019C10SPC800)
+		if strings.Contains(line, "VRP") && strings.Contains(line, "Version") {
+			re := regexp.MustCompile(`Version\s+(\S+)`)
+			if m := re.FindStringSubmatch(line); len(m) > 1 {
+				version = m[1]
+			}
+		}
+		// Huawei AC6508 Wireless Access Controller
+		if strings.Contains(line, "Huawei") && (strings.Contains(line, "AC") || strings.Contains(line, "Controller")) {
+			re := regexp.MustCompile(`Huawei\s+(\S+)`)
+			if m := re.FindStringSubmatch(line); len(m) > 1 {
+				model = m[1]
+			}
+		}
+	}
+
+	return version, model
+}
+
+// parseVersionOutput estrae versione e modello dall output Huawei
+
+// executeSSHBackup esegue comando SSH con paginazione disabilitata per backup lunghi
+func executeSSHBackup(ip string, port int, user, pass, command string) (string, error) {
+	expectScript := fmt.Sprintf(`
+log_user 1
+set timeout 300
+spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p %d %s@%s
+
+expect {
+    "assword:" {
+        send "%s\r"
+        exp_continue
+    }
+    ">" {
+    }
+    -re {<[^>]+>} {
+    }
+    timeout {
+        exit 4
+    }
+    "Permission denied" {
+        exit 1
+    }
+}
+
+# Disabilita paginazione
+send "screen-length 0 temporary\r"
+expect {
+    ">" {}
+    -re {<[^>]+>} {}
+    timeout {}
+}
+sleep 1
+
+# Esegui comando backup
+send "%s\r"
+expect {
+    ">" {}
+    -re {<[^>]+>} {}
+    timeout {}
+}
+
+send "quit\r"
+expect eof
+`, port, user, ip, pass, command)
+
+	cmd := exec.Command("expect", "-c", expectScript)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	output := stdout.String()
+	// Se SSH fallisce con shell request failed, prova telnet
+	if err != nil || strings.Contains(output, "shell request failed") {
+		log.Printf("[SSH] Fallback a telnet per %s", ip)
+		return executeTelnetCommand(ip, user, pass, command)
+	}
+	return output, nil
+}
+
+// executeTelnetCommand esegue comando via Telnet (fallback per switch senza SSH)
+func executeTelnetCommand(ip string, user, pass, command string) (string, error) {
+	expectScript := fmt.Sprintf(`
+log_user 1
+set timeout 60
+spawn telnet %s
+expect {
+    "Username:" { send "%s\r" }
+    "login:" { send "%s\r" }
+    timeout { exit 4 }
+}
+expect "*assword*" { send "%s\r" }
+expect {
+    ">" {}
+    -re {<[^>]+>} {}
+    timeout { exit 4 }
+}
+
+# Disabilita paginazione
+send "screen-length 0 temporary\r"
+expect {
+    ">" {}
+    -re {<[^>]+>} {}
+}
+sleep 1
+
+send "%s\r"
+expect {
+    ">" {}
+    -re {<[^>]+>} {}
+    timeout {}
+}
+
+send "quit\r"
+expect eof
+`, ip, user, user, pass, command)
+
+	cmd := exec.Command("expect", "-c", expectScript)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("Telnet error: %v - %s", err, stderr.String())
+	}
+
+	return stdout.String(), nil
 }

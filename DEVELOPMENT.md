@@ -222,3 +222,18 @@
   - Associazione automatica AP ↔ porta switch tramite MAC address
   - Supporto porte Huawei formato 0/0/x e 1/0/x
   - Backup automatico configurazione switch
+
+### 2025-12-08 (sessione 6)
+- **Supporto Telnet per Switch**:
+  - Aggiunto campo "Protocollo" (SSH/Telnet) per ogni switch
+  - Cambio automatico porta quando si seleziona protocollo (22→SSH, 23→Telnet)
+  - Implementata funzione executeTelnetCommand per switch senza SSH
+  - Test connessione supporta entrambi i protocolli
+  - Backup configurazione via Telnet funzionante
+- **Fix eliminazione AC**:
+  - Eliminazione AC ora rimuove anche i file di backup associati
+  - Pulizia corretta record config_backup per tipo 'ac'
+- **Fix JavaScript rete_nave.html**:
+  - Risolto errore sintassi JS che impediva caricamento funzioni
+  - Corretto testSSHAC con gestione errori (.catch)
+  - Rimosso codice duplicato che causava errori di parsing
