@@ -35,7 +35,7 @@
         <div class="card-body">
             {{if .Data.AC}}
             <div class="row align-items-center">
-                <div class="col-md-8">
+                <div class="col-md-6">
                     <table class="table table-sm mb-0">
                         <tr><th style="width:120px">IP:</th><td><code>{{.Data.AC.IP}}:{{.Data.AC.SSHPort}}</code></td></tr>
                         <tr><th>Modello:</th><td id="acModel">{{.Data.AC.Modello}}</td></tr>
@@ -235,7 +235,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
-                        <div class="col-md-8">
+                        <div class="col-md-6">
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="ac_ip" value="{{if .Data.AC}}{{.Data.AC.IP}}{{end}}" placeholder="192.168.1.1" required>
                         </div>
@@ -278,10 +278,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="nave_id" value="{{.Data.Nave.ID}}">
                     <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label">Nome Switch *</label>
-                            <input type="text" class="form-control" name="nome" id="sw_nome" placeholder="es. SW-Ponte-1" required>
-                        </div>
+                        
                         <div class="col-md-4">
                             <label class="form-label">Marca *</label>
                             <select class="form-select" name="marca" id="sw_marca" required>
@@ -296,7 +293,7 @@
                                 <option value="telnet">Telnet</option>
                             </select>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-6">
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="sw_ip" placeholder="192.168.1.2" required>
                         </div>
@@ -534,7 +531,6 @@ function resetSwitchForm() {
     const creds = getDefaultCredentials();
     document.getElementById('modalSwitchTitle').textContent = 'Aggiungi Switch';
     document.getElementById('formSwitch').action = `/navi/switch/nuovo/${naveID}`;
-    document.getElementById('sw_nome').value = '';
     document.getElementById('sw_marca').value = 'huawei';
     document.getElementById('sw_protocollo').value = 'ssh';
     document.getElementById('sw_modello').value = '';
@@ -556,9 +552,8 @@ document.getElementById("sw_protocollo").addEventListener("change", function() {
 });
 
 function editSwitch(id, nome, marca, modello, ip, port, user, pass, note, protocollo) {
-    document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch';
+    document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch: ' + nome;
     document.getElementById('formSwitch').action = `/navi/switch/modifica/${id}`;
-    document.getElementById('sw_nome').value = nome;
     document.getElementById('sw_marca').value = marca;
     document.getElementById('sw_protocollo').value = protocollo || 'ssh';
     document.getElementById('sw_modello').value = modello;

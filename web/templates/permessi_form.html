@@ -7,7 +7,7 @@
 <!-- Alert AP Fault (nascosto di default) -->
 <div id="apFaultAlert" class="alert alert-danger" style="display: none;">
     <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Attenzione!</strong>
-    Su questa nave ci sono <strong id="apFaultCount">0</strong> Access Point in stato FAULT.
+    Su questa nave ci sono <strong id="apFaultCount">0</strong> Access Point in stato FAULT:<br><small id="apFaultDetails"></small>
     <a href="#" id="apFaultLink" target="_blank">Visualizza dettagli</a>
 </div>
 
@@ -177,6 +177,9 @@ document.getElementById('nave_id').addEventListener('change', function() {
                 document.getElementById('apFaultCount').textContent = data.count;
                 document.getElementById('apFaultLink').href = '/navi/rete/' + naveID;
                 alert.style.display = 'block';
+                // Mostra dettagli AP
+                let details = data.ap_list.map(ap => "<b>" + ap.name + "</b> (" + (ap.model || "N/D") + ")").join(", ");
+                document.getElementById("apFaultDetails").innerHTML = details;
             } else {
                 alert.style.display = 'none';
             }

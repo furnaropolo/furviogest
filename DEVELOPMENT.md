@@ -237,3 +237,22 @@
   - Risolto errore sintassi JS che impediva caricamento funzioni
   - Corretto testSSHAC con gestione errori (.catch)
   - Rimosso codice duplicato che causava errori di parsing
+
+### 2025-12-08 (sessione 7)
+- **Auto-hostname Switch**:
+  - Rimosso campo "Nome" dal form di inserimento switch
+  - Il nome viene ora recuperato automaticamente dall'hostname dello switch
+  - Funzione getSwitchHostname: esegue comando "display current-configuration | include sysname" (Huawei) o "show running-config | include hostname" (HP)
+  - Supporta sia SSH che Telnet in base alla configurazione
+  - Fallback: se non riesce a recuperare l'hostname, usa "Switch-IP"
+  - In modifica switch: il nome esistente non viene modificato
+- **Fix Test Connessione Telnet**:
+  - APITestSSH ora supporta correttamente sia SSH che Telnet
+  - Script expect separati per i due protocolli
+  - Messaggi di errore specifici per protocollo
+- **Fix Backup/Modello via Telnet**:
+  - Backup configurazione funziona correttamente via Telnet
+  - Recupero modello usa il protocollo corretto dello switch
+- **Scan LLDP/MAC funzionante**:
+  - Testato su Zeus Palace con 5 switch
+  - Associazione automatica AP ↔ porta switch tramite MAC

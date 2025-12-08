@@ -309,7 +309,6 @@ func NuovoSwitch(w http.ResponseWriter, r *http.Request) {
 	naveID, _ := strconv.ParseInt(path, 10, 64)
 
 	r.ParseForm()
-	nome := strings.TrimSpace(r.FormValue("nome"))
 	marca := r.FormValue("marca") // huawei o hp
 	modello := strings.TrimSpace(r.FormValue("modello"))
 	ip := strings.TrimSpace(r.FormValue("ip"))
@@ -324,6 +323,10 @@ func NuovoSwitch(w http.ResponseWriter, r *http.Request) {
 	if protocollo == "" {
 		protocollo = "ssh"
 	}
+
+	// Recupera hostname automaticamente dallo switch
+	nome := getSwitchHostname(ip, sshPort, sshUser, sshPass, marca, protocollo)
+	log.Printf("[NUOVO SWITCH] Hostname recuperato: %s", nome)
 
 	_, err := database.DB.Exec(`
 		INSERT INTO switch_nave (nave_id, nome, marca, modello, ip, ssh_port, ssh_user, ssh_pass, note, protocollo)
@@ -347,10 +350,11 @@ func ModificaSwitch(w http.ResponseWriter, r *http.Request) {
 
 	path := strings.TrimPrefix(r.URL.Path, "/navi/switch/modifica/")
 	switchID, _ := strconv.ParseInt(path, 10, 64)
+	// Ottieni naveID per redirect
+	var naveID int64
+	database.DB.QueryRow("SELECT nave_id FROM switch_nave WHERE id = ?", switchID).Scan(&naveID)
 
 	r.ParseForm()
-	naveID, _ := strconv.ParseInt(r.FormValue("nave_id"), 10, 64)
-	nome := strings.TrimSpace(r.FormValue("nome"))
 	marca := r.FormValue("marca")
 	modello := strings.TrimSpace(r.FormValue("modello"))
 	ip := strings.TrimSpace(r.FormValue("ip"))
@@ -367,9 +371,9 @@ func ModificaSwitch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := database.DB.Exec(`
-		UPDATE switch_nave SET nome = ?, marca = ?, modello = ?, ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, protocollo = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE switch_nave SET marca = ?, modello = ?, ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, protocollo = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, nome, marca, modello, ip, sshPort, sshUser, sshPass, note, protocollo, switchID)
+	`, marca, modello, ip, sshPort, sshUser, sshPass, note, protocollo, switchID)
 
 	if err != nil {
 		http.Error(w, "Errore salvataggio: "+err.Error(), http.StatusInternalServerError)
@@ -383,8 +387,7 @@ func ModificaSwitch(w http.ResponseWriter, r *http.Request) {
 func EliminaSwitch(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/navi/switch/elimina/")
 	switchID, _ := strconv.ParseInt(path, 10, 64)
-
-	// Ottieni naveID prima di eliminare
+	// Ottieni naveID per redirect
 	var naveID int64
 	database.DB.QueryRow("SELECT nave_id FROM switch_nave WHERE id = ?", switchID).Scan(&naveID)
 
@@ -653,7 +656,7 @@ func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 		var currentModello string
 		database.DB.QueryRow("SELECT COALESCE(modello, '') FROM switch_nave WHERE id = ?", apparatoID).Scan(&currentModello)
 		if currentModello == "" {
-			versionOutput, _ := executeSSHCommand(ip, sshPort, sshUser, sshPass, "display version")
+			versionOutput, _ := executeSwitchCommand(currentSwitch, "display version")
 			_, model := parseVersionOutput(versionOutput, "huawei")
 			if model != "" {
 				database.DB.Exec("UPDATE switch_nave SET modello = ? WHERE id = ?", model, apparatoID)
@@ -708,7 +711,11 @@ func APITestSSH(w http.ResponseWriter, r *http.Request) {
 	protocollo := r.URL.Query().Get("protocollo")
 
 	if port == "" {
-		port = "22"
+		if protocollo == "telnet" {
+			port = "23"
+		} else {
+			port = "22"
+		}
 	}
 
 	result := map[string]interface{}{
@@ -716,8 +723,29 @@ func APITestSSH(w http.ResponseWriter, r *http.Request) {
 		"message": "",
 	}
 
-	// Usa expect per compatibilità con Huawei
-	expectScript := fmt.Sprintf(`
+	var expectScript string
+	if protocollo == "telnet" {
+		// Script expect per Telnet
+		expectScript = fmt.Sprintf(`
+set timeout 60
+spawn telnet %s %s
+expect {
+    "*ogin*" { send "%s\r"; exp_continue }
+    "*sername*" { send "%s\r"; exp_continue }
+    "*assword*" { send "%s\r"; exp_continue }
+    "<*>" { exit 0 }
+    ">" { exit 0 }
+    "Login incorrect" { exit 1 }
+    "Authentication failed" { exit 1 }
+    "Connection refused" { exit 2 }
+    "Unable to connect" { exit 2 }
+    timeout { exit 4 }
+    eof { exit 5 }
+}
+`, ip, port, user, user, pass)
+	} else {
+		// Script expect per SSH
+		expectScript = fmt.Sprintf(`
 set timeout 60
 spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p %s %s@%s
 expect {
@@ -731,24 +759,32 @@ expect {
     eof { exit 0 }
 }
 `, port, user, ip, pass)
+	}
 
 	cmd := exec.Command("expect", "-c", expectScript)
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 	
-	log.Printf("[SSH TEST] IP: %s, User: %s, ExitCode: %v, Output: %s", ip, user, cmd.ProcessState.ExitCode(), outputStr)
+	log.Printf("[%s TEST] IP: %s, Port: %s, User: %s, ExitCode: %v, Output: %s", 
+		strings.ToUpper(protocollo), ip, port, user, cmd.ProcessState.ExitCode(), outputStr)
 
 	exitCode := cmd.ProcessState.ExitCode()
+	protoName := "SSH"
+	if protocollo == "telnet" {
+		protoName = "Telnet"
+	}
 	
 	if exitCode == 0 && (strings.Contains(outputStr, "<") || strings.Contains(outputStr, ">") || strings.Contains(outputStr, "Huawei") || strings.Contains(outputStr, "HUAWEI")) {
 		result["success"] = true
-		if protocollo == "telnet" { result["message"] = "Connessione Telnet riuscita" } else { result["message"] = "Connessione SSH riuscita" }
-	} else if exitCode == 1 || strings.Contains(outputStr, "Permission denied") {
+		result["message"] = fmt.Sprintf("Connessione %s riuscita", protoName)
+	} else if exitCode == 1 || strings.Contains(outputStr, "Permission denied") || strings.Contains(outputStr, "Login incorrect") || strings.Contains(outputStr, "Authentication failed") {
 		result["message"] = "Password errata o utente non valido"
-	} else if exitCode == 2 || strings.Contains(outputStr, "Connection refused") {
-		result["message"] = "Connessione rifiutata - porta SSH chiusa"
+	} else if exitCode == 2 || strings.Contains(outputStr, "Connection refused") || strings.Contains(outputStr, "Unable to connect") {
+		result["message"] = fmt.Sprintf("Connessione rifiutata - porta %s chiusa", protoName)
 	} else if exitCode == 3 || exitCode == 4 || strings.Contains(outputStr, "timed out") {
 		result["message"] = "Timeout - apparato non raggiungibile"
+	} else if exitCode == 5 {
+		result["message"] = "Connessione chiusa inaspettatamente"
 	} else if err != nil {
 		result["message"] = "Errore: " + err.Error()
 	} else {
@@ -1306,7 +1342,7 @@ func runBackupBatch(naveID int64, tipoApparato string, apparatoID int64) {
 		var currentModello string
 		database.DB.QueryRow("SELECT COALESCE(modello, '') FROM switch_nave WHERE id = ?", apparatoID).Scan(&currentModello)
 		if currentModello == "" {
-			versionOutput, _ := executeSSHCommand(ip, sshPort, sshUser, sshPass, "display version")
+			versionOutput, _ := executeSSHBackup(ip, sshPort, sshUser, sshPass, "display version")
 			_, model := parseVersionOutput(versionOutput, "huawei")
 			if model != "" {
 				database.DB.Exec("UPDATE switch_nave SET modello = ? WHERE id = ?", model, apparatoID)
@@ -1787,4 +1823,44 @@ expect eof
 	}
 
 	return stdout.String(), nil
+}
+
+// getSwitchHostname recupera l'hostname dello switch via SSH/Telnet
+func getSwitchHostname(ip string, port int, user, pass, marca, protocollo string) string {
+	var cmd string
+	if marca == "huawei" {
+		cmd = "display current-configuration | include sysname"
+	} else {
+		cmd = "show running-config | include hostname"
+	}
+
+	var output string
+	var err error
+	if protocollo == "telnet" {
+		output, err = executeTelnetCommand(ip, user, pass, cmd)
+	} else {
+		output, err = executeSSHCommand(ip, port, user, pass, cmd)
+	}
+
+	if err != nil {
+		log.Printf("[HOSTNAME] Errore recupero hostname: %v", err)
+		return "Switch-" + ip // Fallback: usa IP come nome
+	}
+
+	// Parse output per estrarre hostname
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Huawei: sysname SW-PONTE-1
+		if strings.HasPrefix(strings.ToLower(line), "sysname ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "sysname "))
+		}
+		// HP: hostname SW-PONTE-1
+		if strings.HasPrefix(strings.ToLower(line), "hostname ") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "hostname "))
+		}
+	}
+
+	// Fallback: usa IP
+	return "Switch-" + ip
 }
