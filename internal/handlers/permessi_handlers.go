@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"path/filepath"
 )
 
 // PermessoConDettagli contiene il permesso con i dati correlati
@@ -1157,4 +1158,121 @@ func getGuastiForPermesso(naveID int64) []GuastoInfo {
 		guasti = append(guasti, g)
 	}
 	return guasti
+}
+
+// DownloadEMLPermesso genera e scarica il file .eml per la richiesta permesso
+func DownloadEMLPermesso(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Error(w, "ID permesso mancante", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.Error(w, "ID permesso non valido", http.StatusBadRequest)
+		return
+	}
+
+	permesso, err := caricaPermessoCompleto(id)
+	if err != nil {
+		http.Error(w, "Permesso non trovato", http.StatusNotFound)
+		return
+	}
+
+	impostazioni, _ := GetImpostazioniAziendaExport()
+
+	// Genera dati email
+	emailData := generaEmailDataPermesso(permesso, impostazioni)
+	corpoHTML, err := email.GeneraCorpoEmailPermesso(emailData)
+	if err != nil {
+		http.Error(w, "Errore generazione email", http.StatusInternalServerError)
+		return
+	}
+
+	oggetto := email.GeneraOggettoEmailPermesso(permesso.Nave.Nome, permesso.Porto.Nome, permesso.DataInizio)
+
+	// Costruisci lista destinatari TO
+	var destTO []string
+	if permesso.Porto.EmailAgenzia != "" {
+		destTO = append(destTO, permesso.Porto.EmailAgenzia)
+	}
+	inviaATutti := permesso.Compagnia.EmailDestinatari == "tutti"
+	if inviaATutti {
+		if permesso.Nave.EmailIspettore != "" {
+			destTO = append(destTO, permesso.Nave.EmailIspettore)
+		}
+		if permesso.Nave.EmailMaster != "" {
+			destTO = append(destTO, permesso.Nave.EmailMaster)
+		}
+	}
+	
+	// Costruisci lista CC
+	var destCC []string
+	if inviaATutti && permesso.Nave.EmailDirettoreMacchina != "" {
+		destCC = append(destCC, permesso.Nave.EmailDirettoreMacchina)
+	}
+	session := middleware.GetSession(r)
+	for _, t := range permesso.Tecnici {
+		if t.Email != "" && session != nil && t.ID != session.UserID {
+			destCC = append(destCC, t.Email)
+		}
+	}
+
+	// Carica allegati
+	var allegati []email.Attachment
+	
+	// Libretto automezzo
+	if permesso.Automezzo != nil && permesso.Automezzo.LibrettoPath != "" {
+		att, err := email.CaricaAllegato(permesso.Automezzo.LibrettoPath)
+		if err == nil {
+			allegati = append(allegati, *att)
+		}
+	}
+	
+	// Documenti tecnici
+	for _, t := range permesso.Tecnici {
+		if t.DocumentoPath != "" {
+			att, err := email.CaricaAllegato(t.DocumentoPath)
+			if err == nil {
+				// Rinomina con nome tecnico
+				att.Filename = fmt.Sprintf("Documento_%s_%s%s", t.Cognome, t.Nome, filepath.Ext(t.DocumentoPath))
+				allegati = append(allegati, *att)
+			}
+		}
+	}
+
+	// Crea EmailData
+	emlData := email.EmailData{
+		To:          destTO,
+		Cc:          destCC,
+		Subject:     oggetto,
+		HTMLBody:    corpoHTML,
+		Attachments: allegati,
+	}
+
+	// Nome mittente
+	fromName := impostazioni.RagioneSociale
+	if fromName == "" {
+		fromName = "FurvioGest"
+	}
+	fromAddr := impostazioni.Email
+	if fromAddr == "" {
+		fromAddr = "noreply@example.com"
+	}
+
+	// Genera .eml
+	emlContent := email.GeneraEML(emlData, fromName, fromAddr)
+
+	// Imposta headers per download
+	filename := fmt.Sprintf("permesso_%s_%s_%s.eml", 
+		permesso.Nave.Nome,
+		permesso.Porto.Nome,
+		permesso.DataInizio.Format("2006-01-02"))
+	filename = strings.ReplaceAll(filename, " ", "_")
+
+	w.Header().Set("Content-Type", "message/rfc822")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(emlContent)))
+	w.Write(emlContent)
 }

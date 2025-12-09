@@ -315,3 +315,61 @@ func ConfigDaImpostazioni(imp *models.ImpostazioniAzienda) SMTPConfig {
 		FromAddr: imp.Email,
 	}
 }
+
+// GeneraEML genera un file .eml completo con allegati incorporati
+func GeneraEML(emailData EmailData, fromName, fromAddr string) []byte {
+	var msg bytes.Buffer
+	boundary := "----=_Part_" + fmt.Sprintf("%d", time.Now().UnixNano())
+
+	// Headers
+	msg.WriteString(fmt.Sprintf("From: %s <%s>\r\n", fromName, fromAddr))
+	msg.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(emailData.To, ", ")))
+	if len(emailData.Cc) > 0 {
+		msg.WriteString(fmt.Sprintf("Cc: %s\r\n", strings.Join(emailData.Cc, ", ")))
+	}
+	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", emailData.Subject))
+	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
+	msg.WriteString("MIME-Version: 1.0\r\n")
+	msg.WriteString("X-Unsent: 1\r\n") // Indica a Thunderbird che è una bozza da inviare
+
+	if len(emailData.Attachments) > 0 {
+		msg.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=\"%s\"\r\n", boundary))
+		msg.WriteString("\r\n")
+		
+		// HTML body
+		msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+		msg.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
+		msg.WriteString("Content-Transfer-Encoding: quoted-printable\r\n")
+		msg.WriteString("\r\n")
+		msg.WriteString(emailData.HTMLBody)
+		msg.WriteString("\r\n")
+		
+		// Attachments
+		for _, att := range emailData.Attachments {
+			msg.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+			msg.WriteString(fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", att.ContentType, att.Filename))
+			msg.WriteString("Content-Transfer-Encoding: base64\r\n")
+			msg.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", att.Filename))
+			msg.WriteString("\r\n")
+			
+			// Base64 con line breaks ogni 76 caratteri
+			encoded := base64.StdEncoding.EncodeToString(att.Data)
+			for i := 0; i < len(encoded); i += 76 {
+				end := i + 76
+				if end > len(encoded) {
+					end = len(encoded)
+				}
+				msg.WriteString(encoded[i:end])
+				msg.WriteString("\r\n")
+			}
+		}
+		
+		msg.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+	} else {
+		msg.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
+		msg.WriteString("\r\n")
+		msg.WriteString(emailData.HTMLBody)
+	}
+
+	return msg.Bytes()
+}

@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="page-header">
-    <h1>Anteprima Email - Richiesta Permesso #{{.Data.PermessoID}}</h1>
+    <h1>Anteprima Email - Richiesta Permesso</h1>
     <a href="/permessi/dettaglio/{{.Data.PermessoID}}" class="btn btn-secondary">Torna al Dettaglio</a>
 </div>
 
@@ -53,20 +53,24 @@
     </div>
     {{end}}
 
-    {{if .Data.SMTPConfigurato}}
     <div class="actions">
-        <form method="POST" action="/permessi/invia-email/{{.Data.PermessoID}}" 
+        {{if .Data.SMTPConfigurato}}
+        <form method="POST" action="/permessi/invia-email/{{.Data.PermessoID}}"
               onsubmit="return confirm('Confermi l\'invio dell\'email?');">
             <button type="submit" class="btn btn-success btn-lg">
-                Invia Email
+                <i class="bi bi-send"></i> Invia Email Direttamente
             </button>
         </form>
+        {{end}}
+        <a href="/permessi/download-eml/{{.Data.PermessoID}}" class="btn btn-primary btn-lg">
+            <i class="bi bi-envelope-arrow-down"></i> Scarica per Thunderbird (.eml)
+        </a>
         <a href="/permessi/dettaglio/{{.Data.PermessoID}}" class="btn btn-secondary">Annulla</a>
     </div>
-    {{else}}
-    <div class="alert alert-warning">
-        <strong>Attenzione:</strong> Le impostazioni SMTP non sono configurate nel tuo profilo. 
-        <a href="/tecnici">Configura le tue credenziali email</a> per poter inviare.
+
+    {{if not .Data.SMTPConfigurato}}
+    <div class="alert alert-info" style="margin-top: 1rem;">
+        <strong>Suggerimento:</strong> Scarica il file .eml e aprilo con Thunderbird per inviare l'email con gli allegati.
     </div>
     {{end}}
 </div>

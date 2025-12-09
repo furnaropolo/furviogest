@@ -155,6 +155,7 @@ func main() {
 	mux.Handle("/permessi/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioPermesso)))
 	mux.Handle("/permessi/anteprima-email/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AnteprimaEmailPermesso))))
 	mux.Handle("/permessi/invia-email/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.InviaEmailPermesso))))
+	mux.Handle("/permessi/download-eml/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.DownloadEMLPermesso))))
 
 	// Dettaglio Nave e Orari
 	mux.Handle("/navi/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioNave)))
