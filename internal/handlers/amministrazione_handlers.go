@@ -30,7 +30,7 @@ func DashboardAmministrazione(w http.ResponseWriter, r *http.Request) {
 	// Statistiche per la dashboard
 	var totProdotti, totRapporti, totNoteSpese, totTrasferte, totDDT int
 	database.DB.QueryRow("SELECT COUNT(*) FROM prodotti WHERE deleted_at IS NULL").Scan(&totProdotti)
-	database.DB.QueryRow("SELECT COUNT(*) FROM rapporti WHERE deleted_at IS NULL").Scan(&totRapporti)
+	database.DB.QueryRow("SELECT COUNT(*) FROM rapporti_intervento WHERE deleted_at IS NULL").Scan(&totRapporti)
 	database.DB.QueryRow("SELECT COUNT(*) FROM note_spese WHERE deleted_at IS NULL").Scan(&totNoteSpese)
 	database.DB.QueryRow("SELECT COUNT(*) FROM trasferte WHERE deleted_at IS NULL").Scan(&totTrasferte)
 	database.DB.QueryRow("SELECT COUNT(*) FROM ddt WHERE deleted_at IS NULL").Scan(&totDDT)
@@ -189,10 +189,10 @@ func ListaRapportiAmministrazione(w http.ResponseWriter, r *http.Request) {
 		SELECT r.id, r.numero, r.data_intervento, r.descrizione, r.stato,
 		       COALESCE(n.nome, '') as nave, COALESCE(c.nome, '') as compagnia,
 		       GROUP_CONCAT(DISTINCT u.nome || ' ' || u.cognome) as tecnici
-		FROM rapporti r
+		FROM rapporti_intervento r
 		LEFT JOIN navi n ON r.nave_id = n.id
 		LEFT JOIN compagnie c ON n.compagnia_id = c.id
-		LEFT JOIN rapporti_tecnici rt ON r.id = rt.rapporto_id
+		LEFT JOIN tecnici_rapporto rt ON r.id = rt.rapporto_id
 		LEFT JOIN utenti u ON rt.tecnico_id = u.id
 		WHERE r.deleted_at IS NULL
 	`

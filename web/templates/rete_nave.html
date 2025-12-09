@@ -35,10 +35,9 @@
         <div class="card-body">
             {{if .Data.AC}}
             <div class="row align-items-center">
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <table class="table table-sm mb-0">
                         <tr><th style="width:120px">IP:</th><td><code>{{.Data.AC.IP}}:{{.Data.AC.SSHPort}}</code></td></tr>
-                        <tr><th>Modello:</th><td id="acModel">{{.Data.AC.Modello}}</td></tr>
                         <tr><th>Username:</th><td>{{.Data.AC.SSHUser}}</td></tr>
                         <tr><th>Note:</th><td>{{.Data.AC.Note}}</td></tr>
                         {{if .Data.AC.UltimoCheck}}<tr><th>Ultimo Check:</th><td>{{.Data.AC.UltimoCheck}}</td></tr>{{end}}
@@ -48,7 +47,6 @@
                 <div class="col-md-4 text-end">
                     <div class="btn-group-vertical">
                         <button id="btnTestAC" class="btn btn-outline-info btn-sm" onclick="testSSHAC('{{.Data.AC.IP}}', {{.Data.AC.SSHPort}}, '{{.Data.AC.SSHUser}}', '{{.Data.AC.SSHPass}}')"><i class="bi bi-plug me-1"></i>Test SSH</button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="getACVersion({{.Data.AC.ID}})"><i class="bi bi-info-circle me-1"></i>Versione</button>
                         <button class="btn btn-outline-success btn-sm" onclick="scanAP()" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}><i class="bi bi-broadcast me-1"></i>Scan AP</button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="backupConfig('ac', {{.Data.AC.ID}})"><i class="bi bi-download me-1"></i>Backup Config</button>
                         <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAC"><i class="bi bi-pencil me-1"></i>Modifica</button>
@@ -68,18 +66,11 @@
     <div class="card mb-4">
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Switch ({{len .Data.Switches}}/20)</h5>
-            <div>
-                {{if .Data.Switches}}
-                <button class="btn btn-warning btn-sm me-2" onclick="scanLLDP()" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
-                    <i class="bi bi-diagram-2 me-1"></i>Scan LLDP (Associa AP)
-                </button>
-                {{end}}
-                {{if lt (len .Data.Switches) 20}}
-                <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalSwitch" onclick="resetSwitchForm()">
-                    <i class="bi bi-plus-lg me-1"></i>Aggiungi Switch
-                </button>
-                {{end}}
-            </div>
+            {{if lt (len .Data.Switches) 20}}
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalSwitch" onclick="resetSwitchForm()">
+                <i class="bi bi-plus-lg me-1"></i>Aggiungi Switch
+            </button>
+            {{end}}
         </div>
         <div class="card-body">
             {{if .Data.Switches}}
@@ -91,7 +82,7 @@
                             <th>Marca</th>
                             <th>IP</th>
                             <th>Modello</th>
-                            <th>Ultimo Backup</th>
+                            <th>Ultimo Check</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
@@ -101,20 +92,20 @@
                             <td><strong>{{.Nome}}</strong></td>
                             <td><span class="badge bg-{{if eq .Marca "huawei"}}warning text-dark{{else}}info{{end}}">{{.Marca}}</span></td>
                             <td><code>{{.IP}}:{{.SSHPort}}</code></td>
-                            <td id="model-{{.ID}}">{{.Modello}}</td>
-                            <td><small>{{.UltimoBackup}}</small></td>
+                            <td>{{.Modello}}</td>
+                            <td><small>{{.UltimoCheck}}</small></td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-info" onclick="testSSHSwitch('{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', {{.ID}}, '{{.Protocollo}}')" title="Test SSH + Backup">
+                                    <button class="btn btn-outline-info" onclick="testSSHSwitch('{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', {{.ID}})" title="Test SSH">
                                         <i class="bi bi-plug"></i>
                                     </button>
-                                    <button class="btn btn-outline-warning" onclick="backupConfig('switch', {{.ID}})" title="Backup Config">
+                                    <button class="btn btn-outline-success" onclick="scanMAC({{.ID}})" title="Scan MAC" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="backupConfig('switch', {{.ID}})" title="Backup">
                                         <i class="bi bi-download"></i>
                                     </button>
-                                    <button class="btn btn-outline-secondary" onclick="getSwitchVersion({{.ID}})" title="Versione Firmware">
-                                        <i class="bi bi-info-circle"></i>
-                                    </button>
-                                    <button class="btn btn-outline-primary" onclick="editSwitch({{.ID}}, '{{.Nome}}', '{{.Marca}}', '{{.Modello}}', '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Note}}', '{{.Protocollo}}')" title="Modifica">
+                                    <button class="btn btn-outline-primary" style="display:none" title="Modifica">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <a href="/navi/switch/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo switch?')" title="Elimina">
@@ -235,12 +226,12 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="ac_ip" value="{{if .Data.AC}}{{.Data.AC.IP}}{{end}}" placeholder="192.168.1.1" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Porta</label>
+                            <label class="form-label">Porta SSH</label>
                             <input type="number" class="form-control" name="ssh_port" id="ac_ssh_port" value="{{if .Data.AC}}{{.Data.AC.SSHPort}}{{else}}22{{end}}">
                         </div>
                         <div class="col-md-6">
@@ -278,7 +269,10 @@
                 <div class="modal-body">
                     <input type="hidden" name="nave_id" value="{{.Data.Nave.ID}}">
                     <div class="row g-3">
-                        
+                        <div class="col-md-8">
+                            <label class="form-label">Nome Switch *</label>
+                            <input type="text" class="form-control" name="nome" id="sw_nome" placeholder="es. SW-Ponte-1" required>
+                        </div>
                         <div class="col-md-4">
                             <label class="form-label">Marca *</label>
                             <select class="form-select" name="marca" id="sw_marca" required>
@@ -286,19 +280,12 @@
                                 <option value="hp">HP</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Protocollo</label>
-                            <select class="form-select" name="protocollo" id="sw_protocollo">
-                                <option value="ssh">SSH</option>
-                                <option value="telnet">Telnet</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="sw_ip" placeholder="192.168.1.2" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Porta</label>
+                            <label class="form-label">Porta SSH</label>
                             <input type="number" class="form-control" name="ssh_port" id="sw_ssh_port" value="22">
                         </div>
                         <div class="col-md-6">
@@ -328,25 +315,6 @@
     </div>
 </div>
 
-<!-- Modal Versione -->
-<div class="modal fade" id="modalVersion" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">Versione Firmware Switch</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Modello:</strong> <span id="versionModel">-</span></p>
-                <p><strong>Versione:</strong> <span id="versionFirmware">-</span></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Toast -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <div id="toast" class="toast" role="alert">
@@ -363,6 +331,7 @@ const naveID = {{.Data.Nave.ID}};
 const acID = {{if .Data.AC}}{{.Data.AC.ID}}{{else}}0{{end}};
 const compagnia = "{{.Data.Nave.NomeCompagnia}}";
 
+// Credenziali di default in base alla compagnia
 function getDefaultCredentials() {
     const compLower = compagnia.toLowerCase();
     if (compLower.includes('corsica')) {
@@ -373,6 +342,7 @@ function getDefaultCredentials() {
     return { user: 'admin', pass: '' };
 }
 
+// Pre-compila password AC se vuota
 document.addEventListener('DOMContentLoaded', function() {
     const acPassField = document.getElementById('ac_ssh_pass');
     if (acPassField && !acPassField.value) {
@@ -394,65 +364,86 @@ function showToast(title, message, isError) {
 
 function testSSHAC(acIp, acPort, acUser, acPass) {
     const btn = document.getElementById('btnTestAC');
+    const ip = acIp || document.getElementById('ac_ip').value;
+    const port = acPort || document.getElementById('ac_ssh_port').value;
+    const user = acUser || document.getElementById('ac_ssh_user').value;
+    const pass = acPass || document.getElementById('ac_ssh_pass').value;
+
+    if (!ip) {
+        showToast('Errore', 'Inserisci IP AC', true);
+        return;
+    }
+
+    // Stato: In corso (giallo)
     btn.className = 'btn btn-warning btn-sm';
     btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Testing...';
     btn.disabled = true;
 
-    fetch("/api/rete/test-ssh?ip=" + acIp + "&port=" + acPort + "&user=" + acUser + "&pass=" + encodeURIComponent(acPass))
+    fetch("/api/rete/test-ssh?ip=" + ip + "&port=" + port + "&user=" + user + "&pass=" + encodeURIComponent(pass))
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                // Stato: OK (verde)
                 btn.className = 'btn btn-success btn-sm';
                 btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>SSH OK';
-                showToast('Test SSH AC', 'Connessione riuscita!', false);
+                showToast('Test SSH AC', 'Connessione riuscita! Avvio scan AP e backup...', false);
+                // Esegui scan AP automatico
+                setTimeout(() => {
+                    scanAP();
+                    setTimeout(() => {
+                        if (typeof acID !== 'undefined' && acID) {
+                            backupConfig('ac', acID);
+                        }
+                    }, 3000);
+                }, 1000);
             } else {
+                // Stato: Errore (rosso)
                 btn.className = 'btn btn-danger btn-sm';
                 btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Errore';
                 showToast('Test SSH AC', data.message, true);
             }
             btn.disabled = false;
+            // Torna al colore normale dopo 5 secondi
             setTimeout(() => {
                 btn.className = 'btn btn-outline-info btn-sm';
                 btn.innerHTML = '<i class="bi bi-plug me-1"></i>Test SSH';
             }, 5000);
-        }).catch(err => {
-            btn.className = "btn btn-danger btn-sm";
-            btn.innerHTML = "<i class=\"bi bi-x-circle me-1\"></i>Errore";
-            showToast("Test SSH AC", "Errore: " + err.message, true);
+        })
+        .catch(err => {
+            btn.className = 'btn btn-danger btn-sm';
+            btn.innerHTML = '<i class="bi bi-x-circle me-1"></i>Errore';
             btn.disabled = false;
-            console.error("Test AC error:", err);
+            showToast('Errore', 'Errore di connessione', true);
         });
 }
-
-async function testSSHSwitch(ip, port, user, pass, switchId, protocollo) {
-    const btn = event.target.closest("button");
-    const origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+async function testSSHSwitch(ip, port, user, pass, switchId) {
     showToast('Test SSH Switch', 'Connessione in corso...', false);
     try {
-        const resp = await fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}&protocollo=${protocollo || 'ssh'}`);
+        const resp = await fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`);
         const data = await resp.json();
         if (data.success) {
-            showToast('Test SSH', 'Connessione OK! Backup in corso...', false);
+            showToast('Test SSH Switch', 'Connessione riuscita! Avvio scan MAC...', false);
+            // Esegui scan MAC
+            const macResp = await fetch(`/api/rete/scan-mac?switch_id=${switchId}`);
+            const macData = await macResp.json();
+            showToast('Scan MAC', macData.message, !macData.success);
+
+            // Esegui backup config
+            showToast('Backup', 'Backup configurazione in corso...', false);
             const backupResp = await fetch(`/api/rete/backup-config?tipo=switch&id=${switchId}`);
             const backupData = await backupResp.json();
             showToast('Backup', backupData.message, !backupData.success);
-            if (backupData.success) setTimeout(() => location.reload(), 1500);
+
+            setTimeout(() => location.reload(), 2000);
         } else {
-            showToast('Test SSH', data.message, true);
+            showToast('Test SSH Switch', data.message, true);
         }
     } catch(e) {
-        btn.disabled = false;
-        btn.innerHTML = origHtml;
         showToast('Errore', 'Errore di connessione: ' + e.message, true);
     }
 }
 
 function scanAP() {
-    const btn = event.target.closest("button");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Scan in corso...';
     showToast('Scan AP', 'Scansione in corso...', false);
     fetch(`/api/rete/scan-ap?nave_id=${naveID}`)
         .then(r => r.json())
@@ -462,62 +453,17 @@ function scanAP() {
         });
 }
 
-function scanLLDP() {
-    const btn = event.target.closest("button");
-    const origHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Scan in corso...';
-    showToast('Scan LLDP', 'Scansione porte su tutti gli switch...', false);
-    fetch(`/api/rete/scan-lldp?nave_id=${naveID}`)
+function scanMAC(switchID) {
+    showToast('Scan MAC', 'Scansione in corso...', false);
+    fetch(`/api/rete/scan-mac?switch_id=${switchID}`)
         .then(r => r.json())
         .then(data => {
-            showToast('Scan LLDP', data.message, !data.success);
+            showToast('Scan MAC', data.message, !data.success);
             if (data.success) setTimeout(() => location.reload(), 1500);
         });
 }
 
-function getACVersion(acId) {
-    showToast("Versione", "Recupero versione AC...", false);
-    fetch(`/api/rete/ac-version?ac_id=${acId}`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById("versionModel").textContent = data.model || "-";
-                document.getElementById("versionFirmware").textContent = data.version || "-";
-                new bootstrap.Modal(document.getElementById("modalVersion")).show();
-                if (data.model) {
-                    const modelCell = document.getElementById("acModel");
-                    if (modelCell) modelCell.textContent = data.model;
-                }
-            } else {
-                showToast("Versione", data.message, true);
-            }
-        });
-}
-
-function getSwitchVersion(switchId) {
-    showToast('Versione', 'Recupero versione firmware...', false);
-    fetch(`/api/rete/switch-version?switch_id=${switchId}`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('versionModel').textContent = data.model || '-';
-                document.getElementById('versionFirmware').textContent = data.version || '-';
-                new bootstrap.Modal(document.getElementById('modalVersion')).show();
-                if (data.model) {
-                    const modelCell = document.getElementById('model-' + switchId);
-                    if (modelCell) modelCell.textContent = data.model;
-                }
-            } else {
-                showToast('Versione', data.message, true);
-            }
-        });
-}
-
 function backupConfig(tipo, id) {
-    const btn = event.target.closest("button");
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
     showToast('Backup', 'Backup in corso...', false);
     fetch(`/api/rete/backup-config?tipo=${tipo}&id=${id}`)
         .then(r => r.json())
@@ -531,8 +477,8 @@ function resetSwitchForm() {
     const creds = getDefaultCredentials();
     document.getElementById('modalSwitchTitle').textContent = 'Aggiungi Switch';
     document.getElementById('formSwitch').action = `/navi/switch/nuovo/${naveID}`;
+    document.getElementById('sw_nome').value = '';
     document.getElementById('sw_marca').value = 'huawei';
-    document.getElementById('sw_protocollo').value = 'ssh';
     document.getElementById('sw_modello').value = '';
     document.getElementById('sw_ip').value = '';
     document.getElementById('sw_ssh_port').value = '22';
@@ -541,28 +487,18 @@ function resetSwitchForm() {
     document.getElementById('sw_note').value = '';
 }
 
-// Auto-cambia porta quando si seleziona protocollo
-document.getElementById("sw_protocollo").addEventListener("change", function() {
-    const portInput = document.getElementById("sw_ssh_port");
-    if (this.value === "telnet") {
-        portInput.value = "23";
-    } else {
-        portInput.value = "22";
-    }
-});
-
-function editSwitch(id, nome, marca, modello, ip, port, user, pass, note, protocollo) {
-    document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch: ' + nome;
+function editSwitch(id, nome, marca, modello, ip, port, user, pass, note) {
+    document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch';
     document.getElementById('formSwitch').action = `/navi/switch/modifica/${id}`;
+    document.getElementById('sw_nome').value = nome;
     document.getElementById('sw_marca').value = marca;
-    document.getElementById('sw_protocollo').value = protocollo || 'ssh';
     document.getElementById('sw_modello').value = modello;
     document.getElementById('sw_ip').value = ip;
     document.getElementById('sw_ssh_port').value = port;
     document.getElementById('sw_ssh_user').value = user;
     document.getElementById('sw_ssh_pass').value = pass;
     document.getElementById('sw_note').value = note;
+    new bootstrap.Modal(document.getElementById('modalSwitch')).show();
 }
-
 </script>
 {{end}}

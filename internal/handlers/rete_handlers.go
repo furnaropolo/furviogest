@@ -834,7 +834,7 @@ func getSwitchesByNave(naveID int64) []SwitchNave {
 	var switches []SwitchNave
 	rows, err := database.DB.Query(`
 		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh')
-		FROM switch_nave WHERE nave_id = ? ORDER BY ap_name
+		FROM switch_nave WHERE nave_id = ? ORDER BY nome
 	`, naveID)
 	if err != nil {
 		return switches

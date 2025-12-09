@@ -85,7 +85,7 @@ func getRiepilogoMensile(mese, anno int, tecnicoID int64) []RiepilogoMensileItem
 		SELECT u.id, u.cognome || ' ' || u.nome as nome,
 		       (SELECT COUNT(*) FROM trasferte WHERE tecnico_id = u.id AND strftime('%m', data_partenza) = ? AND strftime('%Y', data_partenza) = ? AND deleted_at IS NULL) as num_trasferte,
 		       (SELECT COALESCE(SUM(km_percorsi), 0) FROM trasferte WHERE tecnico_id = u.id AND strftime('%m', data_partenza) = ? AND strftime('%Y', data_partenza) = ? AND deleted_at IS NULL) as tot_km,
-		       (SELECT COUNT(*) FROM rapporti_tecnici rt INNER JOIN rapporti_intervento r ON rt.rapporto_id = r.id WHERE rt.tecnico_id = u.id AND strftime('%m', r.data_intervento) = ? AND strftime('%Y', r.data_intervento) = ? AND r.deleted_at IS NULL) as num_rapporti,
+		       (SELECT COUNT(*) FROM tecnici_rapporto rt INNER JOIN rapporti_intervento r ON rt.rapporto_id = r.id WHERE rt.tecnico_id = u.id AND strftime('%m', r.data_intervento) = ? AND strftime('%Y', r.data_intervento) = ? AND r.deleted_at IS NULL) as num_rapporti,
 		       (SELECT COALESCE(SUM(importo), 0) FROM note_spese WHERE tecnico_id = u.id AND strftime('%m', data) = ? AND strftime('%Y', data) = ? AND deleted_at IS NULL) as tot_spese,
 		       (SELECT COALESCE(SUM(importo), 0) FROM note_spese WHERE tecnico_id = u.id AND tipo_spesa = 'vitto' AND strftime('%m', data) = ? AND strftime('%Y', data) = ? AND deleted_at IS NULL) as tot_vitto,
 		       (SELECT COALESCE(SUM(importo), 0) FROM note_spese WHERE tecnico_id = u.id AND tipo_spesa = 'alloggio' AND strftime('%m', data) = ? AND strftime('%Y', data) = ? AND deleted_at IS NULL) as tot_alloggio,
@@ -233,7 +233,7 @@ func getDettaglioRapportiMese(mese, anno int, tecnicoID int64) []map[string]inte
 		SELECT DISTINCT r.id, r.data_intervento, r.tipo_intervento, 
 		       COALESCE(n.nome, '') as nave,
 		       (SELECT GROUP_CONCAT(u.cognome || ' ' || u.nome, ', ')
-		        FROM rapporti_tecnici rt
+		        FROM tecnici_rapporto rt
 		        INNER JOIN utenti u ON rt.tecnico_id = u.id
 		        WHERE rt.rapporto_id = r.id) as tecnici
 		FROM rapporti_intervento r
@@ -243,7 +243,7 @@ func getDettaglioRapportiMese(mese, anno int, tecnicoID int64) []map[string]inte
 	args := []interface{}{meseStr, annoStr}
 
 	if tecnicoID > 0 {
-		query += ` INNER JOIN rapporti_tecnici rt2 ON r.id = rt2.rapporto_id AND rt2.tecnico_id = ?`
+		query += ` INNER JOIN tecnici_rapporto rt2 ON r.id = rt2.rapporto_id AND rt2.tecnico_id = ?`
 		args = []interface{}{tecnicoID, meseStr, annoStr}
 	}
 

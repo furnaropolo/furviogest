@@ -1,8 +1,305 @@
-2025/12/08 20:59:22 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
-2025/12/08 20:59:22 Database inizializzato correttamente
-2025/12/08 20:59:22 Caricamento templates da: /home/ies/furviogest/web/templates
-2025/12/08 20:59:22 [Monitoring] Scheduler monitoraggio settimanale avviato
-2025/12/08 20:59:22 Server FurvioGest avviato su http://localhost:8080
-2025/12/08 20:59:22 Credenziali predefinite: admin / admin
-2025/12/08 20:59:22 IMPORTANTE: Cambiare la password al primo accesso!
-2025/12/08 20:59:22 Errore avvio server:listen tcp :8080: bind: address already in use
+2025/12/09 08:26:28 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
+2025/12/09 08:26:28 Database inizializzato correttamente
+2025/12/09 08:26:28 Caricamento templates da: /home/ies/furviogest/web/templates
+2025/12/09 08:26:28 [Monitoring] Scheduler monitoraggio settimanale avviato
+2025/12/09 08:26:28 Server FurvioGest avviato su http://localhost:8080
+2025/12/09 08:26:28 Credenziali predefinite: admin / admin
+2025/12/09 08:26:28 IMPORTANTE: Cambiare la password al primo accesso!
+2025/12/09 08:30:45 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:30:45 [RETE] Path dopo trim: 13
+2025/12/09 08:30:45 [RETE] NaveID: 13
+2025/12/09 08:30:45 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:30:45 [RETE] Rendering template rete_nave.html
+2025/12/09 08:30:54 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:30:54 [RETE] Path dopo trim: 13
+2025/12/09 08:30:54 [RETE] NaveID: 13
+2025/12/09 08:30:54 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:30:54 [RETE] Rendering template rete_nave.html
+2025/12/09 08:30:57 [SSH TEST] IP: 10.101.11.241, Port: 22, User: admin, ExitCode: 2, Output: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 22 admin@10.101.11.241
+ssh: connect to host 10.101.11.241 port 22: Connection refused
+2025/12/09 08:32:31 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:32:31 [RETE] Path dopo trim: 13
+2025/12/09 08:32:31 [RETE] NaveID: 13
+2025/12/09 08:32:31 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:32:31 [RETE] Rendering template rete_nave.html
+2025/12/09 08:32:59 [NUOVO SWITCH] Hostname recuperato: SW-ME3-01
+2025/12/09 08:33:00 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:33:00 [RETE] Path dopo trim: 13
+2025/12/09 08:33:00 [RETE] NaveID: 13
+2025/12/09 08:33:00 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:33:00 [RETE] Rendering template rete_nave.html
+2025/12/09 08:33:23 [TELNET TEST] IP: 10.101.11.241, Port: 23, User: admin, ExitCode: 0, Output: spawn telnet 10.101.11.241 23
+Trying 10.101.11.241...
+Connected to 10.101.11.241.
+Escape character is '^]'.
+
+Warning: Telnet is not a secure protocol, and it is recommended to use Stelnet.
+
+Login authentication
+
+
+Username:admin
+Password:
+Info: The max number of VTY users is 10, and the number
+      of current VTY users on line is 1.
+      The current login time is 2009-03-10 13:17:42+01:00.
+<SW-ME3-01>admin
+           ^
+Error: Unrecognized command found at '^' position.
+<SW-ME3-01>
+2025/12/09 08:33:23 [BACKUP] Richiesta backup: tipo=switch id=26
+2025/12/09 08:33:27 [BACKUP] Switch SW-ME3-01 output len: 4071, err: <nil>
+2025/12/09 08:33:30 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:33:30 [RETE] Path dopo trim: 13
+2025/12/09 08:33:30 [RETE] NaveID: 13
+2025/12/09 08:33:30 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:33:30 [RETE] Rendering template rete_nave.html
+2025/12/09 08:34:13 [NUOVO SWITCH] Hostname recuperato: Switch-10.101.11.242
+2025/12/09 08:34:13 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:34:13 [RETE] Path dopo trim: 13
+2025/12/09 08:34:13 [RETE] NaveID: 13
+2025/12/09 08:34:13 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:34:13 [RETE] Rendering template rete_nave.html
+2025/12/09 08:34:21 [SSH TEST] IP: 10.101.11.242, Port: 22, User: admin, ExitCode: 0, Output: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 22 admin@10.101.11.242
+User Authentication
+(admin@10.101.11.242) Password: 
+User Authentication
+(admin@10.101.11.242) Password: 
+User Authentication
+(admin@10.101.11.242) Password: 
+Received disconnect from 10.101.11.242 port 22:2: The connection is closed by SSH server
+
+Disconnected from 10.101.11.242 port 22
+2025/12/09 08:37:58 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:37:58 [RETE] Path dopo trim: 13
+2025/12/09 08:37:58 [RETE] NaveID: 13
+2025/12/09 08:37:58 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:37:58 [RETE] Rendering template rete_nave.html
+2025/12/09 08:38:26 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:38:26 [RETE] Path dopo trim: 13
+2025/12/09 08:38:26 [RETE] NaveID: 13
+2025/12/09 08:38:26 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:38:26 [RETE] Rendering template rete_nave.html
+2025/12/09 08:43:08 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:43:08 [RETE] Path dopo trim: 13
+2025/12/09 08:43:08 [RETE] NaveID: 13
+2025/12/09 08:43:08 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:43:08 [RETE] Rendering template rete_nave.html
+2025/12/09 08:48:15 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:48:15 [RETE] Path dopo trim: 13
+2025/12/09 08:48:15 [RETE] NaveID: 13
+2025/12/09 08:48:15 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:48:15 [RETE] Rendering template rete_nave.html
+2025/12/09 08:48:22 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:48:22 [RETE] Path dopo trim: 13
+2025/12/09 08:48:22 [RETE] NaveID: 13
+2025/12/09 08:48:22 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:48:22 [RETE] Rendering template rete_nave.html
+2025/12/09 08:54:03 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:54:03 [RETE] Path dopo trim: 13
+2025/12/09 08:54:03 [RETE] NaveID: 13
+2025/12/09 08:54:03 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:54:03 [RETE] Rendering template rete_nave.html
+2025/12/09 08:58:27 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 08:58:27 [RETE] Path dopo trim: 13
+2025/12/09 08:58:27 [RETE] NaveID: 13
+2025/12/09 08:58:27 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 08:58:27 [RETE] Rendering template rete_nave.html
+2025/12/09 09:01:16 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:01:16 [RETE] Path dopo trim: 13
+2025/12/09 09:01:16 [RETE] NaveID: 13
+2025/12/09 09:01:16 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:01:16 [RETE] Rendering template rete_nave.html
+2025/12/09 09:01:36 [NUOVO SWITCH] Hostname recuperato: Switch-10.101.11.242
+2025/12/09 09:01:37 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:01:37 [RETE] Path dopo trim: 13
+2025/12/09 09:01:37 [RETE] NaveID: 13
+2025/12/09 09:01:37 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:01:37 [RETE] Rendering template rete_nave.html
+2025/12/09 09:01:49 [SSH TEST] IP: 10.101.11.242, Port: 22, User: admin, ExitCode: 0, Output: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 22 admin@10.101.11.242
+User Authentication
+(admin@10.101.11.242) Password: 
+User Authentication
+(admin@10.101.11.242) Password: 
+User Authentication
+(admin@10.101.11.242) Password: 
+Received disconnect from 10.101.11.242 port 22:2: The connection is closed by SSH server
+
+Disconnected from 10.101.11.242 port 22
+2025/12/09 09:02:01 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:02:01 [RETE] Path dopo trim: 13
+2025/12/09 09:02:01 [RETE] NaveID: 13
+2025/12/09 09:02:01 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:02:01 [RETE] Rendering template rete_nave.html
+2025/12/09 09:03:09 [NUOVO SWITCH] Hostname recuperato: SW-ME3-02
+2025/12/09 09:03:10 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:03:10 [RETE] Path dopo trim: 13
+2025/12/09 09:03:10 [RETE] NaveID: 13
+2025/12/09 09:03:10 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:03:10 [RETE] Rendering template rete_nave.html
+2025/12/09 09:03:23 [TELNET TEST] IP: 10.101.11.242, Port: 23, User: admin, ExitCode: 0, Output: spawn telnet 10.101.11.242 23
+Trying 10.101.11.242...
+Connected to 10.101.11.242.
+Escape character is '^]'.
+
+Warning: Telnet is not a secure protocol, and it is recommended to use Stelnet.
+
+Login authentication
+
+admin
+
+Username:admin
+Password:
+Error: Authentication fail
+
+Username:admin
+Password:
+Info: The max number of VTY users is 10, and the number
+      of current VTY users on line is 1.
+      The current login time is 2025-12-09 08:45:31+01:00.
+<SW-ME3-02>
+2025/12/09 09:03:23 [BACKUP] Richiesta backup: tipo=switch id=29
+2025/12/09 09:03:26 [BACKUP] Switch SW-ME3-02 output len: 6843, err: <nil>
+2025/12/09 09:03:30 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:03:30 [RETE] Path dopo trim: 13
+2025/12/09 09:03:30 [RETE] NaveID: 13
+2025/12/09 09:03:30 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:03:30 [RETE] Rendering template rete_nave.html
+2025/12/09 09:04:44 [NUOVO SWITCH] Hostname recuperato: SW-ME3-03
+2025/12/09 09:04:45 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:04:45 [RETE] Path dopo trim: 13
+2025/12/09 09:04:45 [RETE] NaveID: 13
+2025/12/09 09:04:45 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:04:45 [RETE] Rendering template rete_nave.html
+2025/12/09 09:04:50 [TELNET TEST] IP: 10.101.11.243, Port: 23, User: admin, ExitCode: 0, Output: spawn telnet 10.101.11.243 23
+Trying 10.101.11.243...
+Connected to 10.101.11.243.
+Escape character is '^]'.
+
+Warning: Telnet is not a secure protocol, and it is recommended to use Stelnet.
+
+Login authentication
+
+
+Username:admin
+Password:
+Info: The max number of VTY users is 10, and the number
+      of current VTY users on line is 1.
+      The current login time is 2025-12-09 08:48:00+01:00.
+<SW-ME3-03>admin
+           ^
+Error: Unrecognized command found at '^' position.
+<SW-ME3-03>
+2025/12/09 09:04:51 [BACKUP] Richiesta backup: tipo=switch id=30
+2025/12/09 09:04:55 [BACKUP] Switch SW-ME3-03 output len: 6350, err: <nil>
+2025/12/09 09:04:59 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:04:59 [RETE] Path dopo trim: 13
+2025/12/09 09:04:59 [RETE] NaveID: 13
+2025/12/09 09:04:59 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:04:59 [RETE] Rendering template rete_nave.html
+2025/12/09 09:05:30 [NUOVO SWITCH] Hostname recuperato: SW-ME3-04
+2025/12/09 09:05:31 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:05:31 [RETE] Path dopo trim: 13
+2025/12/09 09:05:31 [RETE] NaveID: 13
+2025/12/09 09:05:31 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:05:31 [RETE] Rendering template rete_nave.html
+2025/12/09 09:05:36 [SSH TEST] IP: 10.101.11.244, Port: 22, User: admin, ExitCode: 0, Output: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 22 admin@10.101.11.244
+admin@10.101.11.244's password: 
+
+Info: The max number of VTY users is 5, the number of current VTY users online is 1, and total number of terminal users online is 1.
+      The current login time is 2025-01-24 20:01:31+01:00.
+<SW-ME3-04>
+2025/12/09 09:05:39 [BACKUP] Richiesta backup: tipo=switch id=31
+2025/12/09 09:05:42 [BACKUP] Switch SW-ME3-04 output len: 7498, err: <nil>
+2025/12/09 09:05:46 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:05:46 [RETE] Path dopo trim: 13
+2025/12/09 09:05:46 [RETE] NaveID: 13
+2025/12/09 09:05:46 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:05:46 [RETE] Rendering template rete_nave.html
+2025/12/09 09:06:22 [NUOVO SWITCH] Hostname recuperato: SW-ME3-05
+2025/12/09 09:06:31 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:06:31 [RETE] Path dopo trim: 13
+2025/12/09 09:06:31 [RETE] NaveID: 13
+2025/12/09 09:06:31 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:06:31 [RETE] Rendering template rete_nave.html
+2025/12/09 09:06:41 [TELNET TEST] IP: 10.101.11.245, Port: 23, User: admin, ExitCode: 0, Output: spawn telnet 10.101.11.245 23
+Trying 10.101.11.245...
+Connected to 10.101.11.245.
+Escape character is '^]'.
+
+Warning: Telnet is not a secure protocol, and it is recommended to use Stelnet.
+
+Login authentication
+
+admin
+
+Username:admin
+Password:
+Error: Authentication fail
+
+Username:admin
+Password:
+Info: The max number of VTY users is 10, and the number
+      of current VTY users on line is 1.
+      The current login time is 2025-12-09 08:52:38+01:00.
+<SW-ME3-05>admin
+           ^
+Error: Unrecognized command found at '^' position.
+<SW-ME3-05>
+2025/12/09 09:06:45 [BACKUP] Richiesta backup: tipo=switch id=32
+2025/12/09 09:06:49 [BACKUP] Switch SW-ME3-05 output len: 5857, err: <nil>
+2025/12/09 09:06:58 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:06:58 [RETE] Path dopo trim: 13
+2025/12/09 09:06:58 [RETE] NaveID: 13
+2025/12/09 09:06:58 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:06:58 [RETE] Rendering template rete_nave.html
+2025/12/09 09:07:27 [NUOVO SWITCH] Hostname recuperato: SW-ME3-06
+2025/12/09 09:07:27 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:07:27 [RETE] Path dopo trim: 13
+2025/12/09 09:07:27 [RETE] NaveID: 13
+2025/12/09 09:07:27 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:07:27 [RETE] Rendering template rete_nave.html
+2025/12/09 09:07:46 [SSH TEST] IP: 10.101.11.246, Port: 22, User: admin, ExitCode: 0, Output: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 22 admin@10.101.11.246
+admin@10.101.11.246's password: 
+
+Info: The max number of VTY users is 5, the number of current VTY users online is 1, and total number of terminal users online is 1.
+      The current login time is 2025-11-11 04:40:31+01:00.
+<SW-ME3-06>
+2025/12/09 09:07:48 [BACKUP] Richiesta backup: tipo=switch id=33
+2025/12/09 09:07:51 [BACKUP] Switch SW-ME3-06 output len: 7477, err: <nil>
+2025/12/09 09:08:02 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:08:02 [RETE] Path dopo trim: 13
+2025/12/09 09:08:02 [RETE] NaveID: 13
+2025/12/09 09:08:02 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:08:02 [RETE] Rendering template rete_nave.html
+2025/12/09 09:08:37 [NUOVO SWITCH] Hostname recuperato: SW-ME3-07
+2025/12/09 09:08:37 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:08:37 [RETE] Path dopo trim: 13
+2025/12/09 09:08:37 [RETE] NaveID: 13
+2025/12/09 09:08:37 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:08:37 [RETE] Rendering template rete_nave.html
+2025/12/09 09:08:43 [SSH TEST] IP: 10.101.11.247, Port: 22, User: admin, ExitCode: 0, Output: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -p 22 admin@10.101.11.247
+admin@10.101.11.247's password: 
+
+Info: The max number of VTY users is 5, the number of current VTY users online is 1, and total number of terminal users online is 1.
+      The current login time is 2025-01-02 23:28:48+01:00.
+<SW-ME3-07>
+2025/12/09 09:08:43 [BACKUP] Richiesta backup: tipo=switch id=34
+2025/12/09 09:08:46 [BACKUP] Switch SW-ME3-07 output len: 7476, err: <nil>
+2025/12/09 09:08:53 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:08:53 [RETE] Path dopo trim: 13
+2025/12/09 09:08:53 [RETE] NaveID: 13
+2025/12/09 09:08:53 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:08:53 [RETE] Rendering template rete_nave.html
+2025/12/09 09:11:49 [MAC] Switch SW-ME3-01: trovate 0 entry
+2025/12/09 09:12:54 [MAC] Switch SW-ME3-02: trovate 0 entry
+2025/12/09 09:13:59 [MAC] Switch SW-ME3-03: trovate 0 entry
+2025/12/09 09:14:03 [MAC] Switch SW-ME3-04: trovate 67 entry
+2025/12/09 09:15:08 [MAC] Switch SW-ME3-05: trovate 0 entry
+2025/12/09 09:15:12 [MAC] Switch SW-ME3-06: trovate 80 entry
+2025/12/09 09:15:16 [MAC] Switch SW-ME3-07: trovate 68 entry
+2025/12/09 09:17:28 [RETE] Richiesta URL: /navi/rete/13
+2025/12/09 09:17:28 [RETE] Path dopo trim: 13
+2025/12/09 09:17:28 [RETE] NaveID: 13
+2025/12/09 09:17:28 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
+2025/12/09 09:17:28 [RETE] Rendering template rete_nave.html
