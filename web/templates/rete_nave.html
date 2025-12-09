@@ -66,11 +66,10 @@
     <div class="card mb-4">
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Switch ({{len .Data.Switches}}/20)</h5>
-            {{if lt (len .Data.Switches) 20}}
-            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalSwitch" onclick="resetSwitchForm()">
-                <i class="bi bi-plus-lg me-1"></i>Aggiungi Switch
-            </button>
-            {{end}}
+            <div class="d-flex gap-2">
+                {{if .Data.Switches}}<button class="btn btn-light btn-sm" onclick="scanAllLLDP()" {{if .Data.Nave.FermaPerLavori}}disabled{{end}}><i class="bi bi-search me-1"></i>Scan LLDP</button>{{end}}
+                {{if lt (len .Data.Switches) 20}}<button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalSwitch" onclick="resetSwitchForm()"><i class="bi bi-plus-lg me-1"></i>Aggiungi Switch</button>{{end}}
+            </div>
         </div>
         <div class="card-body">
             {{if .Data.Switches}}
@@ -82,6 +81,7 @@
                             <th>Marca</th>
                             <th>IP</th>
                             <th>Modello</th>
+                            <th>Porte</th>
                             <th>Ultimo Check</th>
                             <th>Azioni</th>
                         </tr>
@@ -93,17 +93,18 @@
                             <td><span class="badge bg-{{if eq .Marca "huawei"}}warning text-dark{{else}}info{{end}}">{{.Marca}}</span></td>
                             <td><code>{{.IP}}:{{.SSHPort}}</code></td>
                             <td>{{.Modello}}</td>
+                            <td><span class="badge bg-secondary">{{.PorteLibere}}/{{.PorteTotali}}</span></td>
                             <td><small>{{.UltimoCheck}}</small></td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-info" onclick="testSSHSwitch('{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', {{.ID}})" title="Test SSH">
                                         <i class="bi bi-plug"></i>
                                     </button>
-                                    <button class="btn btn-outline-success" onclick="scanMAC({{.ID}})" title="Scan MAC" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
-                                        <i class="bi bi-search"></i>
-                                    </button>
                                     <button class="btn btn-outline-secondary" onclick="backupConfig('switch', {{.ID}})" title="Backup">
                                         <i class="bi bi-download"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning" onclick="scanPorts({{.ID}})" title="Scan Porte" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
+                                        <i class="bi bi-ethernet"></i>
                                     </button>
                                     <button class="btn btn-outline-primary" style="display:none" title="Modifica">
                                         <i class="bi bi-pencil"></i>
@@ -269,11 +270,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="nave_id" value="{{.Data.Nave.ID}}">
                     <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label">Nome Switch *</label>
-                            <input type="text" class="form-control" name="nome" id="sw_nome" placeholder="es. SW-Ponte-1" required>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Marca *</label>
                             <select class="form-select" name="marca" id="sw_marca" required>
                                 <option value="huawei">Huawei</option>
@@ -422,19 +419,7 @@ async function testSSHSwitch(ip, port, user, pass, switchId) {
         const resp = await fetch(`/api/rete/test-ssh?ip=${ip}&port=${port}&user=${user}&pass=${encodeURIComponent(pass)}`);
         const data = await resp.json();
         if (data.success) {
-            showToast('Test SSH Switch', 'Connessione riuscita! Avvio scan MAC...', false);
-            // Esegui scan MAC
-            const macResp = await fetch(`/api/rete/scan-mac?switch_id=${switchId}`);
-            const macData = await macResp.json();
-            showToast('Scan MAC', macData.message, !macData.success);
-
-            // Esegui backup config
-            showToast('Backup', 'Backup configurazione in corso...', false);
-            const backupResp = await fetch(`/api/rete/backup-config?tipo=switch&id=${switchId}`);
-            const backupData = await backupResp.json();
-            showToast('Backup', backupData.message, !backupData.success);
-
-            setTimeout(() => location.reload(), 2000);
+            showToast('Test SSH Switch', 'Connessione SSH riuscita!', false);
         } else {
             showToast('Test SSH Switch', data.message, true);
         }
@@ -453,12 +438,23 @@ function scanAP() {
         });
 }
 
-function scanMAC(switchID) {
-    showToast('Scan MAC', 'Scansione in corso...', false);
-    fetch(`/api/rete/scan-mac?switch_id=${switchID}`)
+function scanAllLLDP() {
+    showToast('Scan LLDP', 'Scansione LLDP su tutti gli switch in corso...', false);
+    fetch(`/api/rete/scan-lldp?nave_id=${naveID}`)
         .then(r => r.json())
         .then(data => {
-            showToast('Scan MAC', data.message, !data.success);
+            showToast('Scan LLDP', data.message, !data.success);
+            if (data.success) setTimeout(() => location.reload(), 2000);
+        })
+        .catch(e => showToast('Errore', e.message, true));
+}
+
+function scanPorts(switchID) {
+    showToast('Scan Porte', 'Scansione porte in corso...', false);
+    fetch(`/api/rete/scan-ports?switch_id=${switchID}`)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Scan Porte', data.message, !data.success);
             if (data.success) setTimeout(() => location.reload(), 1500);
         });
 }
@@ -477,7 +473,6 @@ function resetSwitchForm() {
     const creds = getDefaultCredentials();
     document.getElementById('modalSwitchTitle').textContent = 'Aggiungi Switch';
     document.getElementById('formSwitch').action = `/navi/switch/nuovo/${naveID}`;
-    document.getElementById('sw_nome').value = '';
     document.getElementById('sw_marca').value = 'huawei';
     document.getElementById('sw_modello').value = '';
     document.getElementById('sw_ip').value = '';
@@ -487,10 +482,9 @@ function resetSwitchForm() {
     document.getElementById('sw_note').value = '';
 }
 
-function editSwitch(id, nome, marca, modello, ip, port, user, pass, note) {
+function editSwitch(id, marca, modello, ip, port, user, pass, note) {
     document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch';
     document.getElementById('formSwitch').action = `/navi/switch/modifica/${id}`;
-    document.getElementById('sw_nome').value = nome;
     document.getElementById('sw_marca').value = marca;
     document.getElementById('sw_modello').value = modello;
     document.getElementById('sw_ip').value = ip;

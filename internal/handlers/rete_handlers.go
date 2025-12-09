@@ -53,6 +53,8 @@ type SwitchNave struct {
 	UltimoCheck  string
 	UltimoBackup string
 	Protocollo   string // ssh o telnet
+	PorteTotali  int
+	PorteLibere  int
 }
 
 type AccessPoint struct {
@@ -528,6 +530,100 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+// APIScanPorts esegue scan delle porte dello switch per contare totali e libere
+func APIScanPorts(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[SCAN PORTS] Chiamata ricevuta: %s", r.URL.String())
+	w.Header().Set("Content-Type", "application/json")
+
+	switchIDStr := r.URL.Query().Get("switch_id")
+	switchID, _ := strconv.ParseInt(switchIDStr, 10, 64)
+
+	result := map[string]interface{}{
+		"success":      false,
+		"message":      "",
+		"porte_totali": 0,
+		"porte_libere": 0,
+	}
+
+	sw := getSwitchByID(switchID)
+	if sw == nil {
+		result["message"] = "Switch non trovato"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Comando diverso in base alla marca
+	var cmdStr string
+	if sw.Marca == "huawei" {
+		cmdStr = "display interface brief"
+	} else { // hp
+		cmdStr = "show interface brief"
+	}
+
+	// Esegui comando SSH
+	output, err := executeSwitchCommand(sw, cmdStr)
+	if err != nil {
+		result["message"] = "Errore connessione SSH: " + err.Error()
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Parse output per contare porte
+	log.Printf("[SCAN PORTS] Output ricevuto (len=%d): %s", len(output), output[:min(500, len(output))])
+	var porteTotali, porteLibere int
+	if sw.Marca == "huawei" {
+		porteTotali, porteLibere = parseHuaweiPortsOutput(string(output))
+	} else {
+		porteTotali, porteLibere = parseHPPortsOutput(string(output))
+	}
+	log.Printf("[SCAN PORTS] Risultato: totali=%d, libere=%d", porteTotali, porteLibere)
+
+	// Aggiorna database
+	database.DB.Exec("UPDATE switch_nave SET porte_totali = ?, porte_libere = ?, ultimo_check = CURRENT_TIMESTAMP WHERE id = ?", porteTotali, porteLibere, switchID)
+
+	result["success"] = true
+	result["message"] = fmt.Sprintf("Porte: %d totali, %d libere", porteTotali, porteLibere)
+	result["porte_totali"] = porteTotali
+	result["porte_libere"] = porteLibere
+
+	json.NewEncoder(w).Encode(result)
+}
+
+// parseHuaweiPortsOutput analizza output di display interface brief
+func parseHuaweiPortsOutput(output string) (totali, libere int) {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Cerca righe che iniziano con GigabitEthernet, 10GigabitEthernet, GE, XGE
+		if strings.HasPrefix(line, "GigabitEthernet") || strings.HasPrefix(line, "10GigabitEthernet") || strings.HasPrefix(line, "GE") || strings.HasPrefix(line, "XGE") || strings.HasPrefix(line, "Eth") {
+			totali++
+			// Porta libera se stato e down o *down
+			lineLower := strings.ToLower(line)
+			if strings.Contains(lineLower, "down") && !strings.Contains(lineLower, "up") {
+				libere++
+			}
+		}
+	}
+	return totali, libere
+}
+
+// parseHPPortsOutput analizza output di show interface brief HP
+func parseHPPortsOutput(output string) (totali, libere int) {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// HP usa formato diverso, cerca porte ethernet
+		if strings.Contains(line, "Ethernet") || strings.HasPrefix(line, "1/") || strings.HasPrefix(line, "2/") {
+			totali++
+			lineLower := strings.ToLower(line)
+			if strings.Contains(lineLower, "down") || strings.Contains(lineLower, "disabled") {
+				libere++
+			}
+		}
+	}
+	return totali, libere
+}
+
 // APIBackupConfig esegue backup configurazione
 func APIBackupConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -833,7 +929,7 @@ func getAccessControllerByNave(naveID int64) *AccessController {
 func getSwitchesByNave(naveID int64) []SwitchNave {
 	var switches []SwitchNave
 	rows, err := database.DB.Query(`
-		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh')
+		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh'), COALESCE(porte_totali, 0), COALESCE(porte_libere, 0)
 		FROM switch_nave WHERE nave_id = ? ORDER BY nome
 	`, naveID)
 	if err != nil {
@@ -844,7 +940,7 @@ func getSwitchesByNave(naveID int64) []SwitchNave {
 	for rows.Next() {
 		var sw SwitchNave
 		var ultimoCheck, ultimoBackup sql.NullString
-		rows.Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup, &sw.Protocollo)
+		rows.Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup, &sw.Protocollo, &sw.PorteTotali, &sw.PorteLibere)
 		if ultimoCheck.Valid {
 			sw.UltimoCheck = ultimoCheck.String
 		}
@@ -860,9 +956,9 @@ func getSwitchByID(id int64) *SwitchNave {
 	var sw SwitchNave
 	var ultimoCheck, ultimoBackup sql.NullString
 	err := database.DB.QueryRow(`
-		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh')
+		SELECT id, nave_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(protocollo, 'ssh'), COALESCE(porte_totali, 0), COALESCE(porte_libere, 0)
 		FROM switch_nave WHERE id = ?
-	`, id).Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup, &sw.Protocollo)
+	`, id).Scan(&sw.ID, &sw.NaveID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Note, &ultimoCheck, &ultimoBackup, &sw.Protocollo, &sw.PorteTotali, &sw.PorteLibere)
 	if err != nil {
 		return nil
 	}
@@ -2000,7 +2096,7 @@ func runBackupUfficioBatch(ufficioID, salaServerID int64, tipo string, apparatoI
 	if ufficioID > 0 {
 		if tipo == "ac" {
 			tabella = "ac_ufficio"
-			err := database.DB.QueryRow("SELECT ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh') FROM ac_ufficio WHERE id = ?", apparatoID).
+			err := database.DB.QueryRow("SELECT ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(porte_totali, 0), COALESCE(porte_libere, 0) FROM ac_ufficio WHERE id = ?", apparatoID).
 				Scan(&ip, &sshPort, &sshUser, &sshPass, &protocollo)
 			if err != nil {
 				return
@@ -2010,7 +2106,7 @@ func runBackupUfficioBatch(ufficioID, salaServerID int64, tipo string, apparatoI
 		} else {
 			tabella = "switch_ufficio"
 			var marca string
-			err := database.DB.QueryRow("SELECT nome, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), marca FROM switch_ufficio WHERE id = ?", apparatoID).
+			err := database.DB.QueryRow("SELECT nome, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(porte_totali, 0), COALESCE(porte_libere, 0), marca FROM switch_ufficio WHERE id = ?", apparatoID).
 				Scan(&nome, &ip, &sshPort, &sshUser, &sshPass, &protocollo, &marca)
 			if err != nil {
 				return
@@ -2024,7 +2120,7 @@ func runBackupUfficioBatch(ufficioID, salaServerID int64, tipo string, apparatoI
 	} else {
 		tabella = "switch_sala_server"
 		var marca string
-		err := database.DB.QueryRow("SELECT nome, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), marca FROM switch_sala_server WHERE id = ?", apparatoID).
+		err := database.DB.QueryRow("SELECT nome, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(porte_totali, 0), COALESCE(porte_libere, 0), marca FROM switch_sala_server WHERE id = ?", apparatoID).
 			Scan(&nome, &ip, &sshPort, &sshUser, &sshPass, &protocollo, &marca)
 		if err != nil {
 			return

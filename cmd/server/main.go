@@ -179,6 +179,7 @@ func main() {
 	mux.Handle("/api/rete/scan-ap", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanAccessPoints)))
 	mux.Handle("/api/rete/backup-config", middleware.RequireAuth(http.HandlerFunc(handlers.APIBackupConfig)))
 	mux.Handle("/api/rete/scan-lldp", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanLLDP)))
+	mux.Handle("/api/rete/scan-ports", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanPorts)))
 	mux.Handle("/api/guasti-nave", middleware.RequireAuth(http.HandlerFunc(handlers.APIGuastiNave)))
 	mux.Handle("/api/rete/switch-version", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetSwitchVersion)))
 	mux.Handle("/api/rete/ap-fault", middleware.RequireAuth(http.HandlerFunc(handlers.APIGetAPFault)))
