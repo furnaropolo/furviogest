@@ -60,7 +60,7 @@
 </div>
 
 <!-- Istruzioni selezione -->
-<div id="istruzioniSelezione" class="alert alert-info" style="display:none;">
+<div id="istruzioniSelezione" class="alert alert-info alert-persistent" style="display:none;">
     <strong>Selezione multipla:</strong> <span id="testoIstruzioni">Clicca sul giorno di fine trasferta</span>
     <button type="button" class="btn btn-sm btn-success ml-2" id="btnConfermaSelezione" onclick="confermaSelezione()" style="display:none;">Conferma</button> <button type="button" class="btn btn-sm btn-secondary ml-2" onclick="annullaSelezione()">Annulla</button>
 </div>
@@ -790,6 +790,7 @@ function salvaTrasfertaMultipla() {
         .then(function(r) { return r.json(); })
         .then(function(resp) {
             if (resp.success) {
+                alert('Spesa salvata!');
                 salvaSequenziale(index + 1);
             } else {
                 alert('Errore nel salvataggio del giorno ' + date[index]);
@@ -918,6 +919,7 @@ function salvaGiornata() {
     .then(r => r.json())
     .then(resp => {
         if (resp.success) {
+                alert('Spesa salvata!');
             giornataCorrente = giornataCorrente || {};
             giornataCorrente.ID = resp.giornata_id;
             document.getElementById('sezioneSpese').style.display = 'block';
@@ -993,6 +995,7 @@ function aggiungiSpesa() {
     .then(r => r.json())
     .then(resp => {
         if (resp.success) {
+                alert('Spesa salvata!');
             // Ricarica spese
             fetch('/api/calendario/giornata?data=' + giornataCorrente.Data + '&tecnico_id=' + giornataCorrente.TecnicoID, {credentials: 'same-origin'})
                 .then(r => r.json())
@@ -1022,6 +1025,7 @@ function eliminaSpesa(spesaID) {
     .then(r => r.json())
     .then(resp => {
         if (resp.success) {
+                alert('Spesa salvata!');
             // Ricarica spese
             fetch('/api/calendario/giornata?data=' + giornataCorrente.Data + '&tecnico_id=' + giornataCorrente.TecnicoID, {credentials: 'same-origin'})
                 .then(r => r.json())
@@ -1054,6 +1058,7 @@ function eliminaGiornata() {
     .then(function(r) { return r.json(); })
     .then(function(resp) {
         if (resp.success) {
+                alert('Spesa salvata!');
             chiudiModale();
             location.reload();
         } else {

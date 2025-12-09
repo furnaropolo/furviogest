@@ -9,21 +9,45 @@
     </div>
 </div>
 
-<!-- Alert AP Fault -->
-<div id="apFaultAlert" class="alert alert-danger" style="display: none;">
-    <strong>Attenzione!</strong>
-    Su questa nave ci sono <strong id="apFaultCount">0</strong> Access Point offline/fault:
-    <span id="apFaultDetails"></span>
-    <a href="/navi/rete/{{.Data.Nave.ID}}" target="_blank" class="btn btn-sm btn-outline-danger" style="margin-left: 10px;">Vedi Rete Nave</a>
+{{if .Data.APFaults}}
+<div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-wifi-off me-2"></i>Attenzione! {{len .Data.APFaults}} Access Point offline/fault</h5>
+    </div>
+    <div class="card-body">
+        <p class="mb-2">I seguenti AP risultano in stato FAULT o OFFLINE:</p>
+        <ul class="mb-2">
+            {{range .Data.APFaults}}
+            <li><strong>{{.APName}}</strong> ({{.APMac}}) - <span class="badge bg-{{if eq .Stato "fault"}}danger{{else}}warning{{end}}">{{.Stato}}</span></li>
+            {{end}}
+        </ul>
+        <a href="/navi/rete/{{.Data.Nave.ID}}" target="_blank" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-hdd-network me-1"></i>Vedi Rete Nave
+        </a>
+    </div>
 </div>
+{{end}}
 
-<!-- Alert Guasti Aperti -->
-<div id="guastiAlert" class="alert alert-warning" style="display: none;">
-    <strong>Guasti Segnalati!</strong>
-    Su questa nave ci sono <strong id="guastiCount">0</strong> guasti aperti:
-    <ul id="guastiList"></ul>
-    <a href="/guasti-nave/{{.Data.Nave.ID}}" target="_blank" class="btn btn-sm btn-outline-warning">Gestisci Guasti</a>
+{{if .Data.Guasti}}
+<div class="card border-warning mb-4">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Guasti Segnalati! {{len .Data.Guasti}} guasti aperti</h5>
+    </div>
+    <div class="card-body">
+        <ul class="mb-2">
+            {{range .Data.Guasti}}
+            <li>
+                <span class="badge bg-{{if eq .Gravita "alta"}}danger{{else if eq .Gravita "media"}}warning text-dark{{else}}secondary{{end}}">{{.Gravita}}</span>
+                {{.Descrizione}}
+            </li>
+            {{end}}
+        </ul>
+        <a href="/guasti-nave/{{.Data.Nave.ID}}" target="_blank" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-wrench me-1"></i>Gestisci Guasti
+        </a>
+    </div>
 </div>
+{{end}}
 
 <div class="detail-grid">
     <div class="detail-card">
@@ -172,85 +196,7 @@
     <a href="/permessi" class="btn btn-secondary">Torna alla Lista</a>
 </div>
 
-<script>
-// Carica guasti e AP fault al caricamento pagina
-document.addEventListener('DOMContentLoaded', function() {
-    const naveID = {{.Data.Nave.ID}};
-
-    // Check AP Fault
-    fetch('/api/rete/ap-fault?nave_id=' + naveID)
-        .then(r => r.json())
-        .then(data => {
-            if (data.count > 0) {
-                document.getElementById('apFaultCount').textContent = data.count;
-                document.getElementById('apFaultAlert').style.display = 'block';
-                let details = data.ap_list.map(ap => "<b>" + ap.name + "</b>").join(", ");
-                document.getElementById("apFaultDetails").innerHTML = details;
-            }
-        })
-        .catch(() => {});
-
-    // Check Guasti Aperti
-    fetch('/api/guasti-nave?nave_id=' + naveID)
-        .then(r => r.json())
-        .then(data => {
-            if (data.count > 0) {
-                document.getElementById('guastiCount').textContent = data.count;
-                let list = data.guasti.map(g => "<li><span class='badge bg-" + (g.gravita === 'alta' ? 'danger' : (g.gravita === 'media' ? 'warning text-dark' : 'secondary')) + "'>" + g.gravita.toUpperCase() + "</span> " + g.descrizione + "</li>").join("");
-                document.getElementById('guastiList').innerHTML = list;
-                document.getElementById('guastiAlert').style.display = 'block';
-            }
-        })
-        .catch(() => {});
-});
-</script>
-
 <style>
-.alert {
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-.alert-danger {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-.alert-warning {
-    background-color: #fff3cd;
-    border: 1px solid #ffc107;
-    color: #856404;
-}
-.alert ul {
-    margin: 10px 0 10px 20px;
-    padding: 0;
-}
-.alert .badge {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.75em;
-    margin-right: 5px;
-}
-.bg-danger { background-color: #dc3545; color: white; }
-.bg-warning { background-color: #ffc107; color: #333; }
-.bg-secondary { background-color: #6c757d; color: white; }
-.btn-outline-danger {
-    color: #721c24;
-    border: 1px solid #721c24;
-    background: transparent;
-    padding: 5px 10px;
-    border-radius: 4px;
-    text-decoration: none;
-}
-.btn-outline-warning {
-    color: #856404;
-    border: 1px solid #856404;
-    background: transparent;
-    padding: 5px 10px;
-    border-radius: 4px;
-    text-decoration: none;
-}
-
 .detail-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -330,6 +276,108 @@ document.addEventListener('DOMContentLoaded', function() {
     gap: 0.75rem;
     flex-wrap: wrap;
     margin-top: 2rem;
+}
+
+.card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 12px 16px;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.card-body {
+    padding: 16px;
+}
+
+.card-body ul {
+    margin: 0 0 10px 20px;
+    padding: 0;
+}
+
+.border-danger {
+    border: 2px solid #dc3545 !important;
+}
+
+.border-warning {
+    border: 2px solid #ffc107 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.text-white {
+    color: white !important;
+}
+
+.text-dark {
+    color: #333 !important;
+}
+
+.btn-outline-danger {
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    background: transparent;
+    padding: 5px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-outline-warning {
+    color: #856404;
+    border: 1px solid #ffc107;
+    background: transparent;
+    padding: 5px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.btn-outline-warning:hover {
+    background: #ffc107;
+    color: #333;
+}
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+    color: white;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.me-1 {
+    margin-right: 0.25rem;
+}
+
+.me-2 {
+    margin-right: 0.5rem;
 }
 </style>
 {{end}}

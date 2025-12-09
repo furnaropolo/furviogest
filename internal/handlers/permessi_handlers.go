@@ -15,7 +15,16 @@ import (
 )
 
 // PermessoConDettagli contiene il permesso con i dati correlati
+type GuastoInfo struct {
+	ID          int64
+	Gravita     string
+	Descrizione string
+	Stato       string
+}
+
 type PermessoConDettagli struct {
+	APFaults   []APFaultInfo
+	Guasti     []GuastoInfo
 	models.RichiestaPermesso
 	Tecnici    []models.Utente
 	Automezzo  *models.Automezzo
@@ -504,12 +513,18 @@ func DettaglioPermesso(w http.ResponseWriter, r *http.Request) {
 
 	// Carica nave e compagnia
 	database.DB.QueryRow(`
-		SELECT n.id, n.nome, n.imo, c.id, c.nome
+		SELECT n.id, n.nome, COALESCE(n.imo, ''), c.id, c.nome
 		FROM navi n
 		JOIN compagnie c ON n.compagnia_id = c.id
 		WHERE n.id = ?
 	`, p.NaveID).Scan(&dettagli.Nave.ID, &dettagli.Nave.Nome, &dettagli.Nave.IMO,
 		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome)
+
+	// Carica AP Faults
+	dettagli.APFaults = getAPFaultsForPermesso(p.NaveID)
+
+	// Carica Guasti aperti
+	dettagli.Guasti = getGuastiForPermesso(p.NaveID)
 
 	data.Data = dettagli
 	renderTemplate(w, "permessi_dettaglio.html", data)
@@ -941,6 +956,12 @@ func caricaPermessoCompleto(id int64) (*PermessoConDettagli, error) {
 		FROM navi n JOIN compagnie c ON n.compagnia_id = c.id WHERE n.id = ?
 	`, p.NaveID).Scan(&dettagli.Nave.ID, &dettagli.Nave.Nome, &imoNave, &emailMaster, &emailDDM, &emailIspettore,
 		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome)
+
+	// Carica AP Faults
+	dettagli.APFaults = getAPFaultsForPermesso(p.NaveID)
+
+	// Carica Guasti aperti
+	dettagli.Guasti = getGuastiForPermesso(p.NaveID)
 	if imoNave.Valid {
 		dettagli.Nave.IMO = imoNave.String
 	}
@@ -1088,4 +1109,52 @@ func generaTrasfertePerPermesso(permessoID int64, tecniciIDs []string, destinazi
 func eliminaTrasfertePermesso(permessoID int64) error {
 	_, err := database.DB.Exec("UPDATE trasferte SET deleted_at = CURRENT_TIMESTAMP WHERE richiesta_permesso_id = ? AND deleted_at IS NULL", permessoID)
 	return err
+}
+
+// getAPFaultsForPermesso carica gli AP in fault/offline per una nave
+func getAPFaultsForPermesso(naveID int64) []APFaultInfo {
+	var apFaults []APFaultInfo
+
+	rows, err := database.DB.Query(`
+		SELECT ap.id, COALESCE(ap.ap_name, ''), COALESCE(ap.ap_mac, ''),
+		       COALESCE(ap.ap_ip, ''), COALESCE(ap.stato, ''),
+		       '', COALESCE(ap.switch_port, '')
+		FROM access_point ap
+		WHERE ap.nave_id = ? AND (LOWER(ap.stato) = 'fault' OR LOWER(ap.stato) = 'offline')
+		ORDER BY ap.ap_name
+	`, naveID)
+	if err != nil {
+		return apFaults
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ap APFaultInfo
+		rows.Scan(&ap.ID, &ap.APName, &ap.APMac, &ap.IP, &ap.Stato, &ap.Switch, &ap.Porta)
+		apFaults = append(apFaults, ap)
+	}
+	return apFaults
+}
+
+// getGuastiForPermesso carica i guasti aperti per una nave
+func getGuastiForPermesso(naveID int64) []GuastoInfo {
+	var guasti []GuastoInfo
+
+	rows, err := database.DB.Query(`
+		SELECT id, gravita, descrizione, stato
+		FROM guasti_nave
+		WHERE nave_id = ? AND stato <> 'risolto'
+		ORDER BY CASE gravita WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END
+	`, naveID)
+	if err != nil {
+		return guasti
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var g GuastoInfo
+		rows.Scan(&g.ID, &g.Gravita, &g.Descrizione, &g.Stato)
+		guasti = append(guasti, g)
+	}
+	return guasti
 }
