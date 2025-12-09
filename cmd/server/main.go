@@ -79,6 +79,12 @@ func main() {
 	staticDir := filepath.Join(baseDir, "web", "static")
 	fs := http.FileServer(http.Dir(staticDir))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	
+	// Directory uploads (root level)
+	uploadsRoot := filepath.Join(baseDir, "uploads")
+	os.MkdirAll(uploadsRoot, 0755)
+	uploadsFs := http.FileServer(http.Dir(uploadsRoot))
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", uploadsFs))
 
 	// Directory uploads
 	uploadsDir := filepath.Join(baseDir, "web", "static", "uploads")
@@ -240,12 +246,12 @@ func main() {
 	mux.Handle("/rapporti", middleware.RequireAuth(http.HandlerFunc(handlers.ListaRapporti)))
 	mux.Handle("/rapporti/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoRapporto))))
 	mux.Handle("/rapporti/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaRapporto))))
-	mux.Handle("/rapporti/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaRapporto))))
+	mux.Handle("/rapporti/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaRapportoDefinitivo))))
 	mux.Handle("/rapporti/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioRapporto)))
-	mux.Handle("/rapporti/materiale/aggiungi", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AggiungiMateriale))))
-	mux.Handle("/rapporti/materiale/rimuovi/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RimuoviMateriale))))
+	mux.Handle("/rapporti/pdf/", middleware.RequireAuth(http.HandlerFunc(handlers.RapportoPDF)))
 	mux.Handle("/rapporti/foto/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadFotoRapporto))))
 	mux.Handle("/rapporti/foto/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFotoRapporto))))
+	mux.Handle("/navi/storico/", middleware.RequireAuth(http.HandlerFunc(handlers.StoricoInterventiNave)))
 
 	// Trasferte
 	mux.Handle("/trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.ListaTrasferte)))

@@ -508,7 +508,7 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 	// Parse output
 	var entries []map[string]string
 	if sw.Marca == "huawei" {
-		entries = parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome)
+		entries = parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome, sw.NaveID)
 	} else {
 		entries = parseHPMacTable(string(output))
 	}
@@ -1388,7 +1388,7 @@ func runScanMACBatch(naveID int64, sw *SwitchNave) {
 
 	var entries []map[string]string
 	if sw.Marca == "huawei" {
-		entries = parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome)
+		entries = parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome, sw.NaveID)
 	} else {
 		entries = parseHPMacTable(string(output))
 	}
@@ -1636,7 +1636,7 @@ func APIScanLLDP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Parse output LLDP
-		entries := parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome)
+		entries := parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome, sw.NaveID)
 		for _, entry := range entries {
 			updateAPSwitchPortByName(naveID, sw.ID, entry["ap_name"], entry["port"])
 		}
@@ -1662,7 +1662,7 @@ func APIScanLLDP(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseHuaweiLLDPOutput parsa output "display lldp neighbor brief" e estrae gli AP
-func parseHuaweiLLDPOutput(output string, switchID int64, switchNome string) []map[string]string {
+func parseHuaweiLLDPOutput(output string, switchID int64, switchNome string, naveID int64) []map[string]string {
 	var aps []map[string]string
 
 	lines := strings.Split(output, "\n")
@@ -1684,8 +1684,11 @@ func parseHuaweiLLDPOutput(output string, switchID int64, switchNome string) []m
 			localPort := fields[0]
 			neighborName := fields[1]
 
-			// Filtra solo AP (nome inizia con AP-)
-			if strings.HasPrefix(neighborName, "AP-") || strings.HasPrefix(neighborName, "AP_") {
+			
+			// Verifica se il neighborName esiste come AP nel database per questa nave
+			var count int
+			database.DB.QueryRow("SELECT COUNT(*) FROM access_point WHERE nave_id = ? AND ap_name = ?", naveID, neighborName).Scan(&count)
+			if count > 0 {
 				ap := map[string]string{
 					"ap_name":     neighborName,
 					"port":        localPort,

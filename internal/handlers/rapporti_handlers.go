@@ -16,31 +16,36 @@ import (
 
 // RapportoIntervento struttura per rapporto
 type RapportoIntervento struct {
-	ID             int64
-	NaveID         int64
-	PortoID        int64
-	Tipo           string
-	DataIntervento string
-	Descrizione    string
-	Note           string
-	DDTGenerato    bool
-	NumeroDDT      string
-	CreatedAt      string
+	ID                  int64
+	NaveID              int64
+	PortoID             int64
+	Tipo                string
+	DataIntervento      string
+	DataFine            string
+	Descrizione         string
+	Note                string
+	ConsiderazioniFinali string
+	PdfPath             string
+	DDTGenerato         bool
+	NumeroDDT           string
+	CreatedAt           string
 	// Campi join
-	NomeNave      string
-	NomeCompagnia string
-	NomePorto     string
+	NomeNave            string
+	NomeCompagnia       string
+	NomePorto           string
 }
+
 
 // TecnicoRapporto per lista tecnici
 type TecnicoRapporto struct {
-	ID       int64
-	Nome     string
-	Cognome  string
-	Selected bool
+	ID        int64
+	Nome      string
+	Cognome   string
+	OreLavoro float64
+	Selected  bool
 }
 
-// MaterialeRapporto per materiale usato
+// MaterialeRapporto per materiale usato (vecchia versione con magazzino)
 type MaterialeRapporto struct {
 	ID           int64
 	ProdottoID   int64
@@ -48,6 +53,15 @@ type MaterialeRapporto struct {
 	Codice       string
 	Quantita     float64
 	UnitaMisura  string
+}
+
+// MaterialeRapportoNew per materiale descrittivo (senza magazzino)
+type MaterialeRapportoNew struct {
+	ID                  int64
+	Tipo                string // "utilizzato" o "recuperato"
+	DescrizioneProdotto string
+	Quantita            float64
+	Unita               string
 }
 
 // FotoRapporto per foto allegate
@@ -645,7 +659,7 @@ func getNaviList() ([]map[string]interface{}, error) {
 		SELECT n.id, n.nome, COALESCE(c.nome, '') as compagnia
 		FROM navi n
 		LEFT JOIN compagnie c ON n.compagnia_id = c.id
-		WHERE n.deleted_at IS NULL
+		
 		ORDER BY c.nome, n.nome
 	`)
 	if err != nil {
@@ -671,7 +685,7 @@ func getNaviList() ([]map[string]interface{}, error) {
 func getPortiList() ([]map[string]interface{}, error) {
 	var porti []map[string]interface{}
 
-	rows, err := database.DB.Query("SELECT id, nome FROM porti WHERE deleted_at IS NULL ORDER BY nome")
+	rows, err := database.DB.Query("SELECT id, nome FROM porti ORDER BY nome")
 	if err != nil {
 		return porti, err
 	}
@@ -720,4 +734,245 @@ func getProdottiList() ([]map[string]interface{}, error) {
 	}
 
 	return prodotti, nil
+}
+
+// RapportoPDF genera la pagina PDF del rapporto
+func RapportoPDF(w http.ResponseWriter, r *http.Request) {
+	session := middleware.GetSession(r)
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	idStr := strings.TrimPrefix(r.URL.Path, "/rapporti/pdf/")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/rapporti", http.StatusSeeOther)
+		return
+	}
+
+	// Carica rapporto
+	var rap RapportoIntervento
+	var ddtGen int
+	err = database.DB.QueryRow(`
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento,
+		       COALESCE(r.data_fine, ''), COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
+		       COALESCE(r.considerazioni_finali, ''),
+		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
+		       COALESCE(n.nome, ''), COALESCE(c.nome, ''), COALESCE(p.nome, '')
+		FROM rapporti_intervento r
+		LEFT JOIN navi n ON r.nave_id = n.id
+		LEFT JOIN compagnie c ON n.compagnia_id = c.id
+		LEFT JOIN porti p ON r.porto_id = p.id
+		WHERE r.id = ?
+	`, id).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento,
+		&rap.DataFine, &rap.Descrizione, &rap.Note, &rap.ConsiderazioniFinali,
+		&ddtGen, &rap.NumeroDDT,
+		&rap.NomeNave, &rap.NomeCompagnia, &rap.NomePorto)
+
+	if err != nil {
+		http.Redirect(w, r, "/rapporti", http.StatusSeeOther)
+		return
+	}
+	rap.DDTGenerato = ddtGen == 1
+
+	// Carica tecnici con ore
+	var tecnici []TecnicoRapporto
+	rowsTec, _ := database.DB.Query(`
+		SELECT u.id, u.nome, u.cognome, COALESCE(tr.ore_lavoro, 0)
+		FROM tecnici_rapporto tr
+		JOIN utenti u ON tr.tecnico_id = u.id
+		WHERE tr.rapporto_id = ?
+	`, id)
+	if rowsTec != nil {
+		defer rowsTec.Close()
+		for rowsTec.Next() {
+			var t TecnicoRapporto
+			rowsTec.Scan(&t.ID, &t.Nome, &t.Cognome, &t.OreLavoro)
+			tecnici = append(tecnici, t)
+		}
+	}
+
+	// Carica materiale utilizzato
+	var materialeUtilizzato []MaterialeRapportoNew
+	rowsMU, _ := database.DB.Query(`
+		SELECT id, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
+		FROM materiale_rapporto
+		WHERE rapporto_id = ? AND tipo = 'utilizzato'
+	`, id)
+	if rowsMU != nil {
+		defer rowsMU.Close()
+		for rowsMU.Next() {
+			var m MaterialeRapportoNew
+			rowsMU.Scan(&m.ID, &m.DescrizioneProdotto, &m.Quantita, &m.Unita)
+			m.Tipo = "utilizzato"
+			materialeUtilizzato = append(materialeUtilizzato, m)
+		}
+	}
+
+	// Carica materiale recuperato
+	var materialeRecuperato []MaterialeRapportoNew
+	rowsMR, _ := database.DB.Query(`
+		SELECT id, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
+		FROM materiale_rapporto
+		WHERE rapporto_id = ? AND tipo = 'recuperato'
+	`, id)
+	if rowsMR != nil {
+		defer rowsMR.Close()
+		for rowsMR.Next() {
+			var m MaterialeRapportoNew
+			rowsMR.Scan(&m.ID, &m.DescrizioneProdotto, &m.Quantita, &m.Unita)
+			m.Tipo = "recuperato"
+			materialeRecuperato = append(materialeRecuperato, m)
+		}
+	}
+
+	// Carica foto
+	foto := getFotoRapporto(id)
+
+	// Calcola totale ore
+	var totaleOre float64
+	for _, t := range tecnici {
+		totaleOre += t.OreLavoro
+	}
+
+	pageData := NewPageData("Rapporto Intervento #"+strconv.FormatInt(id, 10), r)
+	pageData.Data = map[string]interface{}{
+		"Rapporto":            rap,
+		"Tecnici":             tecnici,
+		"MaterialeUtilizzato": materialeUtilizzato,
+		"MaterialeRecuperato": materialeRecuperato,
+		"Foto":                foto,
+		"TotaleOre":           totaleOre,
+	}
+
+	renderTemplate(w, "rapporto_pdf.html", pageData)
+}
+
+// EliminaRapportoDefinitivo elimina completamente il rapporto
+func EliminaRapportoDefinitivo(w http.ResponseWriter, r *http.Request) {
+	session := middleware.GetSession(r)
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	idStr := strings.TrimPrefix(r.URL.Path, "/rapporti/elimina-definitivo/")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	// Recupera nave_id prima di eliminare
+	var naveID int64
+	database.DB.QueryRow("SELECT nave_id FROM rapporti_intervento WHERE id = ?", id).Scan(&naveID)
+
+	// Elimina foto fisicamente
+	rows, _ := database.DB.Query("SELECT file_path FROM foto_rapporto WHERE rapporto_id = ?", id)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var filePath string
+			rows.Scan(&filePath)
+			realPath := strings.TrimPrefix(filePath, "/static/")
+			realPath = filepath.Join("web", "static", realPath)
+			os.Remove(realPath)
+		}
+	}
+
+	// Elimina record correlati
+	database.DB.Exec("DELETE FROM foto_rapporto WHERE rapporto_id = ?", id)
+	database.DB.Exec("DELETE FROM materiale_rapporto WHERE rapporto_id = ?", id)
+	database.DB.Exec("DELETE FROM tecnici_rapporto WHERE rapporto_id = ?", id)
+	database.DB.Exec("DELETE FROM storico_interventi_nave WHERE rapporto_id = ?", id)
+
+	// Elimina rapporto
+	database.DB.Exec("DELETE FROM rapporti_intervento WHERE id = ?", id)
+
+	http.Redirect(w, r, "/rapporti", http.StatusSeeOther)
+}
+
+// StoricoInterventiNave mostra lo storico interventi per una nave
+func StoricoInterventiNave(w http.ResponseWriter, r *http.Request) {
+	session := middleware.GetSession(r)
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	idStr := strings.TrimPrefix(r.URL.Path, "/navi/storico/")
+	naveID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	// Carica dati nave
+	var nomeNave, nomeCompagnia string
+	database.DB.QueryRow(`
+		SELECT n.nome, COALESCE(c.nome, '')
+		FROM navi n
+		LEFT JOIN compagnie c ON n.compagnia_id = c.id
+		WHERE n.id = ?
+	`, naveID).Scan(&nomeNave, &nomeCompagnia)
+
+	// Carica storico interventi
+	var interventi []RapportoIntervento
+	rows, err := database.DB.Query(`
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento,
+		       COALESCE(r.data_fine, ''), COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
+		       COALESCE(r.considerazioni_finali, ''), COALESCE(r.pdf_path, ''),
+		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
+		       COALESCE(p.nome, '') as porto
+		FROM rapporti_intervento r
+		LEFT JOIN porti p ON r.porto_id = p.id
+		WHERE r.nave_id = ? AND r.deleted_at IS NULL
+		ORDER BY r.data_intervento DESC, r.id DESC
+	`, naveID)
+
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var rap RapportoIntervento
+			var ddtGen int
+			rows.Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento,
+				&rap.DataFine, &rap.Descrizione, &rap.Note, &rap.ConsiderazioniFinali, &rap.PdfPath,
+				&ddtGen, &rap.NumeroDDT, &rap.NomePorto)
+			rap.DDTGenerato = ddtGen == 1
+			rap.NomeNave = nomeNave
+			rap.NomeCompagnia = nomeCompagnia
+			interventi = append(interventi, rap)
+		}
+	}
+
+	pageData := NewPageData("Storico Interventi - "+nomeNave, r)
+	pageData.Data = map[string]interface{}{
+		"NaveID":        naveID,
+		"NomeNave":      nomeNave,
+		"NomeCompagnia": nomeCompagnia,
+		"Interventi":    interventi,
+	}
+
+	renderTemplate(w, "storico_interventi_nave.html", pageData)
+}
+
+// getMaterialeRapportoNew carica materiale descrittivo
+func getMaterialeRapportoNew(rapportoID int64, tipo string) []MaterialeRapportoNew {
+	var materiali []MaterialeRapportoNew
+
+	rows, err := database.DB.Query(`
+		SELECT id, tipo, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
+		FROM materiale_rapporto
+		WHERE rapporto_id = ? AND tipo = ?
+		ORDER BY id
+	`, rapportoID, tipo)
+	if err != nil {
+		return materiali
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m MaterialeRapportoNew
+		rows.Scan(&m.ID, &m.Tipo, &m.DescrizioneProdotto, &m.Quantita, &m.Unita)
+		materiali = append(materiali, m)
+	}
+
+	return materiali
 }

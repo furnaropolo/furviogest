@@ -6,9 +6,9 @@
 </div>
 
 <div class="form-container">
-    <form method="POST" class="form">
+    <form method="POST" enctype="multipart/form-data" class="form" id="rapportoForm">
         <div class="form-section">
-            <h3>Informazioni Intervento</h3>
+            <h3><i class="bi bi-info-circle"></i> Informazioni Intervento</h3>
             
             <div class="form-row">
                 <div class="form-group">
@@ -39,42 +39,127 @@
                     <select id="tipo" name="tipo" required>
                         <option value="wifi" {{if eq .Data.Rapporto.Tipo "wifi"}}selected{{end}}>WiFi</option>
                         <option value="gsm" {{if eq .Data.Rapporto.Tipo "gsm"}}selected{{end}}>GSM</option>
+                        <option value="misto" {{if eq .Data.Rapporto.Tipo "misto"}}selected{{end}}>WiFi + GSM</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="data_intervento">Data Intervento *</label>
+                    <label for="data_intervento">Data Inizio *</label>
                     <input type="date" id="data_intervento" name="data_intervento" 
                            value="{{.Data.Rapporto.DataIntervento}}" required>
+                </div>
+                <div class="form-group">
+                    <label for="data_fine">Data Fine</label>
+                    <input type="date" id="data_fine" name="data_fine" 
+                           value="{{.Data.Rapporto.DataFine}}">
+                    <small class="form-text">Lasciare vuoto se intervento in giornata</small>
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="descrizione">Descrizione Lavoro</label>
-                <textarea id="descrizione" name="descrizione" rows="5" 
+                <label for="descrizione">Descrizione Lavoro *</label>
+                <textarea id="descrizione" name="descrizione" rows="5" required
                           placeholder="Descrizione dettagliata dell'intervento eseguito...">{{.Data.Rapporto.Descrizione}}</textarea>
             </div>
 
             <div class="form-group">
                 <label for="note">Note</label>
-                <textarea id="note" name="note" rows="3">{{.Data.Rapporto.Note}}</textarea>
+                <textarea id="note" name="note" rows="3" placeholder="Note aggiuntive...">{{.Data.Rapporto.Note}}</textarea>
             </div>
         </div>
 
         <div class="form-section">
-            <h3>Tecnici Partecipanti</h3>
-            <div class="tecnici-grid">
+            <h3><i class="bi bi-people"></i> Tecnici e Ore Lavoro</h3>
+            <div class="tecnici-ore-grid">
                 {{range .Data.Tecnici}}
-                <label class="checkbox-label">
-                    <input type="checkbox" name="tecnici" value="{{.ID}}" {{if .Selected}}checked{{end}}>
-                    {{.Cognome}} {{.Nome}}
-                </label>
+                <div class="tecnico-item">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="tecnici" value="{{.ID}}" {{if .Selected}}checked{{end}} 
+                               onchange="toggleOreInput(this, {{.ID}})">
+                        {{.Cognome}} {{.Nome}}
+                    </label>
+                    <input type="number" name="ore_{{.ID}}" id="ore_{{.ID}}" 
+                           class="ore-input" placeholder="Ore" step="0.5" min="0"
+                           value="{{if .OreLavoro}}{{.OreLavoro}}{{end}}"
+                           {{if not .Selected}}disabled{{end}}>
+                </div>
                 {{end}}
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="bi bi-camera"></i> Foto Intervento</h3>
+            <div id="fotoContainer">
+                {{range .Data.Foto}}
+                <div class="foto-item existing">
+                    <img src="/uploads/rapporti/{{.FilePath}}" alt="Foto" class="foto-preview">
+                    <input type="text" name="foto_desc_existing_{{.ID}}" value="{{.Descrizione}}" placeholder="Descrizione foto">
+                    <label class="delete-foto">
+                        <input type="checkbox" name="delete_foto" value="{{.ID}}"> Elimina
+                    </label>
+                </div>
+                {{end}}
+                <div class="foto-upload-row" id="fotoUploadTemplate">
+                    <input type="file" name="foto[]" accept="image/*" onchange="previewFoto(this)">
+                    <input type="text" name="foto_desc[]" placeholder="Descrizione foto (opzionale)">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeFotoRow(this)"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addFotoRow()">
+                <i class="bi bi-plus-lg"></i> Aggiungi Foto
+            </button>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="bi bi-box-seam"></i> Materiale Utilizzato</h3>
+            <div id="materialeUtilizzatoContainer">
+                {{range .Data.MaterialeUtilizzato}}
+                <div class="materiale-row">
+                    <input type="text" name="mat_util_desc[]" value="{{.DescrizioneProdotto}}" placeholder="Descrizione prodotto" required>
+                    <input type="number" name="mat_util_qty[]" value="{{.Quantita}}" placeholder="Qtà" step="0.1" min="0" required>
+                    <select name="mat_util_unita[]">
+                        <option value="pezzi" {{if eq .Unita "pezzi"}}selected{{end}}>Pezzi</option>
+                        <option value="metri" {{if eq .Unita "metri"}}selected{{end}}>Metri</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeMaterialeRow(this)"><i class="bi bi-trash"></i></button>
+                </div>
+                {{end}}
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addMaterialeRow('materialeUtilizzatoContainer', 'mat_util')">
+                <i class="bi bi-plus-lg"></i> Aggiungi Materiale
+            </button>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="bi bi-recycle"></i> Materiale Recuperato (opzionale)</h3>
+            <div id="materialeRecuperatoContainer">
+                {{range .Data.MaterialeRecuperato}}
+                <div class="materiale-row">
+                    <input type="text" name="mat_rec_desc[]" value="{{.DescrizioneProdotto}}" placeholder="Descrizione prodotto">
+                    <input type="number" name="mat_rec_qty[]" value="{{.Quantita}}" placeholder="Qtà" step="0.1" min="0">
+                    <select name="mat_rec_unita[]">
+                        <option value="pezzi" {{if eq .Unita "pezzi"}}selected{{end}}>Pezzi</option>
+                        <option value="metri" {{if eq .Unita "metri"}}selected{{end}}>Metri</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeMaterialeRow(this)"><i class="bi bi-trash"></i></button>
+                </div>
+                {{end}}
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addMaterialeRow('materialeRecuperatoContainer', 'mat_rec')">
+                <i class="bi bi-plus-lg"></i> Aggiungi Materiale Recuperato
+            </button>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="bi bi-chat-left-text"></i> Considerazioni Finali (opzionale)</h3>
+            <div class="form-group">
+                <textarea id="considerazioni_finali" name="considerazioni_finali" rows="4" 
+                          placeholder="Eventuali considerazioni, raccomandazioni o note conclusive...">{{.Data.Rapporto.ConsiderazioniFinali}}</textarea>
             </div>
         </div>
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">
-                {{if .Data.Rapporto.ID}}Salva Modifiche{{else}}Crea Rapporto{{end}}
+                <i class="bi bi-check-lg"></i> {{if .Data.Rapporto.ID}}Salva Modifiche{{else}}Crea Rapporto{{end}}
             </button>
             <a href="/rapporti" class="btn btn-secondary">Annulla</a>
         </div>
@@ -87,7 +172,7 @@
     padding: 25px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-width: 900px;
+    max-width: 1000px;
 }
 
 .form-section {
@@ -107,15 +192,18 @@
     font-size: 1.1rem;
     padding-bottom: 10px;
     border-bottom: 2px solid #007bff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .form-row {
         grid-template-columns: 1fr;
     }
@@ -146,28 +234,111 @@
     resize: vertical;
 }
 
-.tecnici-grid {
+.form-text {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* Tecnici con ore */
+.tecnici-ore-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 10px;
 }
 
-.checkbox-label {
+.tecnico-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     padding: 8px 12px;
     background: #f8f9fa;
     border-radius: 4px;
-    cursor: pointer;
 }
 
-.checkbox-label:hover {
+.tecnico-item .checkbox-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+    background: none;
+}
+
+.tecnico-item .ore-input {
+    width: 70px;
+    padding: 5px 8px;
+    text-align: center;
+}
+
+.tecnico-item .ore-input:disabled {
     background: #e9ecef;
 }
 
-.checkbox-label input {
-    width: auto;
+/* Foto */
+#fotoContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.foto-upload-row, .foto-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.foto-upload-row input[type="file"] {
+    flex: 1;
+}
+
+.foto-upload-row input[type="text"] {
+    flex: 2;
+}
+
+.foto-item.existing {
+    background: #e3f2fd;
+}
+
+.foto-preview {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.delete-foto {
+    color: #dc3545;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+/* Materiale */
+.materiale-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.materiale-row input[type="text"] {
+    flex: 3;
+}
+
+.materiale-row input[type="number"] {
+    width: 80px;
+}
+
+.materiale-row select {
+    width: 100px;
 }
 
 .form-actions {
@@ -176,4 +347,54 @@
     padding-top: 15px;
 }
 </style>
+
+<script>
+function toggleOreInput(checkbox, tecnicoId) {
+    const oreInput = document.getElementById('ore_' + tecnicoId);
+    oreInput.disabled = !checkbox.checked;
+    if (!checkbox.checked) {
+        oreInput.value = '';
+    }
+}
+
+function addFotoRow() {
+    const container = document.getElementById('fotoContainer');
+    const row = document.createElement('div');
+    row.className = 'foto-upload-row';
+    row.innerHTML = `
+        <input type="file" name="foto[]" accept="image/*" onchange="previewFoto(this)">
+        <input type="text" name="foto_desc[]" placeholder="Descrizione foto (opzionale)">
+        <button type="button" class="btn btn-sm btn-danger" onclick="removeFotoRow(this)"><i class="bi bi-trash"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+function removeFotoRow(btn) {
+    btn.closest('.foto-upload-row').remove();
+}
+
+function previewFoto(input) {
+    // Optional: add preview functionality
+}
+
+function addMaterialeRow(containerId, prefix) {
+    const container = document.getElementById(containerId);
+    const row = document.createElement('div');
+    row.className = 'materiale-row';
+    row.innerHTML = `
+        <input type="text" name="${prefix}_desc[]" placeholder="Descrizione prodotto">
+        <input type="number" name="${prefix}_qty[]" placeholder="Qtà" step="0.1" min="0">
+        <select name="${prefix}_unita[]">
+            <option value="pezzi">Pezzi</option>
+            <option value="metri">Metri</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-danger" onclick="removeMaterialeRow(this)"><i class="bi bi-trash"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+function removeMaterialeRow(btn) {
+    btn.closest('.materiale-row').remove();
+}
+</script>
 {{end}}
