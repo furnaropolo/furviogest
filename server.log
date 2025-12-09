@@ -303,3 +303,10 @@ Info: The max number of VTY users is 5, the number of current VTY users online i
 2025/12/09 09:17:28 [RETE] NaveID: 13
 2025/12/09 09:17:28 [RETE] Nave trovata: ID=13 Nome=Mega Express Three
 2025/12/09 09:17:28 [RETE] Rendering template rete_nave.html
+2025/12/09 13:30:54 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
+2025/12/09 13:30:54 Database inizializzato correttamente
+2025/12/09 13:30:54 Caricamento templates da: /home/ies/furviogest/web/templates
+2025/12/09 13:30:54 [Monitoring] Scheduler monitoraggio settimanale avviato
+2025/12/09 13:30:54 Server FurvioGest avviato su http://localhost:8080
+2025/12/09 13:30:54 Credenziali predefinite: admin / admin
+2025/12/09 13:30:54 IMPORTANTE: Cambiare la password al primo accesso!

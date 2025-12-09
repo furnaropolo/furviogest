@@ -490,7 +490,7 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 	// Comando diverso in base alla marca
 	var cmdStr string
 	if sw.Marca == "huawei" {
-		cmdStr = "display mac-address"
+		cmdStr = "display lldp neighbor brief"
 	} else { // hp
 		cmdStr = "show mac-address"
 	}
@@ -506,14 +506,14 @@ func APIScanMacTable(w http.ResponseWriter, r *http.Request) {
 	// Parse output
 	var entries []map[string]string
 	if sw.Marca == "huawei" {
-		entries = parseHuaweiMacTable(string(output))
+		entries = parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome)
 	} else {
 		entries = parseHPMacTable(string(output))
 	}
 
 	// Aggiorna porta degli AP in base al MAC
 	for _, entry := range entries {
-		mac := entry["mac"]
+		mac := entry["ap_name"]
 		port := entry["port"]
 		updateAPSwitchPort(sw.NaveID, switchID, mac, port)
 	}
@@ -974,7 +974,7 @@ func parseHuaweiAPOutput(output string) []map[string]string {
 	return aps
 }
 
-// parseHuaweiMacTable parsa l'output di "display mac-address" Huawei
+// parseHuaweiMacTable parsa l'output di "display lldp neighbor brief" Huawei
 func parseHuaweiMacTable(output string) []map[string]string {
 	var entries []map[string]string
 
@@ -1111,6 +1111,14 @@ func updateAPSwitchPort(naveID, switchID int64, mac, port string) {
 		UPDATE access_point SET switch_id = ?, switch_port = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE nave_id = ? AND ap_mac = ?
 	`, switchID, port, naveID, mac)
+}
+
+// updateAPSwitchPortByName aggiorna la porta dello switch per un AP dato il nome
+func updateAPSwitchPortByName(naveID, switchID int64, apName, port string) {
+	database.DB.Exec(`
+		UPDATE access_point SET switch_id = ?, switch_port = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE nave_id = ? AND ap_name = ?
+	`, switchID, port, naveID, apName)
 }
 
 // GetAPFaultCountForNave restituisce il numero di AP in fault per una nave (usato nei permessi)
@@ -1271,7 +1279,7 @@ func runScanAPBatch(naveID int64, ac *AccessController) {
 func runScanMACBatch(naveID int64, sw *SwitchNave) {
 	var cmdStr string
 	if sw.Marca == "huawei" {
-		cmdStr = "display mac-address"
+		cmdStr = "display lldp neighbor brief"
 	} else {
 		cmdStr = "show mac-address"
 	}
@@ -1284,13 +1292,13 @@ func runScanMACBatch(naveID int64, sw *SwitchNave) {
 
 	var entries []map[string]string
 	if sw.Marca == "huawei" {
-		entries = parseHuaweiMacTable(string(output))
+		entries = parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome)
 	} else {
 		entries = parseHPMacTable(string(output))
 	}
 
 	for _, entry := range entries {
-		updateAPSwitchPort(naveID, sw.ID, entry["mac"], entry["port"])
+		updateAPSwitchPortByName(naveID, sw.ID, entry["ap_name"], entry["port"])
 	}
 
 	database.DB.Exec("UPDATE switch_nave SET ultimo_check = CURRENT_TIMESTAMP WHERE id = ?", sw.ID)
@@ -1525,19 +1533,19 @@ func APIScanLLDP(w http.ResponseWriter, r *http.Request) {
 
 	for _, sw := range switches {
 		// Esegui comando LLDP
-		output, err := executeSSHBackup(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, "display mac-address")
+		output, err := executeSSHBackup(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, "display lldp neighbor brief")
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("%s: %v", sw.Nome, err))
 			continue
 		}
 
 		// Parse output LLDP
-		entries := parseHuaweiMacTable(string(output))
+		entries := parseHuaweiLLDPOutput(string(output), sw.ID, sw.Nome)
 		for _, entry := range entries {
-			updateAPSwitchPort(naveID, sw.ID, entry["mac"], entry["port"])
+			updateAPSwitchPortByName(naveID, sw.ID, entry["ap_name"], entry["port"])
 		}
 		totalEntries += len(entries)
-		log.Printf("[MAC] Switch %s: trovate %d entry", sw.Nome, len(entries))
+		log.Printf("[LLDP] Switch %s: trovati %d AP", sw.Nome, len(entries))
 
 		// Aggiorna timestamp switch
 		database.DB.Exec("UPDATE switch_nave SET ultimo_check = CURRENT_TIMESTAMP WHERE id = ?", sw.ID)
