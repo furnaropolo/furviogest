@@ -67,21 +67,18 @@
     <table class="table">
         <thead>
             <tr>
-                <th>ID</th>
                 <th>Data</th>
                 <th>Tipo</th>
                 <th>Nave</th>
                 <th>Compagnia</th>
                 <th>Porto</th>
-                <th>DDT</th>
                 <th>Azioni</th>
             </tr>
         </thead>
         <tbody>
             {{range .Data.Rapporti}}
             <tr>
-                <td><strong>#{{.ID}}</strong></td>
-                <td>{{.DataIntervento}}</td>
+                <td class="format-date">{{.DataIntervento}}</td>
                 <td>
                     <span class="badge badge-{{if eq .Tipo "wifi"}}primary{{else}}info{{end}}">
                         {{if eq .Tipo "wifi"}}WiFi{{else}}GSM{{end}}
@@ -90,13 +87,6 @@
                 <td>{{.NomeNave}}</td>
                 <td>{{.NomeCompagnia}}</td>
                 <td>{{.NomePorto}}</td>
-                <td>
-                    {{if .DDTGenerato}}
-                    <span class="badge badge-success">{{.NumeroDDT}}</span>
-                    {{else}}
-                    <span class="badge badge-secondary">-</span>
-                    {{end}}
-                </td>
                 <td class="actions">
                     <a href="/rapporti/dettaglio/{{.ID}}" class="btn btn-sm btn-secondary">Dettaglio</a>
                     {{if $.Session.IsTecnico}}
@@ -108,7 +98,7 @@
             </tr>
             {{else}}
             <tr>
-                <td colspan="8" class="text-center">Nessun rapporto trovato</td>
+                <td colspan="6" class="text-center">Nessun rapporto trovato</td>
             </tr>
             {{end}}
         </tbody>
@@ -158,4 +148,20 @@
 .btn-sm { padding: 5px 10px; font-size: 0.85rem; }
 .actions { white-space: nowrap; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.format-date').forEach(function(el) {
+        let dateStr = el.textContent.trim();
+        if (dateStr) {
+            dateStr = dateStr.split('T')[0];
+            let parts = dateStr.split('-');
+            if (parts.length === 3) {
+                let yy = parts[0].slice(-2);
+                el.textContent = parts[2] + '/' + parts[1] + '/' + yy;
+            }
+        }
+    });
+});
+</script>
 {{end}}

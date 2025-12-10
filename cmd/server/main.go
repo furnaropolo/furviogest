@@ -86,6 +86,11 @@ func main() {
 	uploadsFs := http.FileServer(http.Dir(uploadsRoot))
 	mux.Handle("/uploads/", http.StripPrefix("/uploads/", uploadsFs))
 
+	// Directory data (per logo e altri files)
+	dataDir := filepath.Join(baseDir, "data")
+	dataFs := http.FileServer(http.Dir(dataDir))
+	mux.Handle("/data/", http.StripPrefix("/data/", dataFs))
+
 	// Directory uploads
 	uploadsDir := filepath.Join(baseDir, "web", "static", "uploads")
 	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
@@ -249,6 +254,7 @@ func main() {
 	mux.Handle("/rapporti/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaRapportoDefinitivo))))
 	mux.Handle("/rapporti/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioRapporto)))
 	mux.Handle("/rapporti/pdf/", middleware.RequireAuth(http.HandlerFunc(handlers.RapportoPDF)))
+	mux.Handle("/rapporti/download-pdf/", middleware.RequireAuth(http.HandlerFunc(handlers.RapportoDownloadPDF)))
 	mux.Handle("/rapporti/foto/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadFotoRapporto))))
 	mux.Handle("/rapporti/foto/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFotoRapporto))))
 	mux.Handle("/navi/storico/", middleware.RequireAuth(http.HandlerFunc(handlers.StoricoInterventiNave)))

@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"log"
+	"bytes"
+	"os/exec"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,23 +19,26 @@ import (
 
 // RapportoIntervento struttura per rapporto
 type RapportoIntervento struct {
-	ID                  int64
-	NaveID              int64
-	PortoID             int64
-	Tipo                string
-	DataIntervento      string
-	DataFine            string
-	Descrizione         string
-	Note                string
+	ID                   int64
+	NaveID               int64
+	PortoID              int64
+	CompagniaID          int64
+	Tipo                 string
+	DataIntervento       string
+	DataFine             string
+	Descrizione          string
+	Note                 string
 	ConsiderazioniFinali string
-	PdfPath             string
-	DDTGenerato         bool
-	NumeroDDT           string
-	CreatedAt           string
+	PdfPath              string
+	DDTGenerato          bool
+	NumeroDDT            string
+	InNavigazione        bool
+	Tratta               string
+	CreatedAt            string
 	// Campi join
-	NomeNave            string
-	NomeCompagnia       string
-	NomePorto           string
+	NomeNave             string
+	NomeCompagnia        string
+	NomePorto            string
 }
 
 
@@ -87,7 +93,7 @@ func ListaRapporti(w http.ResponseWriter, r *http.Request) {
 	annoFilter := r.URL.Query().Get("anno")
 
 	query := `
-		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento,
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento, COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
 		       COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
 		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
 		       COALESCE(n.nome, '') as nave, COALESCE(c.nome, '') as compagnia,
@@ -136,7 +142,9 @@ func ListaRapporti(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var r RapportoIntervento
 		var ddtGen int
-		err := rows.Scan(&r.ID, &r.NaveID, &r.PortoID, &r.Tipo, &r.DataIntervento,
+	var inNav int
+	var tratta string
+		err := rows.Scan(&r.ID, &r.NaveID, &r.PortoID, &r.Tipo, &r.DataIntervento, &inNav, &tratta,
 			&r.Descrizione, &r.Note, &ddtGen, &r.NumeroDDT,
 			&r.NomeNave, &r.NomeCompagnia, &r.NomePorto)
 		if err != nil {
@@ -179,11 +187,22 @@ func NuovoRapporto(w http.ResponseWriter, r *http.Request) {
 		note := r.FormValue("note")
 		tecniciIDs := r.Form["tecnici"]
 
+		// Gestione in navigazione
+		inNavigazione := r.FormValue("in_navigazione") == "1"
+		tratta := r.FormValue("tratta")
+
+		// Se in navigazione, porto_id = 0
+		if inNavigazione {
+			portoID = 0
+		} else {
+			tratta = ""
+		}
+
 		// Inserisci rapporto
 		result, err := database.DB.Exec(`
-			INSERT INTO rapporti_intervento (nave_id, porto_id, tipo, data_intervento, descrizione, note)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, naveID, portoID, tipo, dataIntervento, descrizione, note)
+			INSERT INTO rapporti_intervento (nave_id, porto_id, tipo, data_intervento, descrizione, note, in_navigazione, tratta)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`, naveID, portoID, tipo, dataIntervento, descrizione, note, inNavigazione, tratta)
 
 		if err != nil {
 			pageData := NewPageData("Nuovo Rapporto", r)
@@ -195,11 +214,18 @@ func NuovoRapporto(w http.ResponseWriter, r *http.Request) {
 
 		rapportoID, _ := result.LastInsertId()
 
-		// Inserisci tecnici
+		// Inserisci tecnici con ore
 		for _, tecID := range tecniciIDs {
 			tid, _ := strconv.ParseInt(tecID, 10, 64)
-			database.DB.Exec("INSERT INTO tecnici_rapporto (rapporto_id, tecnico_id) VALUES (?, ?)", rapportoID, tid)
+			ore, _ := strconv.ParseFloat(r.FormValue(fmt.Sprintf("ore_%d", tid)), 64)
+			database.DB.Exec("INSERT INTO tecnici_rapporto (rapporto_id, tecnico_id, ore_lavoro) VALUES (?, ?, ?)", rapportoID, tid, ore)
 		}
+
+		// Upload foto multiple
+		uploadFotoMultiple(r, rapportoID)
+
+		// Salva materiale utilizzato e recuperato
+		salvaMaterialeRapporto(r, rapportoID)
 
 		http.Redirect(w, r, fmt.Sprintf("/rapporti/dettaglio/%d", rapportoID), http.StatusSeeOther)
 		return
@@ -208,6 +234,102 @@ func NuovoRapporto(w http.ResponseWriter, r *http.Request) {
 	pageData := NewPageData("Nuovo Rapporto", r)
 	pageData.Data = getRapportoFormData(0)
 	renderTemplate(w, "rapporto_form.html", pageData)
+}
+
+// salvaMaterialeRapporto salva materiale descrittivo (indipendente dal magazzino)
+func salvaMaterialeRapporto(r *http.Request, rapportoID int64) {
+	r.ParseMultipartForm(32 << 20) // Necessario per multipart form
+	// Materiale utilizzato
+	descUtil := r.Form["mat_util_desc[]"]
+	qtyUtil := r.Form["mat_util_qty[]"]
+	unitaUtil := r.Form["mat_util_unita[]"]
+
+	for i := range descUtil {
+		if descUtil[i] == "" {
+			continue
+		}
+		qty := 0.0
+		if i < len(qtyUtil) {
+			qty, _ = strconv.ParseFloat(qtyUtil[i], 64)
+		}
+		unita := "pz"
+		if i < len(unitaUtil) {
+			unita = unitaUtil[i]
+		}
+		database.DB.Exec(`INSERT INTO materiale_rapporto_desc (rapporto_id, tipo, descrizione_prodotto, quantita, unita) VALUES (?, 'utilizzato', ?, ?, ?)`,
+			rapportoID, descUtil[i], qty, unita)
+	}
+
+	// Materiale recuperato
+	descRec := r.Form["mat_rec_desc[]"]
+	qtyRec := r.Form["mat_rec_qty[]"]
+	unitaRec := r.Form["mat_rec_unita[]"]
+
+	for i := range descRec {
+		if descRec[i] == "" {
+			continue
+		}
+		qty := 0.0
+		if i < len(qtyRec) {
+			qty, _ = strconv.ParseFloat(qtyRec[i], 64)
+		}
+		unita := "pz"
+		if i < len(unitaRec) {
+			unita = unitaRec[i]
+		}
+		database.DB.Exec(`INSERT INTO materiale_rapporto_desc (rapporto_id, tipo, descrizione_prodotto, quantita, unita) VALUES (?, 'recuperato', ?, ?, ?)`,
+			rapportoID, descRec[i], qty, unita)
+	}
+}
+
+// uploadFotoMultiple gestisce upload di foto multiple per un rapporto
+func uploadFotoMultiple(r *http.Request, rapportoID int64) {
+	err := r.ParseMultipartForm(32 << 20) // 32MB max
+	if err != nil {
+		return
+	}
+
+	files := r.MultipartForm.File["foto[]"]
+	descs := r.Form["foto_desc[]"]
+
+	for i, fileHeader := range files {
+		if fileHeader.Size == 0 {
+			continue
+		}
+
+		file, err := fileHeader.Open()
+		if err != nil {
+			continue
+		}
+		defer file.Close()
+
+		// Crea directory se non esiste
+		uploadDir := filepath.Join("uploads", "rapporti")
+		os.MkdirAll(uploadDir, 0755)
+
+		// Nome file unico
+		ext := filepath.Ext(fileHeader.Filename)
+		fileName := fmt.Sprintf("%d_%d_%d%s", rapportoID, time.Now().UnixNano(), i, ext)
+		filePath := filepath.Join(uploadDir, fileName)
+
+		// Salva file
+		dst, err := os.Create(filePath)
+		if err != nil {
+			continue
+		}
+		io.Copy(dst, file)
+		dst.Close()
+
+		// Descrizione
+		desc := ""
+		if i < len(descs) {
+			desc = descs[i]
+		}
+
+		// Salva nel database
+		database.DB.Exec(`INSERT INTO foto_rapporto (rapporto_id, file_path, descrizione) VALUES (?, ?, ?)`,
+			rapportoID, fileName, desc)
+	}
 }
 
 // ModificaRapporto gestisce modifica rapporto
@@ -234,12 +356,24 @@ func ModificaRapporto(w http.ResponseWriter, r *http.Request) {
 		note := r.FormValue("note")
 		tecniciIDs := r.Form["tecnici"]
 
+		// Gestione in navigazione
+		inNavigazione := r.FormValue("in_navigazione") == "1"
+		tratta := r.FormValue("tratta")
+
+		// Se in navigazione, porto_id = 0
+		if inNavigazione {
+			portoID = 0
+		} else {
+			tratta = ""
+		}
+
 		_, err := database.DB.Exec(`
-			UPDATE rapporti_intervento 
-			SET nave_id = ?, porto_id = ?, tipo = ?, data_intervento = ?, 
-			    descrizione = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+			UPDATE rapporti_intervento
+			SET nave_id = ?, porto_id = ?, tipo = ?, data_intervento = ?,
+			    descrizione = ?, note = ?, in_navigazione = ?, tratta = ?,
+			    updated_at = CURRENT_TIMESTAMP
 			WHERE id = ?
-		`, naveID, portoID, tipo, dataIntervento, descrizione, note, id)
+		`, naveID, portoID, tipo, dataIntervento, descrizione, note, inNavigazione, tratta, id)
 
 		if err != nil {
 			pageData := NewPageData("Modifica Rapporto", r)
@@ -249,12 +383,32 @@ func ModificaRapporto(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Aggiorna tecnici
+		// Aggiorna tecnici con ore
 		database.DB.Exec("DELETE FROM tecnici_rapporto WHERE rapporto_id = ?", id)
 		for _, tecID := range tecniciIDs {
 			tid, _ := strconv.ParseInt(tecID, 10, 64)
-			database.DB.Exec("INSERT INTO tecnici_rapporto (rapporto_id, tecnico_id) VALUES (?, ?)", id, tid)
+			ore, _ := strconv.ParseFloat(r.FormValue(fmt.Sprintf("ore_%d", tid)), 64)
+			database.DB.Exec("INSERT INTO tecnici_rapporto (rapporto_id, tecnico_id, ore_lavoro) VALUES (?, ?, ?)", id, tid, ore)
 		}
+
+		// Upload nuove foto
+		uploadFotoMultiple(r, id)
+
+		// Elimina foto marcate per cancellazione
+		deleteFotoIDs := r.Form["delete_foto"]
+		for _, fotoIDStr := range deleteFotoIDs {
+			fotoID, _ := strconv.ParseInt(fotoIDStr, 10, 64)
+			var filePath string
+			database.DB.QueryRow("SELECT file_path FROM foto_rapporto WHERE id = ?", fotoID).Scan(&filePath)
+			if filePath != "" {
+				os.Remove(filepath.Join("uploads", "rapporti", filePath))
+			}
+			database.DB.Exec("DELETE FROM foto_rapporto WHERE id = ?", fotoID)
+		}
+
+		// Aggiorna materiale: elimina vecchio e risalva
+		database.DB.Exec("DELETE FROM materiale_rapporto_desc WHERE rapporto_id = ?", id)
+		salvaMaterialeRapporto(r, id)
 
 		http.Redirect(w, r, fmt.Sprintf("/rapporti/dettaglio/%d", id), http.StatusSeeOther)
 		return
@@ -283,8 +437,10 @@ func DettaglioRapporto(w http.ResponseWriter, r *http.Request) {
 	// Carica rapporto
 	var rap RapportoIntervento
 	var ddtGen int
+	var inNav int
+	var tratta string
 	err = database.DB.QueryRow(`
-		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento,
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento, COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
 		       COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
 		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
 		       COALESCE(n.nome, ''), COALESCE(c.nome, ''), COALESCE(p.nome, '')
@@ -293,7 +449,7 @@ func DettaglioRapporto(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN compagnie c ON n.compagnia_id = c.id
 		LEFT JOIN porti p ON r.porto_id = p.id
 		WHERE r.id = ? AND r.deleted_at IS NULL
-	`, id).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento,
+	`, id).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento, &inNav, &tratta,
 		&rap.Descrizione, &rap.Note, &ddtGen, &rap.NumeroDDT,
 		&rap.NomeNave, &rap.NomeCompagnia, &rap.NomePorto)
 
@@ -306,22 +462,20 @@ func DettaglioRapporto(w http.ResponseWriter, r *http.Request) {
 	// Carica tecnici
 	tecnici := getTecniciRapporto(id)
 
-	// Carica materiale
-	materiali := getMaterialeRapporto(id)
+	// Carica materiale descrittivo (indipendente dal magazzino)
+	materialeUtilizzato := getMaterialeRapportoNew(id, "utilizzato")
+	materialeRecuperato := getMaterialeRapportoNew(id, "recuperato")
 
 	// Carica foto
 	foto := getFotoRapporto(id)
 
-	// Lista prodotti per aggiunta materiale
-	prodotti, _ := getProdottiList()
-
-	pageData := NewPageData("Dettaglio Rapporto #"+strconv.FormatInt(id, 10), r)
+	pageData := NewPageData("Rapporto Intervento", r)
 	pageData.Data = map[string]interface{}{
-		"Rapporto":  rap,
-		"Tecnici":   tecnici,
-		"Materiali": materiali,
-		"Foto":      foto,
-		"Prodotti":  prodotti,
+		"Rapporto":            rap,
+		"Tecnici":             tecnici,
+		"MaterialeUtilizzato": materialeUtilizzato,
+		"MaterialeRecuperato": materialeRecuperato,
+		"Foto":                foto,
 	}
 
 	renderTemplate(w, "rapporto_dettaglio.html", pageData)
@@ -511,6 +665,10 @@ func EliminaFotoRapporto(w http.ResponseWriter, r *http.Request) {
 func getRapportoFormData(rapportoID int64) map[string]interface{} {
 	data := make(map[string]interface{})
 
+	// Lista compagnie
+	compagnie, _ := getCompagnieListRapporti()
+	data["Compagnie"] = compagnie
+
 	// Lista navi
 	navi, _ := getNaviList()
 	data["Navi"] = navi
@@ -526,19 +684,39 @@ func getRapportoFormData(rapportoID int64) map[string]interface{} {
 	// Rapporto esistente
 	if rapportoID > 0 {
 		var rap RapportoIntervento
-		var ddtGen int
+		var ddtGen, inNav int
+		var tratta string
 		database.DB.QueryRow(`
-			SELECT id, nave_id, porto_id, tipo, data_intervento,
-			       COALESCE(descrizione, ''), COALESCE(note, ''), ddt_generato, COALESCE(numero_ddt, '')
-			FROM rapporti_intervento WHERE id = ?
-		`, rapportoID).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento,
-			&rap.Descrizione, &rap.Note, &ddtGen, &rap.NumeroDDT)
+			SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento, COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
+			       COALESCE(r.data_fine, ''), COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
+			       COALESCE(r.considerazioni_finali, ''),
+			       r.ddt_generato, COALESCE(r.numero_ddt, ''),
+			       COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
+			       COALESCE(n.compagnia_id, 0)
+			FROM rapporti_intervento r
+			LEFT JOIN navi n ON r.nave_id = n.id
+			WHERE r.id = ?
+		`, rapportoID).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento, &inNav, &tratta,
+			&rap.DataFine, &rap.Descrizione, &rap.Note, &rap.ConsiderazioniFinali,
+			&ddtGen, &rap.NumeroDDT, &inNav, &tratta, &rap.CompagniaID)
 		rap.DDTGenerato = ddtGen == 1
+		rap.InNavigazione = inNav == 1
+		rap.Tratta = tratta
 		data["Rapporto"] = rap
+
+		// Carica foto esistenti
+		data["Foto"] = getFotoRapporto(rapportoID)
+
+		// Carica materiale utilizzato e recuperato
+		data["MaterialeUtilizzato"] = getMaterialeRapportoNew(rapportoID, "utilizzato")
+		data["MaterialeRecuperato"] = getMaterialeRapportoNew(rapportoID, "recuperato")
 	} else {
 		data["Rapporto"] = RapportoIntervento{
 			DataIntervento: time.Now().Format("2006-01-02"),
 		}
+		data["Foto"] = []FotoRapporto{}
+		data["MaterialeUtilizzato"] = []MaterialeRapportoNew{}
+		data["MaterialeRecuperato"] = []MaterialeRapportoNew{}
 	}
 
 	return data
@@ -585,7 +763,7 @@ func getTecniciRapporto(rapportoID int64) []TecnicoRapporto {
 	var tecnici []TecnicoRapporto
 
 	rows, err := database.DB.Query(`
-		SELECT u.id, u.nome, u.cognome
+		SELECT u.id, u.nome, u.cognome, COALESCE(tr.ore_lavoro, 0)
 		FROM tecnici_rapporto tr
 		JOIN utenti u ON tr.tecnico_id = u.id
 		WHERE tr.rapporto_id = ?
@@ -597,7 +775,7 @@ func getTecniciRapporto(rapportoID int64) []TecnicoRapporto {
 
 	for rows.Next() {
 		var t TecnicoRapporto
-		rows.Scan(&t.ID, &t.Nome, &t.Cognome)
+		rows.Scan(&t.ID, &t.Nome, &t.Cognome, &t.OreLavoro)
 		tecnici = append(tecnici, t)
 	}
 
@@ -704,6 +882,29 @@ func getPortiList() ([]map[string]interface{}, error) {
 	return porti, nil
 }
 
+// getCompagnieListRapporti restituisce lista compagnie per rapporti (funzione indipendente)
+func getCompagnieListRapporti() ([]map[string]interface{}, error) {
+	var compagnie []map[string]interface{}
+
+	rows, err := database.DB.Query("SELECT id, nome FROM compagnie ORDER BY nome")
+	if err != nil {
+		return compagnie, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+		var nome string
+		rows.Scan(&id, &nome)
+		compagnie = append(compagnie, map[string]interface{}{
+			"ID":   id,
+			"Nome": nome,
+		})
+	}
+
+	return compagnie, nil
+}
+
 // getProdottiList restituisce lista prodotti con giacenza
 func getProdottiList() ([]map[string]interface{}, error) {
 	var prodotti []map[string]interface{}
@@ -754,8 +955,10 @@ func RapportoPDF(w http.ResponseWriter, r *http.Request) {
 	// Carica rapporto
 	var rap RapportoIntervento
 	var ddtGen int
+	var inNav int
+	var tratta string
 	err = database.DB.QueryRow(`
-		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento,
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento, COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
 		       COALESCE(r.data_fine, ''), COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
 		       COALESCE(r.considerazioni_finali, ''),
 		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
@@ -765,7 +968,7 @@ func RapportoPDF(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN compagnie c ON n.compagnia_id = c.id
 		LEFT JOIN porti p ON r.porto_id = p.id
 		WHERE r.id = ?
-	`, id).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento,
+	`, id).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento, &inNav, &tratta,
 		&rap.DataFine, &rap.Descrizione, &rap.Note, &rap.ConsiderazioniFinali,
 		&ddtGen, &rap.NumeroDDT,
 		&rap.NomeNave, &rap.NomeCompagnia, &rap.NomePorto)
@@ -797,7 +1000,7 @@ func RapportoPDF(w http.ResponseWriter, r *http.Request) {
 	var materialeUtilizzato []MaterialeRapportoNew
 	rowsMU, _ := database.DB.Query(`
 		SELECT id, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
-		FROM materiale_rapporto
+		FROM materiale_rapporto_desc
 		WHERE rapporto_id = ? AND tipo = 'utilizzato'
 	`, id)
 	if rowsMU != nil {
@@ -814,7 +1017,7 @@ func RapportoPDF(w http.ResponseWriter, r *http.Request) {
 	var materialeRecuperato []MaterialeRapportoNew
 	rowsMR, _ := database.DB.Query(`
 		SELECT id, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
-		FROM materiale_rapporto
+		FROM materiale_rapporto_desc
 		WHERE rapporto_id = ? AND tipo = 'recuperato'
 	`, id)
 	if rowsMR != nil {
@@ -836,7 +1039,28 @@ func RapportoPDF(w http.ResponseWriter, r *http.Request) {
 		totaleOre += t.OreLavoro
 	}
 
-	pageData := NewPageData("Rapporto Intervento #"+strconv.FormatInt(id, 10), r)
+	// Carica dati azienda
+	var azienda struct {
+		RagioneSociale string
+		PartitaIVA     string
+		Indirizzo      string
+		CAP            string
+		Citta          string
+		Provincia      string
+		Telefono       string
+		Email          string
+		SitoWeb        string
+		LogoPath       string
+	}
+	database.DB.QueryRow(`SELECT COALESCE(ragione_sociale,''), COALESCE(partita_iva,''), COALESCE(indirizzo,''),
+		COALESCE(cap,''), COALESCE(citta,''), COALESCE(provincia,''), COALESCE(telefono,''),
+		COALESCE(email,''), COALESCE(sito_web,''), COALESCE(logo_path,'') FROM impostazioni_azienda WHERE id=1`).Scan(
+		&azienda.RagioneSociale, &azienda.PartitaIVA, &azienda.Indirizzo,
+		&azienda.CAP, &azienda.Citta, &azienda.Provincia, &azienda.Telefono,
+		&azienda.Email, &azienda.SitoWeb, &azienda.LogoPath)
+
+
+	pageData := NewPageData("Rapporto Intervento", r)
 	pageData.Data = map[string]interface{}{
 		"Rapporto":            rap,
 		"Tecnici":             tecnici,
@@ -844,6 +1068,8 @@ func RapportoPDF(w http.ResponseWriter, r *http.Request) {
 		"MaterialeRecuperato": materialeRecuperato,
 		"Foto":                foto,
 		"TotaleOre":           totaleOre,
+		"DataFormatted":       formatDataItaliana(rap.DataIntervento),
+		"Azienda":             azienda,
 	}
 
 	renderTemplate(w, "rapporto_pdf.html", pageData)
@@ -916,7 +1142,7 @@ func StoricoInterventiNave(w http.ResponseWriter, r *http.Request) {
 	// Carica storico interventi
 	var interventi []RapportoIntervento
 	rows, err := database.DB.Query(`
-		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento,
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento, COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
 		       COALESCE(r.data_fine, ''), COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
 		       COALESCE(r.considerazioni_finali, ''), COALESCE(r.pdf_path, ''),
 		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
@@ -932,7 +1158,9 @@ func StoricoInterventiNave(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var rap RapportoIntervento
 			var ddtGen int
-			rows.Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento,
+	var inNav int
+	var tratta string
+			rows.Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento, &inNav, &tratta,
 				&rap.DataFine, &rap.Descrizione, &rap.Note, &rap.ConsiderazioniFinali, &rap.PdfPath,
 				&ddtGen, &rap.NumeroDDT, &rap.NomePorto)
 			rap.DDTGenerato = ddtGen == 1
@@ -953,13 +1181,13 @@ func StoricoInterventiNave(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "storico_interventi_nave.html", pageData)
 }
 
-// getMaterialeRapportoNew carica materiale descrittivo
+// getMaterialeRapportoNew carica materiale descrittivo (indipendente dal magazzino)
 func getMaterialeRapportoNew(rapportoID int64, tipo string) []MaterialeRapportoNew {
 	var materiali []MaterialeRapportoNew
 
 	rows, err := database.DB.Query(`
 		SELECT id, tipo, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
-		FROM materiale_rapporto
+		FROM materiale_rapporto_desc
 		WHERE rapporto_id = ? AND tipo = ?
 		ORDER BY id
 	`, rapportoID, tipo)
@@ -975,4 +1203,235 @@ func getMaterialeRapportoNew(rapportoID int64, tipo string) []MaterialeRapportoN
 	}
 
 	return materiali
+}
+
+// formatDataItaliana converte data ISO in formato italiano GG/MM/AAAA
+func formatDataItaliana(dataISO string) string {
+	if dataISO == "" {
+		return ""
+	}
+	// Rimuove parte orario se presente
+	if idx := strings.Index(dataISO, "T"); idx > 0 {
+		dataISO = dataISO[:idx]
+	}
+	parts := strings.Split(dataISO, "-")
+	if len(parts) != 3 {
+		return dataISO
+	}
+	return parts[2] + "/" + parts[1] + "/" + parts[0]
+}
+
+// RapportoDownloadPDF genera e scarica il PDF usando wkhtmltopdf
+func RapportoDownloadPDF(w http.ResponseWriter, r *http.Request) {
+	session := middleware.GetSession(r)
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	idStr := strings.TrimPrefix(r.URL.Path, "/rapporti/download-pdf/")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "ID non valido", http.StatusBadRequest)
+		return
+	}
+
+	// Carica rapporto
+	var rap RapportoIntervento
+	var ddtGen int
+	var inNav int
+	var tratta string
+	err = database.DB.QueryRow(`
+		SELECT r.id, r.nave_id, r.porto_id, r.tipo, r.data_intervento, COALESCE(r.in_navigazione, 0), COALESCE(r.tratta, ''),
+		       COALESCE(r.data_fine, ''), COALESCE(r.descrizione, ''), COALESCE(r.note, ''),
+		       COALESCE(r.considerazioni_finali, ''),
+		       r.ddt_generato, COALESCE(r.numero_ddt, ''),
+		       COALESCE(n.nome, ''), COALESCE(c.nome, ''), COALESCE(p.nome, '')
+		FROM rapporti_intervento r
+		LEFT JOIN navi n ON r.nave_id = n.id
+		LEFT JOIN compagnie c ON n.compagnia_id = c.id
+		LEFT JOIN porti p ON r.porto_id = p.id
+		WHERE r.id = ?
+	`, id).Scan(&rap.ID, &rap.NaveID, &rap.PortoID, &rap.Tipo, &rap.DataIntervento, &inNav, &tratta,
+		&rap.DataFine, &rap.Descrizione, &rap.Note, &rap.ConsiderazioniFinali,
+		&ddtGen, &rap.NumeroDDT,
+		&rap.NomeNave, &rap.NomeCompagnia, &rap.NomePorto)
+
+	if err != nil {
+		http.Error(w, "Rapporto non trovato", http.StatusNotFound)
+		return
+	}
+	rap.DDTGenerato = ddtGen == 1
+
+	// Carica tecnici
+	var tecnici []TecnicoRapporto
+	rowsTec, _ := database.DB.Query(`
+		SELECT u.id, u.nome, u.cognome, COALESCE(tr.ore_lavoro, 0)
+		FROM tecnici_rapporto tr
+		JOIN utenti u ON tr.tecnico_id = u.id
+		WHERE tr.rapporto_id = ?
+	`, id)
+	if rowsTec != nil {
+		defer rowsTec.Close()
+		for rowsTec.Next() {
+			var t TecnicoRapporto
+			rowsTec.Scan(&t.ID, &t.Nome, &t.Cognome, &t.OreLavoro)
+			tecnici = append(tecnici, t)
+		}
+	}
+
+	// Carica materiale utilizzato
+	var materialeUtilizzato []MaterialeRapportoNew
+	rowsMU, _ := database.DB.Query(`
+		SELECT id, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
+		FROM materiale_rapporto_desc
+		WHERE rapporto_id = ? AND tipo = 'utilizzato'
+	`, id)
+	if rowsMU != nil {
+		defer rowsMU.Close()
+		for rowsMU.Next() {
+			var m MaterialeRapportoNew
+			rowsMU.Scan(&m.ID, &m.DescrizioneProdotto, &m.Quantita, &m.Unita)
+			m.Tipo = "utilizzato"
+			materialeUtilizzato = append(materialeUtilizzato, m)
+		}
+	}
+
+	// Carica materiale recuperato
+	var materialeRecuperato []MaterialeRapportoNew
+	rowsMR, _ := database.DB.Query(`
+		SELECT id, descrizione_prodotto, quantita, COALESCE(unita, 'pz')
+		FROM materiale_rapporto_desc
+		WHERE rapporto_id = ? AND tipo = 'recuperato'
+	`, id)
+	if rowsMR != nil {
+		defer rowsMR.Close()
+		for rowsMR.Next() {
+			var m MaterialeRapportoNew
+			rowsMR.Scan(&m.ID, &m.DescrizioneProdotto, &m.Quantita, &m.Unita)
+			m.Tipo = "recuperato"
+			materialeRecuperato = append(materialeRecuperato, m)
+		}
+	}
+
+	// Carica foto
+	foto := getFotoRapporto(id)
+
+	// Calcola totale ore
+	var totaleOre float64
+	for _, t := range tecnici {
+		totaleOre += t.OreLavoro
+	}
+
+	// Carica dati azienda
+	var azienda struct {
+		RagioneSociale string
+		PartitaIVA     string
+		Indirizzo      string
+		CAP            string
+		Citta          string
+		Provincia      string
+		Telefono       string
+		Email          string
+		SitoWeb        string
+		LogoPath       string
+	}
+	database.DB.QueryRow(`SELECT COALESCE(ragione_sociale,), COALESCE(partita_iva,), COALESCE(indirizzo,),
+		COALESCE(cap,), COALESCE(citta,), COALESCE(provincia,), COALESCE(telefono,),
+		COALESCE(email,), COALESCE(sito_web,), COALESCE(logo_path,) FROM impostazioni_azienda WHERE id=1`).Scan(
+		&azienda.RagioneSociale, &azienda.PartitaIVA, &azienda.Indirizzo,
+		&azienda.CAP, &azienda.Citta, &azienda.Provincia, &azienda.Telefono,
+		&azienda.Email, &azienda.SitoWeb, &azienda.LogoPath)
+
+
+	// Genera HTML in un buffer
+	pageData := NewPageData("Rapporto Intervento", r)
+	pageData.Data = map[string]interface{}{
+		"Rapporto":            rap,
+		"Tecnici":             tecnici,
+		"MaterialeUtilizzato": materialeUtilizzato,
+		"MaterialeRecuperato": materialeRecuperato,
+		"Foto":                foto,
+		"TotaleOre":           totaleOre,
+		"DataFormatted":       formatDataItaliana(rap.DataIntervento),
+		"Azienda":             azienda,
+	}
+
+	// Crea file HTML temporaneo
+	tmpHTML, err := os.CreateTemp("", "rapporto_*.html")
+	if err != nil {
+		http.Error(w, "Errore creazione file temporaneo", http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(tmpHTML.Name())
+
+	// Render template to buffer
+	tmpl, ok := templates["rapporto_pdf.html"]
+	if !ok {
+		http.Error(w, "Template non trovato", http.StatusInternalServerError)
+		return
+	}
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "base", pageData)
+	if err != nil {
+		http.Error(w, "Errore rendering template", http.StatusInternalServerError)
+		return
+	}
+
+	// Replace web paths with absolute filesystem paths for wkhtmltopdf
+	htmlContent := buf.String()
+	basePath := "/home/ies/furviogest"
+	htmlContent = strings.ReplaceAll(htmlContent, "src=\"/uploads/", "src=\""+basePath+"/uploads/")
+
+	// Write modified HTML to temp file
+	tmpHTML.WriteString(htmlContent)
+	tmpHTML.Close()
+
+	// Crea file PDF temporaneo
+	tmpPDF, err := os.CreateTemp("", "rapporto_*.pdf")
+	if err != nil {
+		http.Error(w, "Errore creazione file PDF", http.StatusInternalServerError)
+		return
+	}
+	tmpPDF.Close()
+	defer os.Remove(tmpPDF.Name())
+
+	// Esegui wkhtmltopdf
+	cwd, _ := os.Getwd()
+	cmd := exec.Command("wkhtmltopdf",
+		"--enable-local-file-access",
+		"--page-size", "A4",
+		"--margin-top", "10mm",
+		"--margin-bottom", "10mm",
+		"--margin-left", "25mm",
+		"--margin-right", "10mm",
+		"--encoding", "UTF-8",
+		tmpHTML.Name(),
+		tmpPDF.Name())
+	cmd.Dir = cwd
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("wkhtmltopdf error: %v, output: %s", err, string(output))
+		http.Error(w, "Errore generazione PDF", http.StatusInternalServerError)
+		return
+	}
+
+	// Leggi PDF e invia al client
+	pdfData, err := os.ReadFile(tmpPDF.Name())
+	if err != nil {
+		http.Error(w, "Errore lettura PDF", http.StatusInternalServerError)
+		return
+	}
+
+	// Nome file con data e nave
+	filename := fmt.Sprintf("Rapporto_%s_%s_%s.pdf", 
+		rap.NomeNave, 
+		rap.Tipo,
+		strings.ReplaceAll(rap.DataIntervento, "-", ""))
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(pdfData)))
+	w.Write(pdfData)
 }

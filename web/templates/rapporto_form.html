@@ -9,27 +9,51 @@
     <form method="POST" enctype="multipart/form-data" class="form" id="rapportoForm">
         <div class="form-section">
             <h3><i class="bi bi-info-circle"></i> Informazioni Intervento</h3>
-            
+
             <div class="form-row">
                 <div class="form-group">
-                    <label for="nave_id">Nave *</label>
-                    <select id="nave_id" name="nave_id" required>
-                        <option value="">-- Seleziona Nave --</option>
-                        {{range .Data.Navi}}
-                        <option value="{{.ID}}" {{if eq .ID $.Data.Rapporto.NaveID}}selected{{end}}>
-                            {{.Nome}} ({{.Compagnia}})
-                        </option>
+                    <label for="compagnia_id">Compagnia *</label>
+                    <select id="compagnia_id" name="compagnia_id" onchange="filtraNavi()" required>
+                        <option value="">-- Seleziona Compagnia --</option>
+                        {{range .Data.Compagnie}}
+                        <option value="{{.ID}}" {{if eq .ID $.Data.Rapporto.CompagniaID}}selected{{end}}>{{.Nome}}</option>
                         {{end}}
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="nave_id">Nave *</label>
+                    <select id="nave_id" name="nave_id" required>
+                        <option value="">-- Prima seleziona Compagnia --</option>
+                        {{range .Data.Navi}}
+                        <option value="{{.ID}}" data-compagnia="{{.Compagnia}}" {{if eq .ID $.Data.Rapporto.NaveID}}selected{{end}}>
+                            {{.Nome}}
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" id="portoGroup">
                     <label for="porto_id">Porto *</label>
-                    <select id="porto_id" name="porto_id" required>
+                    <select id="porto_id" name="porto_id">
                         <option value="">-- Seleziona Porto --</option>
                         {{range .Data.Porti}}
                         <option value="{{.ID}}" {{if eq .ID $.Data.Rapporto.PortoID}}selected{{end}}>{{.Nome}}</option>
                         {{end}}
                     </select>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-inline">
+                        <input type="checkbox" id="in_navigazione" name="in_navigazione" value="1"
+                               {{if .Data.Rapporto.InNavigazione}}checked{{end}} onchange="toggleNavigazione()">
+                        In Navigazione
+                    </label>
+                </div>
+                <div class="form-group" id="trattaGroup" style="{{if not .Data.Rapporto.InNavigazione}}display:none;{{end}}">
+                    <label for="tratta">Tratta</label>
+                    <input type="text" id="tratta" name="tratta" value="{{.Data.Rapporto.Tratta}}"
+                           placeholder="es. Genova - Olbia">
                 </div>
             </div>
 
@@ -91,18 +115,18 @@
             <div id="fotoContainer">
                 {{range .Data.Foto}}
                 <div class="foto-item existing">
-                    <img src="/uploads/rapporti/{{.FilePath}}" alt="Foto" class="foto-preview">
+                    <img src="/uploads/rapporti/{{.FilePath}}" alt="Foto" class="foto-preview" onerror="this.style.display='none'">
+                    <span class="foto-filename">{{.FilePath}}</span>
                     <input type="text" name="foto_desc_existing_{{.ID}}" value="{{.Descrizione}}" placeholder="Descrizione foto">
                     <label class="delete-foto">
                         <input type="checkbox" name="delete_foto" value="{{.ID}}"> Elimina
                     </label>
                 </div>
                 {{end}}
-                <div class="foto-upload-row" id="fotoUploadTemplate">
-                    <input type="file" name="foto[]" accept="image/*" onchange="previewFoto(this)">
-                    <input type="text" name="foto_desc[]" placeholder="Descrizione foto (opzionale)">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeFotoRow(this)"><i class="bi bi-trash"></i></button>
-                </div>
+            </div>
+            <div class="foto-upload-row">
+                <input type="file" name="foto[]" accept="image/*" multiple>
+                <input type="text" name="foto_desc[]" placeholder="Descrizione foto (opzionale)">
             </div>
             <button type="button" class="btn btn-secondary btn-sm" onclick="addFotoRow()">
                 <i class="bi bi-plus-lg"></i> Aggiungi Foto
@@ -318,6 +342,15 @@
     cursor: pointer;
 }
 
+.foto-filename {
+    font-size: 0.85rem;
+    color: #666;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Materiale */
 .materiale-row {
     display: flex;
@@ -346,9 +379,92 @@
     gap: 10px;
     padding-top: 15px;
 }
+
+/* Checkbox inline per In Navigazione */
+.checkbox-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: #e3f2fd;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 25px;
+    font-weight: 500;
+}
+
+.checkbox-inline input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
 </style>
 
 <script>
+// Filtra navi per compagnia selezionata
+function filtraNavi() {
+    const compagniaSelect = document.getElementById('compagnia_id');
+    const naveSelect = document.getElementById('nave_id');
+    const compagniaSelezionata = compagniaSelect.options[compagniaSelect.selectedIndex];
+    const nomeCompagnia = compagniaSelezionata ? compagniaSelezionata.text : '';
+
+    // Salva valore corrente
+    const currentNaveId = naveSelect.value;
+
+    // Nascondi tutte le opzioni tranne la prima
+    const options = naveSelect.querySelectorAll('option');
+    let found = false;
+    options.forEach((opt, index) => {
+        if (index === 0) {
+            opt.text = nomeCompagnia ? '-- Seleziona Nave --' : '-- Prima seleziona Compagnia --';
+            return;
+        }
+        const optCompagnia = opt.getAttribute('data-compagnia');
+        if (nomeCompagnia && optCompagnia === nomeCompagnia) {
+            opt.style.display = '';
+            if (opt.value === currentNaveId) found = true;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+
+    // Reset se la nave selezionata non appartiene alla nuova compagnia
+    if (!found) {
+        naveSelect.value = '';
+    }
+}
+
+// Toggle tra porto e navigazione
+function toggleNavigazione() {
+    const inNav = document.getElementById('in_navigazione').checked;
+    const portoGroup = document.getElementById('portoGroup');
+    const trattaGroup = document.getElementById('trattaGroup');
+    const portoSelect = document.getElementById('porto_id');
+
+    if (inNav) {
+        portoGroup.style.display = 'none';
+        portoSelect.removeAttribute('required');
+        portoSelect.value = '';
+        trattaGroup.style.display = '';
+    } else {
+        portoGroup.style.display = '';
+        portoSelect.setAttribute('required', 'required');
+        trattaGroup.style.display = 'none';
+        document.getElementById('tratta').value = '';
+    }
+}
+
+// Inizializza al caricamento pagina
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtra navi se compagnia già selezionata
+    const compagniaSelect = document.getElementById('compagnia_id');
+    if (compagniaSelect.value) {
+        filtraNavi();
+    }
+
+    // Imposta stato iniziale navigazione
+    toggleNavigazione();
+});
+
 function toggleOreInput(checkbox, tecnicoId) {
     const oreInput = document.getElementById('ore_' + tecnicoId);
     oreInput.disabled = !checkbox.checked;
