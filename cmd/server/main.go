@@ -224,6 +224,10 @@ func main() {
 	// API Backup Uffici e Sale Server
 	mux.Handle("/api/rete/backup-config-ufficio", middleware.RequireAuth(http.HandlerFunc(handlers.APIBackupConfigUfficio)))
 	mux.Handle("/api/rete/download-backup-ufficio/", middleware.RequireAuth(http.HandlerFunc(handlers.APIDownloadBackupUfficio)))
+	mux.Handle("/api/rete/elimina-backup-ufficio/", middleware.RequireAuth(http.HandlerFunc(handlers.APIEliminaBackupUfficio)))
+	mux.Handle("/api/uffici/scan-ap/", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanAPUfficio)))
+	mux.Handle("/api/uffici/scan-ports", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanPortsUfficio)))
+	mux.Handle("/api/sale-server/scan-ports", middleware.RequireAuth(http.HandlerFunc(handlers.APIScanPortsSalaServer)))
 
 	// Attrezzi e Consumabili
 	mux.Handle("/attrezzi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaAttrezzi)))

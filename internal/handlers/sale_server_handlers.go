@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -39,6 +40,9 @@ type SwitchSalaServer struct {
 	Protocollo   string
 	Note         string
 	UltimoBackup string
+	PorteTotali  int
+	PorteLibere  int
+	UltimoCheck  string
 }
 
 type SalaServerPageData struct {
@@ -263,6 +267,20 @@ func EliminaSwitchSalaServer(w http.ResponseWriter, r *http.Request) {
 	var salaServerID int64
 	database.DB.QueryRow("SELECT sala_server_id FROM switch_sala_server WHERE id = ?", switchID).Scan(&salaServerID)
 
+	// Elimina file backup fisici e record dal database (tipo_apparato può essere 'switch' o 'switch_sala_server')
+	rows, _ := database.DB.Query("SELECT file_path FROM config_backup_ufficio WHERE (tipo_apparato = 'switch' OR tipo_apparato = 'switch_sala_server') AND apparato_id = ? AND sala_server_id IS NOT NULL", switchID)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var filePath string
+			rows.Scan(&filePath)
+			if filePath != "" {
+				os.Remove(filePath)
+			}
+		}
+	}
+	database.DB.Exec("DELETE FROM config_backup_ufficio WHERE (tipo_apparato = 'switch' OR tipo_apparato = 'switch_sala_server') AND apparato_id = ? AND sala_server_id IS NOT NULL", switchID)
+
 	database.DB.Exec("DELETE FROM switch_sala_server WHERE id = ?", switchID)
 	http.Redirect(w, r, fmt.Sprintf("/sale-server/rete/%d", salaServerID), http.StatusSeeOther)
 }
@@ -273,7 +291,7 @@ func EliminaSwitchSalaServer(w http.ResponseWriter, r *http.Request) {
 
 func getSwitchesSalaServer(salaServerID int64) []SwitchSalaServer {
 	var switches []SwitchSalaServer
-	rows, err := database.DB.Query("SELECT id, sala_server_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(note, ''), ultimo_backup FROM switch_sala_server WHERE sala_server_id = ? ORDER BY nome", salaServerID)
+	rows, err := database.DB.Query("SELECT id, sala_server_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(note, ''), ultimo_backup, COALESCE(porte_totali, 0), COALESCE(porte_libere, 0), ultimo_check FROM switch_sala_server WHERE sala_server_id = ? ORDER BY nome", salaServerID)
 	if err != nil {
 		return switches
 	}
@@ -281,10 +299,13 @@ func getSwitchesSalaServer(salaServerID int64) []SwitchSalaServer {
 
 	for rows.Next() {
 		var sw SwitchSalaServer
-		var ultimoBackup sql.NullString
-		rows.Scan(&sw.ID, &sw.SalaServerID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Protocollo, &sw.Note, &ultimoBackup)
+		var ultimoBackup, ultimoCheck sql.NullString
+		rows.Scan(&sw.ID, &sw.SalaServerID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Protocollo, &sw.Note, &ultimoBackup, &sw.PorteTotali, &sw.PorteLibere, &ultimoCheck)
 		if ultimoBackup.Valid {
 			sw.UltimoBackup = ultimoBackup.String
+		}
+		if ultimoCheck.Valid {
+			sw.UltimoCheck = ultimoCheck.String
 		}
 		switches = append(switches, sw)
 	}

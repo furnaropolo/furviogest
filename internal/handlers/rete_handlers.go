@@ -594,8 +594,11 @@ func parseHuaweiPortsOutput(output string) (totali, libere int) {
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		// Cerca righe che iniziano con GigabitEthernet, 10GigabitEthernet, GE, XGE
-		if strings.HasPrefix(line, "GigabitEthernet") || strings.HasPrefix(line, "10GigabitEthernet") || strings.HasPrefix(line, "GE") || strings.HasPrefix(line, "XGE") || strings.HasPrefix(line, "Eth") {
+		// Cerca righe che iniziano con GigabitEthernet, 10GigabitEthernet, GE, XGE, MultiGE, 25GE
+		if strings.HasPrefix(line, "GigabitEthernet") || strings.HasPrefix(line, "10GigabitEthernet") ||
+			strings.HasPrefix(line, "GE") || strings.HasPrefix(line, "XGE") || strings.HasPrefix(line, "Eth") ||
+			strings.HasPrefix(line, "MultiGE") || strings.HasPrefix(line, "25GE") || strings.HasPrefix(line, "40GE") ||
+			strings.HasPrefix(line, "100GE") {
 			totali++
 			// Porta libera se stato e down o *down
 			lineLower := strings.ToLower(line)

@@ -60,13 +60,29 @@ type SwitchUfficio struct {
 	Protocollo   string
 	Note         string
 	UltimoBackup string
+	PorteTotali  int
+	PorteLibere  int
+	UltimoCheck  string
+}
+
+type APUfficio struct {
+	ID         int64
+	UfficioID  int64
+	Nome       string
+	MAC        string
+	IP         string
+	Modello    string
+	Stato      string
+	UltimoScan string
+	Note       string
 }
 
 type UfficioPageData struct {
-	Ufficio  Ufficio
-	AC       *ACUfficio
-	Switches []SwitchUfficio
-	Backups  []ConfigBackup
+	Ufficio      Ufficio
+	AC           *ACUfficio
+	Switches     []SwitchUfficio
+	AccessPoints []APUfficio
+	Backups      []ConfigBackup
 }
 
 // ============================================
@@ -189,14 +205,18 @@ func GestioneReteUfficio(w http.ResponseWriter, r *http.Request) {
 	// Carica switch
 	switches := getSwitchesUfficio(ufficioID)
 
+	// Carica Access Points
+	accessPoints := getAPsUfficio(ufficioID)
+
 	// Carica backup recenti
 	backups := getBackupsUfficio(ufficioID, 10)
 
 	pageData := UfficioPageData{
-		Ufficio:  ufficio,
-		AC:       ac,
-		Switches: switches,
-		Backups:  backups,
+		Ufficio:      ufficio,
+		AC:           ac,
+		Switches:     switches,
+		AccessPoints: accessPoints,
+		Backups:      backups,
 	}
 
 	data := NewPageData("Gestione Rete - "+ufficio.Nome, r)
@@ -338,6 +358,20 @@ func EliminaSwitchUfficio(w http.ResponseWriter, r *http.Request) {
 	var ufficioID int64
 	database.DB.QueryRow("SELECT ufficio_id FROM switch_ufficio WHERE id = ?", switchID).Scan(&ufficioID)
 
+	// Elimina file backup fisici e record dal database (tipo_apparato può essere 'switch' o 'switch_ufficio')
+	rows, _ := database.DB.Query("SELECT file_path FROM config_backup_ufficio WHERE (tipo_apparato = 'switch' OR tipo_apparato = 'switch_ufficio') AND apparato_id = ? AND ufficio_id IS NOT NULL", switchID)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var filePath string
+			rows.Scan(&filePath)
+			if filePath != "" {
+				os.Remove(filePath)
+			}
+		}
+	}
+	database.DB.Exec("DELETE FROM config_backup_ufficio WHERE (tipo_apparato = 'switch' OR tipo_apparato = 'switch_ufficio') AND apparato_id = ? AND ufficio_id IS NOT NULL", switchID)
+
 	database.DB.Exec("DELETE FROM switch_ufficio WHERE id = ?", switchID)
 	http.Redirect(w, r, fmt.Sprintf("/uffici/rete/%d", ufficioID), http.StatusSeeOther)
 }
@@ -362,7 +396,7 @@ func getACUfficioByID(ufficioID int64) *ACUfficio {
 
 func getSwitchesUfficio(ufficioID int64) []SwitchUfficio {
 	var switches []SwitchUfficio
-	rows, err := database.DB.Query("SELECT id, ufficio_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(note, ''), ultimo_backup FROM switch_ufficio WHERE ufficio_id = ? ORDER BY nome", ufficioID)
+	rows, err := database.DB.Query("SELECT id, ufficio_id, nome, marca, COALESCE(modello, ''), ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), COALESCE(note, ''), ultimo_backup, COALESCE(porte_totali, 0), COALESCE(porte_libere, 0), ultimo_check FROM switch_ufficio WHERE ufficio_id = ? ORDER BY nome", ufficioID)
 	if err != nil {
 		return switches
 	}
@@ -370,10 +404,13 @@ func getSwitchesUfficio(ufficioID int64) []SwitchUfficio {
 
 	for rows.Next() {
 		var sw SwitchUfficio
-		var ultimoBackup sql.NullString
-		rows.Scan(&sw.ID, &sw.UfficioID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Protocollo, &sw.Note, &ultimoBackup)
+		var ultimoBackup, ultimoCheck sql.NullString
+		rows.Scan(&sw.ID, &sw.UfficioID, &sw.Nome, &sw.Marca, &sw.Modello, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Protocollo, &sw.Note, &ultimoBackup, &sw.PorteTotali, &sw.PorteLibere, &ultimoCheck)
 		if ultimoBackup.Valid {
 			sw.UltimoBackup = ultimoBackup.String
+		}
+		if ultimoCheck.Valid {
+			sw.UltimoCheck = ultimoCheck.String
 		}
 		switches = append(switches, sw)
 	}
@@ -590,4 +627,274 @@ func APIDownloadBackupUfficio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 
 	io.Copy(w, file)
+}
+
+// APIEliminaBackupUfficio elimina un singolo backup
+func APIEliminaBackupUfficio(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/rete/elimina-backup-ufficio/")
+	backupID, _ := strconv.ParseInt(path, 10, 64)
+
+	var filePath string
+	var ufficioID, salaServerID sql.NullInt64
+	err := database.DB.QueryRow("SELECT file_path, ufficio_id, sala_server_id FROM config_backup_ufficio WHERE id = ?", backupID).
+		Scan(&filePath, &ufficioID, &salaServerID)
+
+	if err != nil {
+		http.Error(w, "Backup non trovato", http.StatusNotFound)
+		return
+	}
+
+	// Elimina file fisico
+	if filePath != "" {
+		os.Remove(filePath)
+	}
+
+	// Elimina record dal database
+	database.DB.Exec("DELETE FROM config_backup_ufficio WHERE id = ?", backupID)
+
+	// Redirect alla pagina giusta
+	if ufficioID.Valid && ufficioID.Int64 > 0 {
+		http.Redirect(w, r, fmt.Sprintf("/uffici/rete/%d", ufficioID.Int64), http.StatusSeeOther)
+	} else if salaServerID.Valid && salaServerID.Int64 > 0 {
+		http.Redirect(w, r, fmt.Sprintf("/sale-server/rete/%d", salaServerID.Int64), http.StatusSeeOther)
+	} else {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+// ============================================
+// ACCESS POINT UFFICIO - HELPER E API
+// ============================================
+
+func getAPsUfficio(ufficioID int64) []APUfficio {
+	var aps []APUfficio
+	rows, err := database.DB.Query("SELECT id, ufficio_id, nome, COALESCE(mac, ''), COALESCE(ip, ''), COALESCE(modello, ''), COALESCE(stato, 'online'), COALESCE(ultimo_scan, ''), COALESCE(note, '') FROM ap_ufficio WHERE ufficio_id = ? ORDER BY nome", ufficioID)
+	if err != nil {
+		return aps
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ap APUfficio
+		rows.Scan(&ap.ID, &ap.UfficioID, &ap.Nome, &ap.MAC, &ap.IP, &ap.Modello, &ap.Stato, &ap.UltimoScan, &ap.Note)
+		aps = append(aps, ap)
+	}
+	return aps
+}
+
+func updateOrCreateAPUfficio(ufficioID int64, apData map[string]string) {
+	mac := apData["mac"]
+	nome := apData["name"]
+	ip := apData["ip"]
+	modello := apData["model"]
+	stato := "online"
+	if apData["state"] != "nor" && apData["state"] != "normal" {
+		stato = "offline"
+	}
+
+	var existingID int64
+	err := database.DB.QueryRow("SELECT id FROM ap_ufficio WHERE ufficio_id = ? AND mac = ?", ufficioID, mac).Scan(&existingID)
+
+	if err == sql.ErrNoRows {
+		database.DB.Exec("INSERT INTO ap_ufficio (ufficio_id, nome, mac, ip, modello, stato, ultimo_scan) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+			ufficioID, nome, mac, ip, modello, stato)
+	} else if err == nil {
+		database.DB.Exec("UPDATE ap_ufficio SET nome = ?, ip = ?, modello = ?, stato = ?, ultimo_scan = CURRENT_TIMESTAMP WHERE id = ?",
+			nome, ip, modello, stato, existingID)
+	}
+}
+
+// APIScanAPUfficio esegue scan AP dall'AC Huawei per un ufficio
+func APIScanAPUfficio(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/uffici/scan-ap/")
+	ufficioID, _ := strconv.ParseInt(path, 10, 64)
+
+	result := map[string]interface{}{
+		"success": false,
+		"message": "",
+		"aps":     []map[string]string{},
+	}
+
+	// Ottieni AC
+	ac := getACUfficioByID(ufficioID)
+	if ac == nil {
+		result["message"] = "Access Controller non configurato"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Esegui comando SSH su AC Huawei
+	output, err := executeSSHCommand(ac.IP, ac.SSHPort, ac.SSHUser, ac.SSHPass, "display ap all")
+	if err != nil {
+		result["message"] = "Errore connessione SSH: " + err.Error()
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Parse output Huawei AC (usa la funzione esistente in rete_handlers.go)
+	aps := parseHuaweiAPOutput(string(output))
+
+	log.Printf("[SCAN AP UFFICIO] Ufficio %d - Trovati %d AP", ufficioID, len(aps))
+
+	// Aggiorna database
+	for _, ap := range aps {
+		updateOrCreateAPUfficio(ufficioID, ap)
+	}
+
+	result["success"] = true
+	result["message"] = fmt.Sprintf("Trovati %d Access Point", len(aps))
+	result["aps"] = aps
+
+	json.NewEncoder(w).Encode(result)
+}
+
+// APIScanPortsUfficio esegue scan porte su switch ufficio
+func APIScanPortsUfficio(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switchIDStr := r.URL.Query().Get("switch_id")
+	switchID, _ := strconv.ParseInt(switchIDStr, 10, 64)
+
+	result := map[string]interface{}{
+		"success":      false,
+		"message":      "",
+		"porte_totali": 0,
+		"porte_libere": 0,
+	}
+
+	var sw SwitchUfficio
+	var ufficioID int64
+	err := database.DB.QueryRow("SELECT id, ufficio_id, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), marca FROM switch_ufficio WHERE id = ?", switchID).
+		Scan(&sw.ID, &ufficioID, &sw.IP, &sw.SSHPort, &sw.SSHUser, &sw.SSHPass, &sw.Protocollo, &sw.Marca)
+	if err != nil {
+		result["message"] = "Switch non trovato"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Comando diverso in base alla marca
+	var cmdStr string
+	if sw.Marca == "huawei" {
+		cmdStr = "display interface brief"
+	} else {
+		cmdStr = "show interface brief"
+	}
+
+	// Esegui comando SSH
+	output, err := executeSSHCommand(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, cmdStr)
+	if err != nil {
+		result["message"] = "Errore connessione SSH: " + err.Error()
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Parse output per contare porte
+	var porteTotali, porteLibere int
+	if sw.Marca == "huawei" {
+		porteTotali, porteLibere = parseHuaweiPortsOutput(output)
+	} else {
+		porteTotali, porteLibere = parseHPPortsOutput(output)
+	}
+
+	// Aggiorna database
+	database.DB.Exec("UPDATE switch_ufficio SET porte_totali = ?, porte_libere = ?, ultimo_check = CURRENT_TIMESTAMP WHERE id = ?",
+		porteTotali, porteLibere, switchID)
+
+	// Recupera modello se non presente
+	var currentModello string
+	database.DB.QueryRow("SELECT COALESCE(modello, '') FROM switch_ufficio WHERE id = ?", switchID).Scan(&currentModello)
+	if currentModello == "" && sw.Marca == "huawei" {
+		versionOutput, verr := executeSSHCommand(sw.IP, sw.SSHPort, sw.SSHUser, sw.SSHPass, "display version")
+		if verr == nil {
+			_, model := parseVersionOutput(versionOutput, "huawei")
+			if model != "" {
+				database.DB.Exec("UPDATE switch_ufficio SET modello = ? WHERE id = ?", model, switchID)
+				result["modello"] = model
+			}
+		}
+	}
+
+	result["success"] = true
+	result["message"] = fmt.Sprintf("Porte: %d libere su %d totali", porteLibere, porteTotali)
+	result["porte_totali"] = porteTotali
+	result["porte_libere"] = porteLibere
+
+	json.NewEncoder(w).Encode(result)
+}
+
+// APIScanPortsSalaServer esegue scan porte su switch sala server
+func APIScanPortsSalaServer(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switchIDStr := r.URL.Query().Get("switch_id")
+	switchID, _ := strconv.ParseInt(switchIDStr, 10, 64)
+
+	result := map[string]interface{}{
+		"success":      false,
+		"message":      "",
+		"porte_totali": 0,
+		"porte_libere": 0,
+	}
+
+	var ip, sshUser, sshPass, protocollo, marca string
+	var sshPort int
+	var salaServerID int64
+	err := database.DB.QueryRow("SELECT id, sala_server_id, ip, ssh_port, ssh_user, ssh_pass, COALESCE(protocollo, 'ssh'), marca FROM switch_sala_server WHERE id = ?", switchID).
+		Scan(&switchID, &salaServerID, &ip, &sshPort, &sshUser, &sshPass, &protocollo, &marca)
+	if err != nil {
+		result["message"] = "Switch non trovato"
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Comando diverso in base alla marca
+	var cmdStr string
+	if marca == "huawei" {
+		cmdStr = "display interface brief"
+	} else {
+		cmdStr = "show interface brief"
+	}
+
+	// Esegui comando SSH
+	output, err := executeSSHCommand(ip, sshPort, sshUser, sshPass, cmdStr)
+	if err != nil {
+		result["message"] = "Errore connessione SSH: " + err.Error()
+		json.NewEncoder(w).Encode(result)
+		return
+	}
+
+	// Parse output per contare porte
+	var porteTotali, porteLibere int
+	if marca == "huawei" {
+		porteTotali, porteLibere = parseHuaweiPortsOutput(output)
+	} else {
+		porteTotali, porteLibere = parseHPPortsOutput(output)
+	}
+
+	// Aggiorna database
+	database.DB.Exec("UPDATE switch_sala_server SET porte_totali = ?, porte_libere = ?, ultimo_check = CURRENT_TIMESTAMP WHERE id = ?",
+		porteTotali, porteLibere, switchID)
+
+	// Recupera modello se non presente
+	var currentModello string
+	database.DB.QueryRow("SELECT COALESCE(modello, '') FROM switch_sala_server WHERE id = ?", switchID).Scan(&currentModello)
+	if currentModello == "" && marca == "huawei" {
+		versionOutput, verr := executeSSHCommand(ip, sshPort, sshUser, sshPass, "display version")
+		if verr == nil {
+			_, model := parseVersionOutput(versionOutput, "huawei")
+			if model != "" {
+				database.DB.Exec("UPDATE switch_sala_server SET modello = ? WHERE id = ?", model, switchID)
+				result["modello"] = model
+			}
+		}
+	}
+
+	result["success"] = true
+	result["message"] = fmt.Sprintf("Porte: %d libere su %d totali", porteLibere, porteTotali)
+	result["porte_totali"] = porteTotali
+	result["porte_libere"] = porteLibere
+
+	json.NewEncoder(w).Encode(result)
 }

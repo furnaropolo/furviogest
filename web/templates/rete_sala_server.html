@@ -26,7 +26,8 @@
                             <th>Marca</th>
                             <th>IP</th>
                             <th>Modello</th>
-                            <th>Ultimo Backup</th>
+                            <th>Porte</th>
+                            <th>Ultimo Check</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
@@ -37,10 +38,12 @@
                             <td><span class="badge bg-{{if eq .Marca "huawei"}}warning text-dark{{else}}info{{end}}">{{.Marca}}</span></td>
                             <td><code>{{.IP}}:{{.SSHPort}}</code></td>
                             <td>{{.Modello}}</td>
-                            <td><small>{{.UltimoBackup}}</small></td>
+                            <td><span class="badge bg-secondary" id="porte-{{.ID}}">{{.PorteLibere}}/{{.PorteTotali}}</span></td>
+                            <td><small>{{.UltimoCheck}}</small></td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-info" onclick="testConnessione({{.ID}}, '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Protocollo}}')" title="Test Connessione"><i class="bi bi-plug"></i></button>
+                                    <button class="btn btn-outline-warning" onclick="scanPorts({{.ID}})" title="Scan Porte"><i class="bi bi-ethernet"></i></button>
                                     <button class="btn btn-outline-success" onclick="backupConfig({{.ID}})" title="Backup Config"><i class="bi bi-download"></i></button>
                                     <button class="btn btn-outline-primary" onclick="editSwitch({{.ID}}, '{{.Nome}}', '{{.Marca}}', '{{.Modello}}', '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Note}}', '{{.Protocollo}}')" title="Modifica"><i class="bi bi-pencil"></i></button>
                                     <a href="/sale-server/switch/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo switch?')" title="Elimina"><i class="bi bi-trash"></i></a>
@@ -82,7 +85,10 @@
                             <td>{{.CreatedAt}}</td>
                             <td>{{.NomeApparato}}</td>
                             <td>{{.FileSize}} bytes</td>
-                            <td><a href="/api/rete/download-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a></td>
+                            <td>
+                                <a href="/api/rete/download-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-primary" title="Download"><i class="bi bi-download"></i></a>
+                                <a href="/api/rete/elimina-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminare questo backup?')" title="Elimina"><i class="bi bi-trash"></i></a>
+                            </td>
                         </tr>
                         {{end}}
                     </tbody>
@@ -222,6 +228,29 @@ function editSwitch(id, nome, marca, modello, ip, port, user, pass, note, protoc
     document.getElementById('sw_ssh_pass').value = pass;
     document.getElementById('sw_note').value = note;
     new bootstrap.Modal(document.getElementById('modalSwitch')).show();
+}
+
+function scanPorts(switchId) {
+    const badge = document.getElementById('porte-' + switchId);
+    const originalText = badge.textContent;
+    badge.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('/api/sale-server/scan-ports?switch_id=' + switchId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                badge.textContent = data.porte_libere + '/' + data.porte_totali;
+                alert('Scan completato: ' + data.message);
+                location.reload();
+            } else {
+                badge.textContent = originalText;
+                alert('Errore: ' + data.message);
+            }
+        })
+        .catch(err => {
+            badge.textContent = originalText;
+            alert('Errore di connessione');
+        });
 }
 </script>
 {{end}}

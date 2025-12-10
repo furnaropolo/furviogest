@@ -33,6 +33,7 @@
                 <div class="col-md-4 text-end">
                     <div class="btn-group-vertical">
                         <button class="btn btn-outline-info btn-sm" onclick="testConnessione('ac', {{.Data.AC.ID}}, '{{.Data.AC.IP}}', {{.Data.AC.SSHPort}}, '{{.Data.AC.SSHUser}}', '{{.Data.AC.SSHPass}}', '{{.Data.AC.Protocollo}}')"><i class="bi bi-plug me-1"></i>Test Connessione</button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="scanAP()"><i class="bi bi-wifi me-1"></i>Scan AP</button>
                         <button class="btn btn-outline-success btn-sm" onclick="backupConfig('ac_ufficio', {{.Data.AC.ID}})"><i class="bi bi-download me-1"></i>Backup Config</button>
                         <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAC"><i class="bi bi-pencil me-1"></i>Modifica</button>
                         <a href="/uffici/ac/elimina/{{.Data.Ufficio.ID}}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Eliminare AC?')"><i class="bi bi-trash me-1"></i>Elimina</a>
@@ -42,6 +43,58 @@
             {{else}}
             <p class="text-muted mb-0 text-center py-3">
                 <i class="bi bi-info-circle me-1"></i>Nessun Access Controller configurato.
+            </p>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- SEZIONE ACCESS POINT -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-wifi me-2"></i>Access Point ({{len .Data.AccessPoints}})</h5>
+            {{if .Data.AC}}
+            <button class="btn btn-light btn-sm" onclick="scanAP()">
+                <i class="bi bi-arrow-repeat me-1"></i>Aggiorna Scan
+            </button>
+            {{end}}
+        </div>
+        <div class="card-body">
+            {{if .Data.AccessPoints}}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>MAC</th>
+                            <th>IP</th>
+                            <th>Modello</th>
+                            <th>Stato</th>
+                            <th>Ultimo Scan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data.AccessPoints}}
+                        <tr>
+                            <td><strong>{{.Nome}}</strong></td>
+                            <td><code>{{.MAC}}</code></td>
+                            <td><code>{{.IP}}</code></td>
+                            <td>{{.Modello}}</td>
+                            <td>
+                                {{if eq .Stato "online"}}
+                                <span class="badge bg-success">Online</span>
+                                {{else}}
+                                <span class="badge bg-danger">Offline</span>
+                                {{end}}
+                            </td>
+                            <td><small>{{.UltimoScan}}</small></td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <p class="text-muted mb-0 text-center py-3">
+                <i class="bi bi-info-circle me-1"></i>Nessun Access Point rilevato. {{if .Data.AC}}Esegui "Scan AP" per rilevare gli AP collegati all'AC.{{else}}Configura prima l'Access Controller.{{end}}
             </p>
             {{end}}
         </div>
@@ -65,7 +118,8 @@
                             <th>Marca</th>
                             <th>IP</th>
                             <th>Modello</th>
-                            <th>Ultimo Backup</th>
+                            <th>Porte</th>
+                            <th>Ultimo Check</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
@@ -76,10 +130,12 @@
                             <td><span class="badge bg-{{if eq .Marca "huawei"}}warning text-dark{{else}}info{{end}}">{{.Marca}}</span></td>
                             <td><code>{{.IP}}:{{.SSHPort}}</code></td>
                             <td>{{.Modello}}</td>
-                            <td><small>{{.UltimoBackup}}</small></td>
+                            <td><span class="badge bg-secondary" id="porte-{{.ID}}">{{.PorteLibere}}/{{.PorteTotali}}</span></td>
+                            <td><small>{{.UltimoCheck}}</small></td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-info" onclick="testConnessione('switch', {{.ID}}, '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Protocollo}}')" title="Test Connessione"><i class="bi bi-plug"></i></button>
+                                    <button class="btn btn-outline-warning" onclick="scanPorts({{.ID}})" title="Scan Porte"><i class="bi bi-ethernet"></i></button>
                                     <button class="btn btn-outline-success" onclick="backupConfig('switch_ufficio', {{.ID}})" title="Backup Config"><i class="bi bi-download"></i></button>
                                     <button class="btn btn-outline-primary" onclick="editSwitch({{.ID}}, '{{.Nome}}', '{{.Marca}}', '{{.Modello}}', '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Note}}', '{{.Protocollo}}')" title="Modifica"><i class="bi bi-pencil"></i></button>
                                     <a href="/uffici/switch/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo switch?')" title="Elimina"><i class="bi bi-trash"></i></a>
@@ -123,7 +179,10 @@
                             <td>{{if eq .TipoApparato "ac"}}<span class="badge bg-primary">AC</span>{{else}}<span class="badge bg-success">Switch</span>{{end}}</td>
                             <td>{{.NomeApparato}}</td>
                             <td>{{.FileSize}} bytes</td>
-                            <td><a href="/api/rete/download-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a></td>
+                            <td>
+                                <a href="/api/rete/download-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-primary" title="Download"><i class="bi bi-download"></i></a>
+                                <a href="/api/rete/elimina-backup-ufficio/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminare questo backup?')" title="Elimina"><i class="bi bi-trash"></i></a>
+                            </td>
                         </tr>
                         {{end}}
                     </tbody>
@@ -208,6 +267,10 @@
                                 <option value="telnet">Telnet</option>
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Modello</label>
+                            <input type="text" class="form-control" name="modello" id="sw_modello">
+                        </div>
                         <div class="col-md-8">
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="sw_ip" required>
@@ -223,10 +286,6 @@
                         <div class="col-md-6">
                             <label class="form-label">Password *</label>
                             <input type="password" class="form-control" name="ssh_pass" id="sw_ssh_pass" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Modello</label>
-                            <input type="text" class="form-control" name="modello" id="sw_modello">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Note</label>
@@ -273,6 +332,17 @@ function testConnessione(tipo, id, ip, port, user, pass, protocollo) {
         .then(data => showToast('Test Connessione', data.message, !data.success));
 }
 
+function scanAP() {
+    showToast('Scan AP', 'Scansione Access Point in corso...', false);
+    fetch('/api/uffici/scan-ap/' + ufficioID)
+        .then(r => r.json())
+        .then(data => {
+            showToast('Scan AP', data.message, !data.success);
+            if (data.success) setTimeout(() => location.reload(), 1500);
+        })
+        .catch(err => showToast('Errore', 'Errore durante la scansione', true));
+}
+
 function backupConfig(tipo, id) {
     showToast('Backup', 'Backup in corso...', false);
     fetch('/api/rete/backup-config-ufficio?tipo=' + tipo + '&id=' + id)
@@ -312,6 +382,29 @@ function editSwitch(id, nome, marca, modello, ip, port, user, pass, note, protoc
     document.getElementById('sw_ssh_pass').value = pass;
     document.getElementById('sw_note').value = note;
     new bootstrap.Modal(document.getElementById('modalSwitch')).show();
+}
+
+function scanPorts(switchId) {
+    const badge = document.getElementById('porte-' + switchId);
+    const originalText = badge.textContent;
+    badge.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('/api/uffici/scan-ports?switch_id=' + switchId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                badge.textContent = data.porte_libere + '/' + data.porte_totali;
+                alert('Scan completato: ' + data.message);
+                location.reload();
+            } else {
+                badge.textContent = originalText;
+                alert('Errore: ' + data.message);
+            }
+        })
+        .catch(err => {
+            badge.textContent = originalText;
+            alert('Errore di connessione');
+        });
 }
 </script>
 {{end}}
