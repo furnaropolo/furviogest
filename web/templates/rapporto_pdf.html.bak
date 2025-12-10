@@ -99,27 +99,29 @@
             border-radius: 0 4px 4px 0;
             font-size: 9pt;
         }
-        /* Foto - ogni foto è un blocco che non si spezza */
+        /* Grid per le foto - 2 per riga */
         .foto-grid {
-            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
         }
-        .foto-wrapper {
-            display: inline-block;
+        .foto-container {
+            break-inside: avoid;
+            -webkit-column-break-inside: avoid;
             width: 48%;
-            vertical-align: top;
-            margin: 4px;
-            page-break-inside: avoid;
-        }
-        .foto-box {
             text-align: center;
             padding: 8px;
             background: #fafafa;
             border-radius: 6px;
             border: 1px solid #e0e0e0;
+            page-break-inside: avoid;
+            display: inline-block;
+            vertical-align: top;
         }
-        .foto-box img {
+        .foto-container img {
             max-width: 100%;
-            max-height: 260px;
+            max-height: 280px;
             border-radius: 4px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -275,11 +277,9 @@
         <div class="section-title">Documentazione Fotografica</div>
         <div class="foto-grid">
         {{range .Data.Foto}}
-            <div class="foto-wrapper">
-                <div class="foto-box">
-                    {{if .Descrizione}}<div class="foto-caption">{{.Descrizione}}</div>{{end}}
-                    <img src="/uploads/rapporti/{{.FilePath}}" alt="Foto">
-                </div>
+            <div class="foto-container">
+                {{if .Descrizione}}<div class="foto-caption">{{.Descrizione}}</div>{{end}}
+                <img src="/uploads/rapporti/{{.FilePath}}" alt="Foto">
             </div>
         {{end}}
         </div>
