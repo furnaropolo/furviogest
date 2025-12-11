@@ -106,7 +106,7 @@
                     <select id="porto_lavori_id" name="porto_lavori_id">
                         <option value="">-- Nessun porto specificato --</option>
                         {{range .Data.Porti}}
-                        <option value="{{.ID}}" {{if eq .ID $.Data.Nave.PortoLavoriID}}selected{{end}}>{{.Nome}}</option>
+                        <option value="{{.ID}}" >{{.Nome}}</option>
                         {{end}}
                     </select>
                 </div>
