@@ -116,6 +116,8 @@ func main() {
 	mux.Handle("/fornitori/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoFornitore))))
 	mux.Handle("/fornitori/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaFornitore))))
 	mux.Handle("/fornitori/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFornitore))))
+	mux.Handle("/api/verifica-piva", middleware.RequireAuth(http.HandlerFunc(handlers.APIVerificaPIVA)))
+	mux.Handle("/api/fornitore/info-eliminazione", middleware.RequireAuth(http.HandlerFunc(handlers.APIInfoEliminazioneFornitore)))
 
 	// Anagrafica Porti
 	mux.Handle("/porti", middleware.RequireAuth(http.HandlerFunc(handlers.ListaPorti)))
@@ -149,6 +151,14 @@ func main() {
 	mux.Handle("/magazzino/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaProdotto))))
 	mux.Handle("/magazzino/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaProdotto))))
 	mux.Handle("/magazzino/movimenti/", middleware.RequireAuth(http.HandlerFunc(handlers.ListaMovimenti)))
+	// DDT Entrata
+	mux.Handle("/ddt-entrata", middleware.RequireAuth(http.HandlerFunc(handlers.ListaDDTEntrata)))
+	mux.Handle("/ddt-entrata/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoDDTEntrata))))
+	mux.Handle("/ddt-entrata/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaDDTEntrata))))
+	mux.Handle("/ddt-entrata/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaDDTEntrata))))
+	mux.Handle("/api/ddt-entrata/info-eliminazione", middleware.RequireAuth(http.HandlerFunc(handlers.APIInfoEliminazioneDDT)))
+	mux.Handle("/api/fornitore/rapido", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.APICreaFornitoreRapido))))
+	mux.Handle("/api/prodotto/rapido", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.APICreaProdottoRapido))))
 	mux.Handle("/magazzino/movimento/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoMovimento))))
 
 	// Impostazioni Azienda

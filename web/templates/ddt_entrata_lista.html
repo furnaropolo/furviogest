@@ -1,0 +1,172 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>DDT/Fatture in Entrata</h1>
+    <a href="/ddt-entrata/nuovo" class="btn btn-primary">+ Nuovo Documento</a>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+{{if .Success}}
+<div class="alert alert-success">{{.Success}}</div>
+{{end}}
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Numero</th>
+                    <th>Data</th>
+                    <th>Fornitore</th>
+                    <th>PDF</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{if .Data}}
+                {{range .Data}}
+                <tr>
+                    <td>
+                        {{if eq .Tipo "fattura"}}
+                        <span class="badge badge-info">Fattura</span>
+                        {{else}}
+                        <span class="badge badge-secondary">DDT</span>
+                        {{end}}
+                    </td>
+                    <td><strong>{{.Numero}}</strong></td>
+                    <td>{{.DataDocumento.Format "02/01/2006"}}</td>
+                    <td>{{.NomeFornitore}}</td>
+                    <td>
+                        {{if .PDFPath}}
+                        <a href="/uploads/ddt_entrata/{{.PDFPath}}" target="_blank" class="btn btn-sm btn-outline">📄 PDF</a>
+                        {{else}}
+                        <span class="text-muted">-</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        <a href="/ddt-entrata/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                        <button class="btn btn-sm btn-danger" onclick="confermaEliminazione({{.ID}})">Elimina</button>
+                    </td>
+                </tr>
+                {{end}}
+                {{else}}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Nessun documento in entrata</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal conferma eliminazione -->
+<div id="modal-elimina" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Conferma Eliminazione</h3>
+        <div id="modal-body">
+            <p>Stai per eliminare il documento <strong id="doc-numero"></strong> del fornitore <strong id="doc-fornitore"></strong>.</p>
+            <p>Righe prodotti: <span id="doc-righe"></span></p>
+            <div id="prodotti-eliminati" style="display:none;">
+                <p class="text-danger"><strong>I seguenti prodotti verranno eliminati definitivamente:</strong></p>
+                <ul id="lista-prodotti-eliminati"></ul>
+            </div>
+            <p>Le giacenze dei prodotti verranno ripristinate.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModal()">Annulla</button>
+            <button class="btn btn-danger" id="btn-conferma-elimina">Elimina</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: var(--bg-primary);
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+.badge-info {
+    background: var(--primary);
+    color: white;
+}
+.badge-secondary {
+    background: var(--text-secondary);
+    color: white;
+}
+</style>
+
+<script>
+var ddtIdDaEliminare = null;
+
+function confermaEliminazione(id) {
+    ddtIdDaEliminare = id;
+    
+    // Carica info eliminazione
+    fetch('/api/ddt-entrata/info-eliminazione?id=' + id)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('doc-numero').textContent = data.numero_doc;
+            document.getElementById('doc-fornitore').textContent = data.nome_fornitore;
+            document.getElementById('doc-righe').textContent = data.num_righe;
+            
+            var prodDiv = document.getElementById('prodotti-eliminati');
+            var prodLista = document.getElementById('lista-prodotti-eliminati');
+            prodLista.innerHTML = '';
+            
+            if (data.prodotti_eliminati && data.prodotti_eliminati.length > 0) {
+                prodDiv.style.display = 'block';
+                data.prodotti_eliminati.forEach(function(nome) {
+                    var li = document.createElement('li');
+                    li.textContent = nome;
+                    prodLista.appendChild(li);
+                });
+            } else {
+                prodDiv.style.display = 'none';
+            }
+            
+            document.getElementById('modal-elimina').style.display = 'flex';
+        });
+}
+
+function chiudiModal() {
+    document.getElementById('modal-elimina').style.display = 'none';
+    ddtIdDaEliminare = null;
+}
+
+document.getElementById('btn-conferma-elimina').onclick = function() {
+    if (ddtIdDaEliminare) {
+        window.location.href = '/ddt-entrata/elimina/' + ddtIdDaEliminare;
+    }
+};
+</script>
+{{end}}

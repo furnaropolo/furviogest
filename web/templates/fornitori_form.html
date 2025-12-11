@@ -7,14 +7,52 @@
 
 <div class="form-container">
     <form method="POST" class="form">
+        <!-- Riga P.IVA con ricerca -->
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label for="partita_iva">Partita IVA</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="partita_iva" name="partita_iva" value="{{if .Data}}{{.Data.PartitaIVA}}{{end}}" placeholder="Es: IT01234567890" style="flex: 1;">
+                    <button type="button" class="btn btn-secondary" onclick="cercaPartitaIVA()" id="btn-cerca-piva">
+                        <span id="piva-spinner" style="display:none;">⏳</span>
+                        <span id="piva-text">Cerca</span>
+                    </button>
+                </div>
+                <small id="piva-result" style="color: var(--text-secondary);"></small>
+            </div>
+            <div class="form-group">
+                <label for="codice_fiscale">Codice Fiscale</label>
+                <input type="text" id="codice_fiscale" name="codice_fiscale" value="{{if .Data}}{{.Data.CodiceFiscale}}{{end}}" style="text-transform: uppercase;">
+            </div>
+        </div>
+
         <div class="form-group">
-            <label for="nome">Nome *</label>
+            <label for="nome">Ragione Sociale *</label>
             <input type="text" id="nome" name="nome" value="{{if .Data}}{{.Data.Nome}}{{end}}" required>
         </div>
 
         <div class="form-group">
             <label for="indirizzo">Indirizzo</label>
-            <input type="text" id="indirizzo" name="indirizzo" value="{{if .Data}}{{.Data.Indirizzo}}{{end}}">
+            <input type="text" id="indirizzo" name="indirizzo" value="{{if .Data}}{{.Data.Indirizzo}}{{end}}" placeholder="Via/Piazza e numero civico">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label for="cap">CAP</label>
+                <input type="text" id="cap" name="cap" value="{{if .Data}}{{.Data.CAP}}{{end}}" maxlength="5">
+            </div>
+            <div class="form-group" style="flex: 3;">
+                <label for="citta">Città</label>
+                <input type="text" id="citta" name="citta" value="{{if .Data}}{{.Data.Citta}}{{end}}">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="provincia">Prov.</label>
+                <input type="text" id="provincia" name="provincia" value="{{if .Data}}{{.Data.Provincia}}{{end}}" maxlength="2" style="text-transform: uppercase;" placeholder="XX">
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label for="nazione">Nazione</label>
+                <input type="text" id="nazione" name="nazione" value="{{if .Data}}{{if .Data.Nazione}}{{.Data.Nazione}}{{else}}Italia{{end}}{{else}}Italia{{end}}">
+            </div>
         </div>
 
         <div class="form-row">
@@ -23,8 +61,23 @@
                 <input type="tel" id="telefono" name="telefono" value="{{if .Data}}{{.Data.Telefono}}{{end}}">
             </div>
             <div class="form-group">
+                <label for="cellulare">Cellulare</label>
+                <input type="tel" id="cellulare" name="cellulare" value="{{if .Data}}{{.Data.Cellulare}}{{end}}">
+            </div>
+            <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" value="{{if .Data}}{{.Data.Email}}{{end}}">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="referente">Referente</label>
+                <input type="text" id="referente" name="referente" value="{{if .Data}}{{.Data.Referente}}{{end}}" placeholder="Nome e cognome">
+            </div>
+            <div class="form-group">
+                <label for="telefono_referente">Telefono Referente</label>
+                <input type="tel" id="telefono_referente" name="telefono_referente" value="{{if .Data}}{{.Data.TelefonoReferente}}{{end}}">
             </div>
         </div>
 
@@ -39,4 +92,73 @@
         </div>
     </form>
 </div>
+
+<script>
+function cercaPartitaIVA() {
+    var piva = document.getElementById('partita_iva').value.trim().toUpperCase();
+    var resultEl = document.getElementById('piva-result');
+    var spinner = document.getElementById('piva-spinner');
+    var text = document.getElementById('piva-text');
+    var btn = document.getElementById('btn-cerca-piva');
+    
+    if (!piva) {
+        resultEl.textContent = 'Inserisci una partita IVA';
+        resultEl.style.color = 'var(--danger)';
+        return;
+    }
+    
+    // Rimuovi prefisso paese se presente per VIES
+    var countryCode = 'IT';
+    var vatNumber = piva;
+    if (piva.length > 2 && /^[A-Z]{2}/.test(piva)) {
+        countryCode = piva.substring(0, 2);
+        vatNumber = piva.substring(2);
+    }
+    
+    // Mostra spinner
+    spinner.style.display = 'inline';
+    text.textContent = 'Ricerca...';
+    btn.disabled = true;
+    resultEl.textContent = '';
+    
+    // Chiama API interna per verifica VIES
+    fetch('/api/verifica-piva?country=' + countryCode + '&vat=' + vatNumber)
+        .then(response => response.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            text.textContent = 'Cerca';
+            btn.disabled = false;
+            
+            if (data.valid) {
+                resultEl.textContent = '✓ P.IVA valida';
+                resultEl.style.color = 'var(--success)';
+                
+                // Compila i campi se disponibili
+                if (data.name) {
+                    document.getElementById('nome').value = data.name;
+                }
+                if (data.address) {
+                    // Prova a parsare l'indirizzo
+                    var addr = data.address;
+                    document.getElementById('indirizzo').value = addr;
+                }
+            } else {
+                resultEl.textContent = '✗ P.IVA non valida o non trovata';
+                resultEl.style.color = 'var(--danger)';
+            }
+        })
+        .catch(error => {
+            spinner.style.display = 'none';
+            text.textContent = 'Cerca';
+            btn.disabled = false;
+            resultEl.textContent = 'Errore nella ricerca: ' + error.message;
+            resultEl.style.color = 'var(--danger)';
+        });
+}
+
+// Auto uppercase per partita IVA
+document.getElementById('partita_iva').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+});
+</script>
 {{end}}

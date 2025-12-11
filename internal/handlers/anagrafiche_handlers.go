@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"furviogest/internal/database"
 	"furviogest/internal/models"
@@ -23,7 +24,7 @@ func ListaFornitori(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Fornitori - FurvioGest", r)
 
 	rows, err := database.DB.Query(`
-		SELECT id, nome, indirizzo, telefono, email, note, created_at
+		SELECT id, nome, partita_iva, codice_fiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefono_referente, note, created_at
 		FROM fornitori ORDER BY nome
 	`)
 	if err != nil {
@@ -36,19 +37,46 @@ func ListaFornitori(w http.ResponseWriter, r *http.Request) {
 	var fornitori []models.Fornitore
 	for rows.Next() {
 		var f models.Fornitore
-		var indirizzo, telefono, email, note sql.NullString
-		err := rows.Scan(&f.ID, &f.Nome, &indirizzo, &telefono, &email, &note, &f.CreatedAt)
+		var partitaIVA, codiceFiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefonoReferente, note sql.NullString
+		err := rows.Scan(&f.ID, &f.Nome, &partitaIVA, &codiceFiscale, &indirizzo, &cap, &citta, &provincia, &nazione, &telefono, &cellulare, &email, &referente, &telefonoReferente, &note, &f.CreatedAt)
 		if err != nil {
 			continue
+		}
+		if partitaIVA.Valid {
+			f.PartitaIVA = partitaIVA.String
+		}
+		if codiceFiscale.Valid {
+			f.CodiceFiscale = codiceFiscale.String
 		}
 		if indirizzo.Valid {
 			f.Indirizzo = indirizzo.String
 		}
+		if cap.Valid {
+			f.CAP = cap.String
+		}
+		if citta.Valid {
+			f.Citta = citta.String
+		}
+		if provincia.Valid {
+			f.Provincia = provincia.String
+		}
+		if nazione.Valid {
+			f.Nazione = nazione.String
+		}
 		if telefono.Valid {
 			f.Telefono = telefono.String
 		}
+		if cellulare.Valid {
+			f.Cellulare = cellulare.String
+		}
 		if email.Valid {
 			f.Email = email.String
+		}
+		if referente.Valid {
+			f.Referente = referente.String
+		}
+		if telefonoReferente.Valid {
+			f.TelefonoReferente = telefonoReferente.String
 		}
 		if note.Valid {
 			f.Note = note.String
@@ -70,28 +98,36 @@ func NuovoFornitore(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
+	partitaIVA := strings.TrimSpace(r.FormValue("partita_iva"))
+	codiceFiscale := strings.TrimSpace(r.FormValue("codice_fiscale"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
-	telefono := strings.TrimSpace(r.FormValue("telefono"))
-	email := strings.TrimSpace(r.FormValue("email"))
-	note := strings.TrimSpace(r.FormValue("note"))
-	emailDestinatari := r.FormValue("email_destinatari")
-	if emailDestinatari == "" {
-		emailDestinatari = "solo_agenzia"
+	cap := strings.TrimSpace(r.FormValue("cap"))
+	citta := strings.TrimSpace(r.FormValue("citta"))
+	provincia := strings.ToUpper(strings.TrimSpace(r.FormValue("provincia")))
+	nazione := strings.TrimSpace(r.FormValue("nazione"))
+	if nazione == "" {
+		nazione = "Italia"
 	}
+	telefono := strings.TrimSpace(r.FormValue("telefono"))
+	cellulare := strings.TrimSpace(r.FormValue("cellulare"))
+	email := strings.TrimSpace(r.FormValue("email"))
+	referente := strings.TrimSpace(r.FormValue("referente"))
+	telefonoReferente := strings.TrimSpace(r.FormValue("telefono_referente"))
+	note := strings.TrimSpace(r.FormValue("note"))
 
 	if nome == "" {
-		data.Error = "Il nome è obbligatorio"
+		data.Error = "La ragione sociale è obbligatoria"
 		renderTemplate(w, "fornitori_form.html", data)
 		return
 	}
 
 	_, err := database.DB.Exec(`
-		INSERT INTO fornitori (nome, indirizzo, telefono, email, note)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, nome, indirizzo, telefono, email, note)
+		INSERT INTO fornitori (nome, partita_iva, codice_fiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefono_referente, note)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, nome, partitaIVA, codiceFiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefonoReferente, note)
 
 	if err != nil {
-		data.Error = "Errore durante il salvataggio"
+		data.Error = "Errore durante il salvataggio: " + err.Error()
 		renderTemplate(w, "fornitori_form.html", data)
 		return
 	}
@@ -116,24 +152,53 @@ func ModificaFornitore(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		var f models.Fornitore
-		var indirizzo, telefono, email, note sql.NullString
+		var partitaIVA, codiceFiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefonoReferente, note sql.NullString
 		err := database.DB.QueryRow(`
-			SELECT id, nome, indirizzo, telefono, email, note
+			SELECT id, nome, partita_iva, codice_fiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefono_referente, note
 			FROM fornitori WHERE id = ?
-		`, id).Scan(&f.ID, &f.Nome, &indirizzo, &telefono, &email, &note)
+		`, id).Scan(&f.ID, &f.Nome, &partitaIVA, &codiceFiscale, &indirizzo, &cap, &citta, &provincia, &nazione, &telefono, &cellulare, &email, &referente, &telefonoReferente, &note)
 
 		if err != nil {
 			http.Redirect(w, r, "/fornitori", http.StatusSeeOther)
 			return
 		}
+		if partitaIVA.Valid {
+			f.PartitaIVA = partitaIVA.String
+		}
+		if codiceFiscale.Valid {
+			f.CodiceFiscale = codiceFiscale.String
+		}
 		if indirizzo.Valid {
 			f.Indirizzo = indirizzo.String
+		}
+		if cap.Valid {
+			f.CAP = cap.String
+		}
+		if citta.Valid {
+			f.Citta = citta.String
+		}
+		if provincia.Valid {
+			f.Provincia = provincia.String
+		}
+		if nazione.Valid {
+			f.Nazione = nazione.String
+		} else {
+			f.Nazione = "Italia"
 		}
 		if telefono.Valid {
 			f.Telefono = telefono.String
 		}
+		if cellulare.Valid {
+			f.Cellulare = cellulare.String
+		}
 		if email.Valid {
 			f.Email = email.String
+		}
+		if referente.Valid {
+			f.Referente = referente.String
+		}
+		if telefonoReferente.Valid {
+			f.TelefonoReferente = telefonoReferente.String
 		}
 		if note.Valid {
 			f.Note = note.String
@@ -146,28 +211,36 @@ func ModificaFornitore(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseMultipartForm(10 << 20)
 	nome := strings.TrimSpace(r.FormValue("nome"))
+	partitaIVA := strings.TrimSpace(r.FormValue("partita_iva"))
+	codiceFiscale := strings.TrimSpace(r.FormValue("codice_fiscale"))
 	indirizzo := strings.TrimSpace(r.FormValue("indirizzo"))
-	telefono := strings.TrimSpace(r.FormValue("telefono"))
-	email := strings.TrimSpace(r.FormValue("email"))
-	note := strings.TrimSpace(r.FormValue("note"))
-	emailDestinatari := r.FormValue("email_destinatari")
-	if emailDestinatari == "" {
-		emailDestinatari = "solo_agenzia"
+	cap := strings.TrimSpace(r.FormValue("cap"))
+	citta := strings.TrimSpace(r.FormValue("citta"))
+	provincia := strings.ToUpper(strings.TrimSpace(r.FormValue("provincia")))
+	nazione := strings.TrimSpace(r.FormValue("nazione"))
+	if nazione == "" {
+		nazione = "Italia"
 	}
+	telefono := strings.TrimSpace(r.FormValue("telefono"))
+	cellulare := strings.TrimSpace(r.FormValue("cellulare"))
+	email := strings.TrimSpace(r.FormValue("email"))
+	referente := strings.TrimSpace(r.FormValue("referente"))
+	telefonoReferente := strings.TrimSpace(r.FormValue("telefono_referente"))
+	note := strings.TrimSpace(r.FormValue("note"))
 
 	if nome == "" {
-		data.Error = "Il nome è obbligatorio"
+		data.Error = "La ragione sociale è obbligatoria"
 		renderTemplate(w, "fornitori_form.html", data)
 		return
 	}
 
 	_, err = database.DB.Exec(`
-		UPDATE fornitori SET nome = ?, indirizzo = ?, telefono = ?, email = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE fornitori SET nome = ?, partita_iva = ?, codice_fiscale = ?, indirizzo = ?, cap = ?, citta = ?, provincia = ?, nazione = ?, telefono = ?, cellulare = ?, email = ?, referente = ?, telefono_referente = ?, note = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, nome, indirizzo, telefono, email, note, id)
+	`, nome, partitaIVA, codiceFiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefonoReferente, note, id)
 
 	if err != nil {
-		data.Error = "Errore durante il salvataggio"
+		data.Error = "Errore durante il salvataggio: " + err.Error()
 		renderTemplate(w, "fornitori_form.html", data)
 		return
 	}
@@ -183,10 +256,118 @@ func EliminaFornitore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, _ := strconv.ParseInt(pathParts[3], 10, 64)
-	database.DB.Exec("DELETE FROM fornitori WHERE id = ?", id)
+	
+	tx, err := database.DB.Begin()
+	if err != nil {
+		http.Redirect(w, r, "/fornitori", http.StatusSeeOther)
+		return
+	}
+
+	// 1. Trova tutti i DDT di questo fornitore
+	ddtRows, _ := tx.Query(`SELECT id FROM ddt_entrata WHERE fornitore_id = ?`, id)
+	var ddtIDs []int64
+	for ddtRows.Next() {
+		var ddtID int64
+		ddtRows.Scan(&ddtID)
+		ddtIDs = append(ddtIDs, ddtID)
+	}
+	ddtRows.Close()
+
+	// 2. Per ogni DDT, ripristina giacenze e trova prodotti da eliminare
+	var prodottiDaEliminare []int64
+	for _, ddtID := range ddtIDs {
+		righeRows, _ := tx.Query(`
+			SELECT prodotto_id, quantita, prodotto_creato_da_ddt 
+			FROM ddt_entrata_righe WHERE ddt_entrata_id = ?
+		`, ddtID)
+		
+		for righeRows.Next() {
+			var prodID int64
+			var qta int
+			var creato bool
+			righeRows.Scan(&prodID, &qta, &creato)
+			
+			// Sottrai giacenza
+			tx.Exec(`UPDATE prodotti SET giacenza = giacenza - ? WHERE id = ?`, qta, prodID)
+			
+			// Se prodotto creato da DDT di questo fornitore, verifica se è usato altrove
+			if creato {
+				var count int
+				tx.QueryRow(`
+					SELECT COUNT(*) FROM ddt_entrata_righe r
+					JOIN ddt_entrata d ON r.ddt_entrata_id = d.id
+					WHERE r.prodotto_id = ? AND d.fornitore_id != ?
+				`, prodID, id).Scan(&count)
+				if count == 0 {
+					prodottiDaEliminare = append(prodottiDaEliminare, prodID)
+				}
+			}
+		}
+		righeRows.Close()
+		
+		// Elimina righe DDT
+		tx.Exec(`DELETE FROM ddt_entrata_righe WHERE ddt_entrata_id = ?`, ddtID)
+		
+		// Elimina PDF
+		var pdfPath sql.NullString
+		tx.QueryRow(`SELECT pdf_path FROM ddt_entrata WHERE id = ?`, ddtID).Scan(&pdfPath)
+		if pdfPath.Valid && pdfPath.String != "" {
+			os.Remove(pdfPath.String)
+		}
+	}
+
+	// 3. Elimina DDT del fornitore
+	tx.Exec(`DELETE FROM ddt_entrata WHERE fornitore_id = ?`, id)
+
+	// 4. Elimina prodotti creati solo da DDT di questo fornitore
+	for _, prodID := range prodottiDaEliminare {
+		tx.Exec(`DELETE FROM prodotti WHERE id = ?`, prodID)
+	}
+
+	// 5. Elimina il fornitore
+	tx.Exec(`DELETE FROM fornitori WHERE id = ?`, id)
+
+	tx.Commit()
 	http.Redirect(w, r, "/fornitori", http.StatusSeeOther)
 }
 
+// APIInfoEliminazioneFornitore restituisce info su cosa verrà eliminato
+func APIInfoEliminazioneFornitore(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	idStr := r.URL.Query().Get("id")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	var info struct {
+		NomeFornitore     string   `json:"nome_fornitore"`
+		NumDDT            int      `json:"num_ddt"`
+		ProdottiEliminati []string `json:"prodotti_eliminati"`
+	}
+
+	database.DB.QueryRow(`SELECT nome FROM fornitori WHERE id = ?`, id).Scan(&info.NomeFornitore)
+	database.DB.QueryRow(`SELECT COUNT(*) FROM ddt_entrata WHERE fornitore_id = ?`, id).Scan(&info.NumDDT)
+
+	// Prodotti che verranno eliminati (creati solo da DDT di questo fornitore)
+	rows, _ := database.DB.Query(`
+		SELECT DISTINCT p.nome FROM prodotti p
+		JOIN ddt_entrata_righe r ON r.prodotto_id = p.id
+		JOIN ddt_entrata d ON r.ddt_entrata_id = d.id
+		WHERE d.fornitore_id = ? AND r.prodotto_creato_da_ddt = 1
+		AND NOT EXISTS (
+			SELECT 1 FROM ddt_entrata_righe r2
+			JOIN ddt_entrata d2 ON r2.ddt_entrata_id = d2.id
+			WHERE r2.prodotto_id = p.id AND d2.fornitore_id != ?
+		)
+	`, id, id)
+	defer rows.Close()
+	for rows.Next() {
+		var nome string
+		rows.Scan(&nome)
+		info.ProdottiEliminati = append(info.ProdottiEliminati, nome)
+	}
+
+	json.NewEncoder(w).Encode(info)
+}
 // ============================================
 // PORTI
 // ============================================
@@ -1267,4 +1448,94 @@ func saveUploadedFile(r *http.Request, fieldName, destDir string) (string, error
 	}
 
 	return destPath, nil
+}
+
+// APIVerificaPIVA verifica una partita IVA tramite VIES (EU VAT validation)
+func APIVerificaPIVA(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	countryCode := r.URL.Query().Get("country")
+	vatNumber := r.URL.Query().Get("vat")
+	
+	if countryCode == "" || vatNumber == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": false,
+			"error": "Parametri mancanti",
+		})
+		return
+	}
+	
+	// Prepara la richiesta SOAP per VIES
+	soapRequest := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns1="urn:ec.europa.eu:taxud:vies:services:checkVat:types">
+  <soap:Body>
+    <tns1:checkVat>
+      <tns1:countryCode>%s</tns1:countryCode>
+      <tns1:vatNumber>%s</tns1:vatNumber>
+    </tns1:checkVat>
+  </soap:Body>
+</soap:Envelope>`, countryCode, vatNumber)
+	
+	// Chiamata al servizio VIES
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Post(
+		"https://ec.europa.eu/taxation_customs/vies/services/checkVatService",
+		"text/xml; charset=utf-8",
+		strings.NewReader(soapRequest),
+	)
+	
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": false,
+			"error": "Errore connessione VIES: " + err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"valid": false,
+			"error": "Errore lettura risposta",
+		})
+		return
+	}
+	
+	bodyStr := string(body)
+	
+	// Parse semplice della risposta XML
+	valid := strings.Contains(bodyStr, "<valid>true</valid>")
+	
+	result := map[string]interface{}{
+		"valid": valid,
+	}
+	
+	if valid {
+		// Estrai nome azienda
+		if nameStart := strings.Index(bodyStr, "<name>"); nameStart != -1 {
+			nameEnd := strings.Index(bodyStr[nameStart:], "</name>")
+			if nameEnd != -1 {
+				name := bodyStr[nameStart+6 : nameStart+nameEnd]
+				name = strings.TrimSpace(name)
+				if name != "---" && name != "" {
+					result["name"] = name
+				}
+			}
+		}
+		
+		// Estrai indirizzo
+		if addrStart := strings.Index(bodyStr, "<address>"); addrStart != -1 {
+			addrEnd := strings.Index(bodyStr[addrStart:], "</address>")
+			if addrEnd != -1 {
+				address := bodyStr[addrStart+9 : addrStart+addrEnd]
+				address = strings.TrimSpace(address)
+				if address != "---" && address != "" {
+					result["address"] = address
+				}
+			}
+		}
+	}
+	
+	json.NewEncoder(w).Encode(result)
 }

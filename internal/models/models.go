@@ -36,16 +36,26 @@ type Utente struct {
 
 // Fornitore rappresenta un fornitore
 type Fornitore struct {
-	ID        int64     `json:"id"`
-	Nome      string    `json:"nome"`
-	Indirizzo string    `json:"indirizzo"`
-	Telefono  string    `json:"telefono"`
-	Email     string    `json:"email"`
-	Note              string `json:"note"`
-	EmailDestinatari  string `json:"email_destinatari"` // solo_agenzia o tutti`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	Nome             string    `json:"nome"`
+	PartitaIVA       string    `json:"partita_iva"`
+	CodiceFiscale    string    `json:"codice_fiscale"`
+	Indirizzo        string    `json:"indirizzo"`
+	CAP              string    `json:"cap"`
+	Citta            string    `json:"citta"`
+	Provincia        string    `json:"provincia"`
+	Nazione          string    `json:"nazione"`
+	Telefono         string    `json:"telefono"`
+	Cellulare        string    `json:"cellulare"`
+	Email            string    `json:"email"`
+	Referente        string    `json:"referente"`
+	TelefonoReferente string   `json:"telefono_referente"`
+	Note             string    `json:"note"`
+	EmailDestinatari string    `json:"email_destinatari"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
+
 
 // Porto rappresenta un porto
 type Porto struct {
@@ -525,4 +535,32 @@ type DeviceDiscovery struct {
 	SysDescr  string
 	Location  string
 	Status    string
+}
+
+// DDTEntrata rappresenta un DDT o Fattura in entrata
+type DDTEntrata struct {
+	ID            int64     
+	Tipo          string               // "ddt" o "fattura"
+	Numero        string             // numero documento fornitore
+	DataDocumento time.Time 
+	FornitoreID   int64     
+	PDFPath       string    
+	Note          string    
+	CreatedAt     time.Time 
+	UpdatedAt     time.Time 
+	// Campi virtuali per join
+	NomeFornitore string           
+	Righe         []DDTEntrataRiga 
+}
+
+// DDTEntrataRiga rappresenta una riga di un DDT/Fattura in entrata
+type DDTEntrataRiga struct {
+	ID                int64   
+	DDTEntrataID      int64   
+	ProdottoID        int64   
+	Quantita          int     
+	ProdottoCreatoDaDDT bool  
+	// Campi virtuali per join
+	NomeProdotto      string  
+	CodiceProdotto    string  
 }

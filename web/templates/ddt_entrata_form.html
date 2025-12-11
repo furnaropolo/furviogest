@@ -1,0 +1,385 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.DDT}}Modifica Documento{{else}}Nuovo Documento in Entrata{{end}}</h1>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data" class="form" id="form-ddt">
+        <!-- Dati documento -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tipo">Tipo Documento *</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="ddt" {{if .Data.DDT}}{{if eq .Data.DDT.Tipo "ddt"}}selected{{end}}{{end}}>DDT</option>
+                    <option value="fattura" {{if .Data.DDT}}{{if eq .Data.DDT.Tipo "fattura"}}selected{{end}}{{end}}>Fattura</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="numero">Numero Documento *</label>
+                <input type="text" id="numero" name="numero" value="{{if .Data.DDT}}{{.Data.DDT.Numero}}{{end}}" required>
+            </div>
+            <div class="form-group">
+                <label for="data_documento">Data Documento *</label>
+                <input type="date" id="data_documento" name="data_documento" value="{{if .Data.DDT}}{{.Data.DDT.DataDocumento.Format "2006-01-02"}}{{end}}" required>
+            </div>
+        </div>
+
+        <!-- Fornitore -->
+        <div class="form-row">
+            <div class="form-group" style="flex: 3;">
+                <label for="fornitore_id">Fornitore *</label>
+                <select id="fornitore_id" name="fornitore_id" required>
+                    <option value="">Seleziona fornitore...</option>
+                    {{range .Data.Fornitori}}
+                    <option value="{{.ID}}" {{if $.Data.DDT}}{{if eq $.Data.DDT.FornitoreID .ID}}selected{{end}}{{end}}>{{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="apriModalFornitore()">+ Nuovo Fornitore</button>
+            </div>
+        </div>
+
+        <!-- Upload PDF -->
+        <div class="form-group">
+            <label for="pdf_file">Documento PDF (opzionale)</label>
+            <input type="file" id="pdf_file" name="pdf_file" accept=".pdf">
+            {{if .Data.DDT}}{{if .Data.DDT.PDFPath}}
+            <small>PDF attuale: <a href="/uploads/ddt_entrata/{{.Data.DDT.PDFPath}}" target="_blank">Visualizza</a></small>
+            {{end}}{{end}}
+        </div>
+
+        <!-- Righe Prodotti -->
+        <div class="section-header">
+            <h3>Prodotti</h3>
+            <button type="button" class="btn btn-sm btn-primary" onclick="aggiungiRiga()">+ Aggiungi Prodotto</button>
+        </div>
+
+        <div id="righe-container">
+            {{if .Data.DDT}}
+            {{range $i, $riga := .Data.DDT.Righe}}
+            <div class="riga-prodotto" data-index="{{$i}}">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 3;">
+                        <label>Prodotto</label>
+                        <select name="prodotto_id[]" class="select-prodotto" required>
+                            <option value="">Seleziona...</option>
+                            {{range $.Data.Prodotti}}
+                            <option value="{{.ID}}" {{if eq .ID $riga.ProdottoID}}selected{{end}}>{{.Codice}} - {{.Nome}}</option>
+                            {{end}}
+                        </select>
+                        <input type="hidden" name="nuovo_prodotto[]" value="0">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Quantità</label>
+                        <input type="number" name="quantita[]" value="{{$riga.Quantita}}" min="1" required>
+                    </div>
+                    <div class="form-group" style="flex: 0; display: flex; align-items: flex-end;">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="rimuoviRiga(this)">✕</button>
+                    </div>
+                </div>
+            </div>
+            {{end}}
+            {{else}}
+            <div class="riga-prodotto" data-index="0">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 3;">
+                        <label>Prodotto</label>
+                        <div style="display: flex; gap: 10px;">
+                            <select name="prodotto_id[]" class="select-prodotto" style="flex: 1;">
+                                <option value="">Seleziona...</option>
+                                {{range .Data.Prodotti}}
+                                <option value="{{.ID}}">{{.Codice}} - {{.Nome}}</option>
+                                {{end}}
+                            </select>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="apriModalProdotto(this)">+ Nuovo</button>
+                        </div>
+                        <input type="hidden" name="nuovo_prodotto[]" value="0">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Quantità</label>
+                        <input type="number" name="quantita[]" value="1" min="1" required>
+                    </div>
+                    <div class="form-group" style="flex: 0; display: flex; align-items: flex-end;">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="rimuoviRiga(this)">✕</button>
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Note -->
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note">{{if .Data.DDT}}{{.Data.DDT.Note}}{{end}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.DDT}}Salva Modifiche{{else}}Salva Documento{{end}}</button>
+            <a href="/ddt-entrata" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<!-- Modal Nuovo Fornitore -->
+<div id="modal-fornitore" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Nuovo Fornitore Rapido</h3>
+        <div class="form-group">
+            <label>Ragione Sociale *</label>
+            <input type="text" id="nuovo-fornitore-nome" required>
+        </div>
+        <div class="form-group">
+            <label>Partita IVA</label>
+            <input type="text" id="nuovo-fornitore-piva" style="text-transform: uppercase;">
+        </div>
+        <p class="text-muted"><small>Potrai completare i dati del fornitore in seguito dalla sezione Anagrafiche.</small></p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModalFornitore()">Annulla</button>
+            <button class="btn btn-primary" onclick="salvaFornitoreRapido()">Salva</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuovo Prodotto -->
+<div id="modal-prodotto" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Nuovo Prodotto Rapido</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Codice *</label>
+                <input type="text" id="nuovo-prodotto-codice" style="text-transform: uppercase;" required>
+            </div>
+            <div class="form-group">
+                <label>Nome *</label>
+                <input type="text" id="nuovo-prodotto-nome" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="nuovo-prodotto-categoria">
+                    <option value="materiale">Materiale (pezzi)</option>
+                    <option value="cavo">Cavo (metri)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo Impianto</label>
+                <select id="nuovo-prodotto-tipo">
+                    <option value="wifi">WiFi</option>
+                    <option value="gsm">GSM</option>
+                    <option value="entrambi">WiFi + GSM</option>
+                </select>
+            </div>
+        </div>
+        <p class="text-muted"><small>Il prodotto verrà creato con origine "Nuovo". Potrai completare i dati in seguito.</small></p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModalProdotto()">Annulla</button>
+            <button class="btn btn-primary" onclick="salvaProdottoRapido()">Salva</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 1.5rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.section-header h3 {
+    margin: 0;
+}
+.riga-prodotto {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: var(--bg-primary);
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+</style>
+
+<script>
+var rigaIndex = {{if .Data.DDT}}{{len .Data.DDT.Righe}}{{else}}1{{end}};
+var selectProdottoCorrente = null;
+
+function aggiungiRiga() {
+    var container = document.getElementById('righe-container');
+    var html = '<div class="riga-prodotto" data-index="' + rigaIndex + '">' +
+        '<div class="form-row">' +
+        '<div class="form-group" style="flex: 3;">' +
+        '<label>Prodotto</label>' +
+        '<div style="display: flex; gap: 10px;">' +
+        '<select name="prodotto_id[]" class="select-prodotto" style="flex: 1;">' +
+        '<option value="">Seleziona...</option>' +
+        '{{range .Data.Prodotti}}<option value="{{.ID}}">{{.Codice}} - {{.Nome}}</option>{{end}}' +
+        '</select>' +
+        '<button type="button" class="btn btn-sm btn-secondary" onclick="apriModalProdotto(this)">+ Nuovo</button>' +
+        '</div>' +
+        '<input type="hidden" name="nuovo_prodotto[]" value="0">' +
+        '</div>' +
+        '<div class="form-group" style="flex: 1;">' +
+        '<label>Quantità</label>' +
+        '<input type="number" name="quantita[]" value="1" min="1" required>' +
+        '</div>' +
+        '<div class="form-group" style="flex: 0; display: flex; align-items: flex-end;">' +
+        '<button type="button" class="btn btn-sm btn-danger" onclick="rimuoviRiga(this)">✕</button>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    container.insertAdjacentHTML('beforeend', html);
+    rigaIndex++;
+}
+
+function rimuoviRiga(btn) {
+    var riga = btn.closest('.riga-prodotto');
+    if (document.querySelectorAll('.riga-prodotto').length > 1) {
+        riga.remove();
+    } else {
+        alert('Deve esserci almeno un prodotto');
+    }
+}
+
+function apriModalFornitore() {
+    document.getElementById('nuovo-fornitore-nome').value = '';
+    document.getElementById('nuovo-fornitore-piva').value = '';
+    document.getElementById('modal-fornitore').style.display = 'flex';
+}
+
+function chiudiModalFornitore() {
+    document.getElementById('modal-fornitore').style.display = 'none';
+}
+
+function salvaFornitoreRapido() {
+    var nome = document.getElementById('nuovo-fornitore-nome').value.trim();
+    var piva = document.getElementById('nuovo-fornitore-piva').value.trim().toUpperCase();
+    
+    if (!nome) {
+        alert('Inserisci la ragione sociale');
+        return;
+    }
+    
+    var formData = new FormData();
+    formData.append('nome', nome);
+    formData.append('partita_iva', piva);
+    
+    fetch('/api/fornitore/rapido', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Aggiungi opzione al select
+            var select = document.getElementById('fornitore_id');
+            var option = document.createElement('option');
+            option.value = data.id;
+            option.textContent = data.nome;
+            option.selected = true;
+            select.appendChild(option);
+            chiudiModalFornitore();
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    });
+}
+
+function apriModalProdotto(btn) {
+    selectProdottoCorrente = btn.parentElement.querySelector('select');
+    document.getElementById('nuovo-prodotto-codice').value = '';
+    document.getElementById('nuovo-prodotto-nome').value = '';
+    document.getElementById('modal-prodotto').style.display = 'flex';
+}
+
+function chiudiModalProdotto() {
+    document.getElementById('modal-prodotto').style.display = 'none';
+    selectProdottoCorrente = null;
+}
+
+function salvaProdottoRapido() {
+    var codice = document.getElementById('nuovo-prodotto-codice').value.trim().toUpperCase();
+    var nome = document.getElementById('nuovo-prodotto-nome').value.trim();
+    var categoria = document.getElementById('nuovo-prodotto-categoria').value;
+    var tipo = document.getElementById('nuovo-prodotto-tipo').value;
+    
+    if (!codice || !nome) {
+        alert('Codice e nome sono obbligatori');
+        return;
+    }
+    
+    var formData = new FormData();
+    formData.append('codice', codice);
+    formData.append('nome', nome);
+    formData.append('categoria', categoria);
+    formData.append('tipo', tipo);
+    
+    fetch('/api/prodotto/rapido', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Aggiungi opzione al select corrente
+            if (selectProdottoCorrente) {
+                var option = document.createElement('option');
+                option.value = data.id;
+                option.textContent = data.codice + ' - ' + data.nome;
+                option.selected = true;
+                selectProdottoCorrente.appendChild(option);
+                
+                // Marca come nuovo prodotto
+                var hidden = selectProdottoCorrente.parentElement.parentElement.querySelector('input[name="nuovo_prodotto[]"]');
+                if (hidden) hidden.value = '1';
+            }
+            
+            // Aggiungi anche agli altri select
+            document.querySelectorAll('.select-prodotto').forEach(function(sel) {
+                if (sel !== selectProdottoCorrente) {
+                    var opt = document.createElement('option');
+                    opt.value = data.id;
+                    opt.textContent = data.codice + ' - ' + data.nome;
+                    sel.appendChild(opt);
+                }
+            });
+            
+            chiudiModalProdotto();
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    });
+}
+</script>
+{{end}}

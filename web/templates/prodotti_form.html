@@ -83,20 +83,15 @@
             </div>
         </div>
 
+        {{if not .Data.Prodotto.ID}}
         <div class="form-row">
-            {{if not .Data.Prodotto.ID}}
             <div class="form-group">
                 <label for="giacenza" id="label-giacenza">Giacenza Iniziale</label>
-                <input type="number" id="giacenza" name="giacenza" value="{{printf "%.2f" .Data.Prodotto.Giacenza}}" min="0" step="0.01">
+                <input type="number" id="giacenza" name="giacenza" value="{{printf "%.0f" .Data.Prodotto.Giacenza}}" min="0" step="1">
                 <small id="hint-giacenza">pezzi</small>
             </div>
-            {{end}}
-            <div class="form-group">
-                <label for="giacenza_minima" id="label-giacenza-min">Giacenza Minima (alert)</label>
-                <input type="number" id="giacenza_minima" name="giacenza_minima" value="{{printf "%.2f" .Data.Prodotto.GiacenzaMinima}}" min="0" step="0.01">
-                <small id="hint-giacenza-min">pezzi</small>
-            </div>
         </div>
+        {{end}}
 
         <div class="form-group">
             <label for="note">Note</label>
@@ -146,20 +141,14 @@ function toggleOrigineFields() {
 function toggleCategoriaFields() {
     var categoria = document.getElementById('categoria').value;
     var hintGiacenza = document.getElementById('hint-giacenza');
-    var hintGiacenzaMin = document.getElementById('hint-giacenza-min');
     var giacenzaInput = document.getElementById('giacenza');
-    var giacenzaMinInput = document.getElementById('giacenza_minima');
 
     if (categoria === 'cavo') {
         if (hintGiacenza) hintGiacenza.textContent = 'metri';
-        if (hintGiacenzaMin) hintGiacenzaMin.textContent = 'metri';
-        if (giacenzaInput) giacenzaInput.step = '0.1';
-        if (giacenzaMinInput) giacenzaMinInput.step = '0.1';
+        if (giacenzaInput) giacenzaInput.step = '1';
     } else {
         if (hintGiacenza) hintGiacenza.textContent = 'pezzi';
-        if (hintGiacenzaMin) hintGiacenzaMin.textContent = 'pezzi';
         if (giacenzaInput) giacenzaInput.step = '1';
-        if (giacenzaMinInput) giacenzaMinInput.step = '1';
     }
 }
 

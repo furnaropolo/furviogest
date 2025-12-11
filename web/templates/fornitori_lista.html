@@ -13,11 +13,12 @@
     <table class="table">
         <thead>
             <tr>
-                <th>Nome</th>
-                <th>Indirizzo</th>
+                <th>Ragione Sociale</th>
+                <th>P.IVA</th>
+                <th>Città</th>
                 <th>Telefono</th>
                 <th>Email</th>
-                <th>Note</th>
+                <th>Referente</th>
                 {{if .Session.IsTecnico}}
                 <th>Azioni</th>
                 {{end}}
@@ -26,15 +27,16 @@
         <tbody>
             {{range .Data}}
             <tr>
-                <td>{{.Nome}}</td>
-                <td>{{.Indirizzo}}</td>
-                <td>{{.Telefono}}</td>
+                <td><strong>{{.Nome}}</strong></td>
+                <td>{{.PartitaIVA}}</td>
+                <td>{{.Citta}}{{if .Provincia}} ({{.Provincia}}){{end}}</td>
+                <td>{{if .Telefono}}<a href="tel:{{.Telefono}}">{{.Telefono}}</a>{{end}}</td>
                 <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
-                <td>{{.Note}}</td>
+                <td>{{.Referente}}{{if .TelefonoReferente}} - {{.TelefonoReferente}}{{end}}</td>
                 {{if $.Session.IsTecnico}}
                 <td class="table-actions">
                     <a href="/fornitori/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
-                    <a href="/fornitori/elimina/{{.ID}}" class="btn btn-sm btn-danger btn-delete" onclick="return confirm('Sei sicuro?')">Elimina</a>
+                    <button class="btn btn-sm btn-danger" onclick="confermaEliminazioneFornitore({{.ID}})">Elimina</button>
                 </td>
                 {{end}}
             </tr>
@@ -50,4 +52,111 @@
     {{end}}
 </div>
 {{end}}
+
+<!-- Modal conferma eliminazione -->
+<div id="modal-elimina" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Conferma Eliminazione Fornitore</h3>
+        <div id="modal-body">
+            <p>Stai per eliminare il fornitore <strong id="fornitore-nome"></strong>.</p>
+            <div id="info-ddt" style="display:none;">
+                <p class="text-warning"><strong>Verranno eliminati anche <span id="num-ddt"></span> DDT/Fatture in entrata.</strong></p>
+            </div>
+            <div id="prodotti-eliminati" style="display:none;">
+                <p class="text-danger"><strong>I seguenti prodotti verranno eliminati definitivamente:</strong></p>
+                <ul id="lista-prodotti-eliminati"></ul>
+            </div>
+            <p>Tutte le giacenze collegate verranno ripristinate.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModal()">Annulla</button>
+            <button class="btn btn-danger" id="btn-conferma-elimina">Elimina</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: var(--bg-primary);
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+.text-warning {
+    color: var(--warning);
+}
+.text-danger {
+    color: var(--danger);
+}
+</style>
+
+<script>
+var fornitoreIdDaEliminare = null;
+
+function confermaEliminazioneFornitore(id) {
+    fornitoreIdDaEliminare = id;
+    
+    // Carica info eliminazione
+    fetch('/api/fornitore/info-eliminazione?id=' + id)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('fornitore-nome').textContent = data.nome_fornitore;
+            
+            var infoDdt = document.getElementById('info-ddt');
+            if (data.num_ddt > 0) {
+                document.getElementById('num-ddt').textContent = data.num_ddt;
+                infoDdt.style.display = 'block';
+            } else {
+                infoDdt.style.display = 'none';
+            }
+            
+            var prodDiv = document.getElementById('prodotti-eliminati');
+            var prodLista = document.getElementById('lista-prodotti-eliminati');
+            prodLista.innerHTML = '';
+            
+            if (data.prodotti_eliminati && data.prodotti_eliminati.length > 0) {
+                prodDiv.style.display = 'block';
+                data.prodotti_eliminati.forEach(function(nome) {
+                    var li = document.createElement('li');
+                    li.textContent = nome;
+                    prodLista.appendChild(li);
+                });
+            } else {
+                prodDiv.style.display = 'none';
+            }
+            
+            document.getElementById('modal-elimina').style.display = 'flex';
+        });
+}
+
+function chiudiModal() {
+    document.getElementById('modal-elimina').style.display = 'none';
+    fornitoreIdDaEliminare = null;
+}
+
+document.getElementById('btn-conferma-elimina').onclick = function() {
+    if (fornitoreIdDaEliminare) {
+        window.location.href = '/fornitori/elimina/' + fornitoreIdDaEliminare;
+    }
+};
+</script>
 {{end}}
