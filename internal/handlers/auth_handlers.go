@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"furviogest/internal/auth"
 	"furviogest/internal/middleware"
 	"html/template"
@@ -47,6 +48,7 @@ func InitTemplates(templatesDir string) error {
 				}
 				return result
 			},
+			"euro": func(f float64) string { return strings.Replace(fmt.Sprintf("%.2f €", f), ".", ",", 1) },
 		}
 		tmpl, err := template.New(file.Name()).Funcs(funcMap).ParseFiles(baseFile, templateFile)
 		if err != nil {

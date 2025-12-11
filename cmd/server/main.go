@@ -299,6 +299,8 @@ func main() {
 	mux.Handle("/stampa-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.StampaNoteSpese)))
 	mux.Handle("/email-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailTrasferte)))
 	mux.Handle("/email-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.InviaEmailNoteSpese)))
+	mux.Handle("/download-pdf-trasferte", middleware.RequireAuth(http.HandlerFunc(handlers.DownloadPDFTrasferte)))
+	mux.Handle("/download-pdf-note-spese", middleware.RequireAuth(http.HandlerFunc(handlers.DownloadPDFNoteSpese)))
 	mux.Handle("/api/navi-compagnia", middleware.RequireAuth(http.HandlerFunc(handlers.APINaviCompagnia)))
 	// Guasti Nave
 	mux.Handle("/guasti-nave", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNaviGuasti)))

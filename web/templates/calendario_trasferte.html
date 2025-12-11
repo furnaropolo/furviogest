@@ -128,29 +128,36 @@
     </div>
 </div>
 
-
-<!-- Pulsanti Anteprima Documenti -->
+<!-- Pulsanti Documenti -->
 <div class="card mb-3">
     <div class="card-header">
         <h5>Documenti</h5>
     </div>
     <div class="card-body">
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-md-6">
-                <a href="/stampa-trasferte?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-primary">
-                    <i class="fas fa-file-alt"></i> Anteprima Foglio Trasferte
+                <h6>Foglio Trasferte</h6>
+                <a href="/stampa-trasferte?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-eye"></i> Anteprima
+                </a>
+                <a href="/download-pdf-trasferte?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Scarica PDF
                 </a>
             </div>
             <div class="col-md-6">
-                <a href="/stampa-note-spese?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-success">
-                    <i class="fas fa-file-invoice-dollar"></i> Anteprima Nota Spese
+                <h6>Nota Spese</h6>
+                <a href="/stampa-note-spese?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-outline-success me-2">
+                    <i class="fas fa-eye"></i> Anteprima
+                </a>
+                <a href="/download-pdf-note-spese?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="btn btn-success">
+                    <i class="fas fa-download"></i> Scarica PDF
                 </a>
             </div>
         </div>
     </div>
 </div>
 
-</div>
+
 
 <!-- Riepilogo Mensile -->
 <div class="row">

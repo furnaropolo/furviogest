@@ -1,0 +1,287 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Foglio Trasferte - {{.Data.NomeTecnico}} - {{.Data.NomeMese}} {{.Data.Anno}}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.3;
+            color: #000;
+            background: #fff;
+        }
+
+        /* Header aziendale */
+        .company-header {
+            display: table;
+            width: 100%;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #1565c0;
+        }
+        .company-left {
+            display: table-cell;
+            width: 15%;
+            vertical-align: middle;
+        }
+        .company-logo {
+            width: 70px;
+            height: auto;
+        }
+        .company-center {
+            display: table-cell;
+            width: 55%;
+            vertical-align: middle;
+        }
+        .company-center h2 {
+            font-size: 14pt;
+            color: #1565c0;
+            margin-bottom: 3px;
+        }
+        .company-center p {
+            font-size: 9pt;
+            color: #333;
+            margin: 1px 0;
+        }
+        .company-right {
+            display: table-cell;
+            width: 30%;
+            text-align: right;
+            vertical-align: middle;
+        }
+        .company-right h1 {
+            font-size: 14pt;
+            color: #1565c0;
+            margin-bottom: 5px;
+        }
+        .company-right p {
+            font-size: 10pt;
+        }
+
+        /* Calendario */
+        .calendario-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            table-layout: fixed;
+        }
+        .calendario-table th,
+        .calendario-table td {
+            border: 1px solid #333;
+            padding: 3px 2px;
+            text-align: center;
+            font-size: 8pt;
+            height: 45px;
+            vertical-align: top;
+            width: 14.28%;
+        }
+        .calendario-table th {
+            background: #1565c0;
+            color: white;
+            font-weight: bold;
+            height: auto;
+            padding: 5px;
+        }
+        .calendario-table th.weekend {
+            background: #c62828;
+        }
+        .giorno-vuoto {
+            background: #f5f5f5;
+        }
+        .giorno-numero {
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        .giorno-tipo {
+            font-size: 7pt;
+            margin-top: 2px;
+        }
+        .giorno-info {
+            font-size: 6pt;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tipo-ufficio { background: #ffffff; }
+        .tipo-trasferta_giornaliera { background: #fff3cd; }
+        .tipo-trasferta_pernotto { background: #c8e6c9; }
+        .tipo-trasferta_festiva { background: #ffcdd2; }
+        .tipo-ferie { background: #bbdefb; }
+        .tipo-permesso { background: #e1bee7; }
+        .festivo {
+            border-left: 3px solid #dc3545 !important;
+        }
+
+        /* Legenda */
+        .legenda {
+            margin: 10px 0;
+            font-size: 8pt;
+        }
+        .legenda-item {
+            display: inline-block;
+            margin-right: 15px;
+        }
+        .legenda-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #000;
+            vertical-align: middle;
+            margin-right: 3px;
+        }
+
+        /* Riepilogo */
+        .riepilogo {
+            margin-top: 15px;
+        }
+        .riepilogo h3 {
+            font-size: 11pt;
+            margin-bottom: 8px;
+            padding: 5px;
+            background: #1565c0;
+            color: white;
+        }
+        .riepilogo-table {
+            width: 50%;
+            border-collapse: collapse;
+        }
+        .riepilogo-table td {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            font-size: 9pt;
+        }
+        .riepilogo-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            width: 80px;
+        }
+
+        /* Firme */
+        .firma-section {
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+        }
+        .firma-box {
+            display: table-cell;
+            width: 50%;
+            text-align: center;
+        }
+        .firma-line {
+            border-top: 1px solid #000;
+            margin-top: 50px;
+            padding-top: 5px;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Aziendale -->
+    <div class="company-header">
+        <div class="company-left">
+            {{if .Data.AziendaLogo}}<img src="{{.Data.AziendaLogo}}" alt="Logo" class="company-logo">{{end}}
+        </div>
+        <div class="company-center">
+            <h2>{{.Data.Azienda}}</h2>
+            <p>{{.Data.AziendaIndirizzo}}</p>
+            <p>{{if .Data.AziendaPIVA}}P.IVA: {{.Data.AziendaPIVA}}{{end}}{{if .Data.AziendaTelefono}} - Tel: {{.Data.AziendaTelefono}}{{end}}</p>
+            <p>{{if .Data.AziendaEmail}}Email: {{.Data.AziendaEmail}}{{end}}</p>
+        </div>
+        <div class="company-right">
+            <h1>FOGLIO TRASFERTE</h1>
+            <p><strong>{{.Data.NomeTecnico}}</strong></p>
+            <p>{{.Data.NomeMese}} {{.Data.Anno}}</p>
+            <p style="font-size:8pt;color:#666;">Data stampa: {{.Data.DataStampa}}</p>
+        </div>
+    </div>
+
+    <!-- Calendario -->
+    <table class="calendario-table">
+        <thead>
+            <tr>
+                <th>Lun</th>
+                <th>Mar</th>
+                <th>Mer</th>
+                <th>Gio</th>
+                <th>Ven</th>
+                <th class="weekend">Sab</th>
+                <th class="weekend">Dom</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{$giorni := .Data.Giorni}}
+            {{range $i, $g := $giorni}}
+            {{if eq (mod $i 7) 0}}<tr>{{end}}
+
+            {{if eq $g.Giorno 0}}
+            <td class="giorno-vuoto"></td>
+            {{else}}
+            <td class="{{if $g.IsFestivo}}festivo{{end}} tipo-{{$g.TipoGiornata}}">
+                <div class="giorno-numero">{{$g.Giorno}}</div>
+                {{if $g.TipoGiornata}}
+                <div class="giorno-tipo">
+                    {{if eq $g.TipoGiornata "trasferta_giornaliera"}}T.G.{{end}}
+                    {{if eq $g.TipoGiornata "trasferta_pernotto"}}T.P.{{end}}
+                    {{if eq $g.TipoGiornata "trasferta_festiva"}}T.F.{{end}}
+                    {{if eq $g.TipoGiornata "ferie"}}FER{{end}}
+                    {{if eq $g.TipoGiornata "permesso"}}PER{{end}}
+                </div>
+                {{end}}
+                {{if $g.NomeNave}}
+                <div class="giorno-info">{{$g.NomeNave}}</div>
+                {{else if $g.Luogo}}
+                <div class="giorno-info">{{$g.Luogo}}</div>
+                {{end}}
+            </td>
+            {{end}}
+
+            {{if eq (mod (add $i 1) 7) 0}}</tr>{{end}}
+            {{end}}
+        </tbody>
+    </table>
+
+    <!-- Legenda -->
+    <div class="legenda">
+        <span class="legenda-item"><span class="legenda-color" style="background:#fff3cd;"></span> T.G. = Trasferta Giornaliera</span>
+        <span class="legenda-item"><span class="legenda-color" style="background:#c8e6c9;"></span> T.P. = Trasferta con Pernotto</span>
+        <span class="legenda-item"><span class="legenda-color" style="background:#ffcdd2;"></span> T.F. = Trasferta Festiva</span>
+        <span class="legenda-item"><span class="legenda-color" style="background:#bbdefb;"></span> FER = Ferie</span>
+        <span class="legenda-item"><span class="legenda-color" style="background:#e1bee7;"></span> PER = Permesso</span>
+    </div>
+
+    <!-- Riepilogo -->
+    <div class="riepilogo">
+        <h3>RIEPILOGO MENSILE</h3>
+        <table class="riepilogo-table">
+            <tr><td>Giorni in Ufficio</td><td>{{index .Data.RiepilogoGiorni "ufficio"}}</td></tr>
+            <tr><td>Trasferte Giornaliere</td><td>{{index .Data.RiepilogoGiorni "trasferta_giornaliera"}}</td></tr>
+            <tr><td>Trasferte con Pernotto</td><td>{{index .Data.RiepilogoGiorni "trasferta_pernotto"}}</td></tr>
+            <tr><td>Trasferte Festive</td><td>{{index .Data.RiepilogoGiorni "trasferta_festiva"}}</td></tr>
+            <tr><td>Ferie</td><td>{{index .Data.RiepilogoGiorni "ferie"}}</td></tr>
+            <tr><td>Ore Permesso</td><td>{{.Data.OrePermesso}}</td></tr>
+        </table>
+    </div>
+
+    <!-- Firme -->
+    <div class="firma-section">
+        <div class="firma-box">
+            <div class="firma-line">Firma Dipendente</div>
+        </div>
+        <div class="firma-box">
+            <div class="firma-line">Firma Responsabile</div>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

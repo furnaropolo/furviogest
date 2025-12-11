@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 	"log"
+	"os"
+	"os/exec"
 )
 
 // SpesaDettaglio per la stampa
@@ -401,6 +403,7 @@ func generaHTMLEmail(templateName string, data map[string]interface{}) (string, 
 	funcMap := template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"mod": func(a, b int) int { return a % b },
+		"euro": func(f float64) string { return strings.Replace(fmt.Sprintf("%.2f €", f), ".", ",", 1) },
 	}
 
 	tmpl, err := template.New(templateName).Funcs(funcMap).ParseFiles(
@@ -461,4 +464,524 @@ func inviaEmail(destinatari, subject, htmlBody string) error {
 	addr := fmt.Sprintf("%s:%d", smtpServer, smtpPort)
 
 	return smtp.SendMail(addr, auth, smtpUser, to, msg.Bytes())
+}
+
+// generaPDFConWkhtmltopdf genera un PDF da HTML usando wkhtmltopdf
+func generaPDFConWkhtmltopdf(htmlContent string) ([]byte, error) {
+	// Crea file HTML temporaneo
+	tmpHTML, err := os.CreateTemp("", "pdf_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp HTML: %v", err)
+	}
+	tmpHTMLName := tmpHTML.Name()
+	defer os.Remove(tmpHTMLName)
+
+	// Scrivi HTML
+	_, err = tmpHTML.WriteString(htmlContent)
+	tmpHTML.Close()
+	if err != nil {
+		return nil, fmt.Errorf("errore scrittura HTML: %v", err)
+	}
+
+	// Crea file PDF temporaneo
+	tmpPDF, err := os.CreateTemp("", "pdf_*.pdf")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp PDF: %v", err)
+	}
+	tmpPDFName := tmpPDF.Name()
+	tmpPDF.Close()
+	defer os.Remove(tmpPDFName)
+
+	// Esegui wkhtmltopdf
+	cmd := exec.Command("wkhtmltopdf",
+		"--enable-local-file-access",
+		"--page-size", "A4",
+		"--margin-top", "10mm",
+		"--margin-bottom", "10mm",
+		"--margin-left", "15mm",
+		"--margin-right", "15mm",
+		"--encoding", "UTF-8",
+		tmpHTMLName,
+		tmpPDFName)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("wkhtmltopdf error: %v, output: %s", err, string(output))
+	}
+
+	// Leggi PDF
+	return os.ReadFile(tmpPDFName)
+}
+
+// generaPDFConFooter genera PDF con footer per numerazione pagine
+func generaPDFConFooter(htmlContent string) ([]byte, error) {
+	// Crea file HTML temporaneo
+	tmpHTML, err := os.CreateTemp("", "pdf_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp HTML: %v", err)
+	}
+	tmpHTMLName := tmpHTML.Name()
+	defer os.Remove(tmpHTMLName)
+
+	// Scrivi HTML
+	_, err = tmpHTML.WriteString(htmlContent)
+	tmpHTML.Close()
+	if err != nil {
+		return nil, fmt.Errorf("errore scrittura HTML: %v", err)
+	}
+
+	// Crea file PDF temporaneo
+	tmpPDF, err := os.CreateTemp("", "pdf_*.pdf")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp PDF: %v", err)
+	}
+	tmpPDFName := tmpPDF.Name()
+	tmpPDF.Close()
+	defer os.Remove(tmpPDFName)
+
+	// Esegui wkhtmltopdf con footer per numerazione pagine
+	cmd := exec.Command("wkhtmltopdf",
+		"--enable-local-file-access",
+		"--page-size", "A4",
+		"--margin-top", "10mm",
+		"--margin-bottom", "20mm",
+		"--margin-left", "15mm",
+		"--margin-right", "15mm",
+		"--encoding", "UTF-8",
+		"--footer-right", "Pag. [page]/[topage]",
+		"--footer-font-size", "8",
+		"--footer-spacing", "5",
+		tmpHTMLName,
+		tmpPDFName)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("wkhtmltopdf error: %v, output: %s", err, string(output))
+	}
+
+	// Leggi PDF
+	return os.ReadFile(tmpPDFName)
+}
+
+// DownloadPDFTrasferte genera e scarica il PDF delle trasferte usando wkhtmltopdf
+func DownloadPDFTrasferte(w http.ResponseWriter, r *http.Request) {
+	session := middleware.GetSession(r)
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	anno, _ := strconv.Atoi(r.URL.Query().Get("anno"))
+	mese, _ := strconv.Atoi(r.URL.Query().Get("mese"))
+	tecnicoID, _ := strconv.ParseInt(r.URL.Query().Get("tecnico"), 10, 64)
+
+	if anno == 0 || mese == 0 {
+		now := time.Now()
+		anno = now.Year()
+		mese = int(now.Month())
+	}
+	if tecnicoID == 0 {
+		tecnicoID = session.UserID
+	}
+	if !session.IsTecnico() {
+		tecnicoID = session.UserID
+	}
+
+	// Carica dati
+	data := preparaDatiStampaTrasferte(tecnicoID, anno, mese)
+	
+	// Fix logo path per wkhtmltopdf - usa path assoluto
+	if logoPath, ok := data["AziendaLogo"].(string); ok && logoPath != "" {
+		if !strings.HasPrefix(logoPath, "/home/") {
+			data["AziendaLogo"] = "/home/ies/furviogest/" + strings.TrimPrefix(logoPath, "/")
+		}
+	}
+
+	// Genera HTML
+	pageData := PageData{
+		Title:   "Foglio Trasferte",
+		Session: session,
+		Data:    data,
+	}
+
+	// Render template
+	funcMap := template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+		"mod": func(a, b int) int { return a % b },
+		"euro": func(f float64) string { return strings.Replace(fmt.Sprintf("%.2f €", f), ".", ",", 1) },
+	}
+
+	tmpl, err := template.New("trasferte_pdf.html").Funcs(funcMap).ParseFiles("web/templates/trasferte_pdf.html")
+	if err != nil {
+		log.Printf("Errore parse template trasferte PDF: %v", err)
+		http.Error(w, "Errore template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "base", pageData)
+	if err != nil {
+		log.Printf("Errore execute template trasferte PDF: %v", err)
+		http.Error(w, "Errore rendering: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Genera PDF con footer per numerazione pagine
+	pdfData, err := generaPDFConFooter(buf.String())
+	if err != nil {
+		log.Printf("Errore generazione PDF trasferte: %v", err)
+		http.Error(w, "Errore generazione PDF: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Invia PDF
+	nomeTecnico := data["NomeTecnico"].(string)
+	nomeTecnico = strings.ReplaceAll(nomeTecnico, " ", "_")
+	nomeMese := data["NomeMese"].(string)
+	filename := fmt.Sprintf("Trasferte_%s_%s_%d.pdf", nomeTecnico, nomeMese, anno)
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(pdfData)))
+	w.Write(pdfData)
+}
+
+// DownloadPDFNoteSpese genera e scarica il PDF delle note spese usando wkhtmltopdf
+func DownloadPDFNoteSpese(w http.ResponseWriter, r *http.Request) {
+	session := middleware.GetSession(r)
+	if session == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	anno, _ := strconv.Atoi(r.URL.Query().Get("anno"))
+	mese, _ := strconv.Atoi(r.URL.Query().Get("mese"))
+	tecnicoID, _ := strconv.ParseInt(r.URL.Query().Get("tecnico"), 10, 64)
+
+	if anno == 0 || mese == 0 {
+		now := time.Now()
+		anno = now.Year()
+		mese = int(now.Month())
+	}
+	if tecnicoID == 0 {
+		tecnicoID = session.UserID
+	}
+	if !session.IsTecnico() {
+		tecnicoID = session.UserID
+	}
+
+	// Carica dati
+	data := preparaDatiStampaNoteSpese(tecnicoID, anno, mese)
+
+	// Fix logo path per wkhtmltopdf - usa path assoluto
+	logoPath := ""
+	if lp, ok := data["AziendaLogo"].(string); ok && lp != "" {
+		if !strings.HasPrefix(lp, "/home/") {
+			logoPath = "/home/ies/furviogest/" + strings.TrimPrefix(lp, "/")
+		} else {
+			logoPath = lp
+		}
+		data["AziendaLogo"] = logoPath
+	}
+
+	// Genera header HTML per ripetizione su ogni pagina
+	headerHTML := generaHeaderNoteSpese(data, logoPath)
+
+	// Genera HTML body
+	pageData := PageData{
+		Title:   "Nota Spese",
+		Session: session,
+		Data:    data,
+	}
+
+	funcMap := template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+		"mod": func(a, b int) int { return a % b },
+		"euro": func(f float64) string { return strings.Replace(fmt.Sprintf("%.2f €", f), ".", ",", 1) },
+	}
+
+	tmpl, err := template.New("notespese_pdf.html").Funcs(funcMap).ParseFiles("web/templates/notespese_pdf.html")
+	if err != nil {
+		log.Printf("Errore parse template note spese PDF: %v", err)
+		http.Error(w, "Errore template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "base", pageData)
+	if err != nil {
+		log.Printf("Errore execute template note spese PDF: %v", err)
+		http.Error(w, "Errore rendering: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Genera PDF con header ripetuto su ogni pagina
+	pdfData, err := generaPDFConHeaderRipetuto(buf.String(), headerHTML)
+	if err != nil {
+		log.Printf("Errore generazione PDF note spese: %v", err)
+		http.Error(w, "Errore generazione PDF: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Invia PDF
+	nomeTecnico := data["NomeTecnico"].(string)
+	nomeTecnico = strings.ReplaceAll(nomeTecnico, " ", "_")
+	nomeMese := data["NomeMese"].(string)
+	filename := fmt.Sprintf("NoteSpese_%s_%s_%d.pdf", nomeTecnico, nomeMese, anno)
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(pdfData)))
+	w.Write(pdfData)
+}
+
+// generaHeaderNoteSpese genera l HTML dell header per le note spese
+func generaHeaderNoteSpese(data map[string]interface{}, logoPath string) string {
+	azienda := ""
+	if a, ok := data["Azienda"].(string); ok {
+		azienda = a
+	}
+	indirizzo := ""
+	if i, ok := data["AziendaIndirizzo"].(string); ok {
+		indirizzo = i
+	}
+	pivaTel := ""
+	if p, ok := data["AziendaPIVA"].(string); ok && p != "" {
+		pivaTel = "P.IVA: " + p
+	}
+	if t, ok := data["AziendaTelefono"].(string); ok && t != "" {
+		if pivaTel != "" {
+			pivaTel += " - "
+		}
+		pivaTel += "Tel: " + t
+	}
+	tecnico := ""
+	if t, ok := data["NomeTecnico"].(string); ok {
+		tecnico = t
+	}
+	periodo := ""
+	if m, ok := data["NomeMese"].(string); ok {
+		periodo = m
+	}
+	if a, ok := data["Anno"].(int); ok {
+		periodo += fmt.Sprintf(" %d", a)
+	}
+
+	logoHTML := ""
+	if logoPath != "" {
+		logoHTML = fmt.Sprintf(`<img src="%s" alt="Logo">`, logoPath)
+	}
+
+	return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; width: 100%%; }
+        .header-container {
+            display: table;
+            width: 100%%;
+            padding: 3mm 0;
+            border-bottom: 2px solid #1565c0;
+        }
+        .header-left {
+            display: table-cell;
+            width: 15%%;
+            vertical-align: middle;
+        }
+        .header-left img {
+            max-width: 50px;
+            max-height: 35px;
+        }
+        .header-center {
+            display: table-cell;
+            width: 50%%;
+            vertical-align: middle;
+        }
+        .header-center .company-name {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #1565c0;
+        }
+        .header-center p {
+            font-size: 7pt;
+            color: #333;
+            margin: 0;
+        }
+        .header-right {
+            display: table-cell;
+            width: 35%%;
+            text-align: right;
+            vertical-align: middle;
+        }
+        .header-right .title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #1565c0;
+        }
+        .header-right p {
+            font-size: 8pt;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <div class="header-left">
+            %s
+        </div>
+        <div class="header-center">
+            <div class="company-name">%s</div>
+            <p>%s</p>
+            <p>%s</p>
+        </div>
+        <div class="header-right">
+            <div class="title">NOTA SPESE - Pag. <span id="page"></span>/<span id="topage"></span></div>
+            <p><strong>%s</strong></p>
+            <p>%s</p>
+        </div>
+    </div>
+    <script>
+        var vars = {};
+        var query_strings_from_url = document.location.search.substring(1).split("&");
+        for (var query_string in query_strings_from_url) {
+            if (query_strings_from_url.hasOwnProperty(query_string)) {
+                var temp_var = query_strings_from_url[query_string].split("=");
+                vars[temp_var[0]] = decodeURIComponent(temp_var[1]);
+            }
+        }
+        document.getElementById("page").innerHTML = vars.page || "";
+        document.getElementById("topage").innerHTML = vars.topage || "";
+    </script>
+</body>
+</html>`, logoHTML, azienda, indirizzo, pivaTel, tecnico, periodo)
+}
+
+// generaPDFConHeader genera un PDF da HTML usando wkhtmltopdf con un header personalizzato
+func generaPDFConHeader(htmlContent, headerHTML string) ([]byte, error) {
+	// Crea file HTML temporaneo per il body
+	tmpHTML, err := os.CreateTemp("", "pdf_body_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp HTML: %v", err)
+	}
+	tmpHTMLName := tmpHTML.Name()
+	defer os.Remove(tmpHTMLName)
+
+	_, err = tmpHTML.WriteString(htmlContent)
+	tmpHTML.Close()
+	if err != nil {
+		return nil, fmt.Errorf("errore scrittura HTML: %v", err)
+	}
+
+	// Crea file HTML temporaneo per header
+	tmpHeader, err := os.CreateTemp("", "pdf_header_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp header: %v", err)
+	}
+	tmpHeaderName := tmpHeader.Name()
+	defer os.Remove(tmpHeaderName)
+
+	_, err = tmpHeader.WriteString(headerHTML)
+	tmpHeader.Close()
+	if err != nil {
+		return nil, fmt.Errorf("errore scrittura header: %v", err)
+	}
+
+	// Crea file PDF temporaneo
+	tmpPDF, err := os.CreateTemp("", "pdf_*.pdf")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp PDF: %v", err)
+	}
+	tmpPDFName := tmpPDF.Name()
+	tmpPDF.Close()
+	defer os.Remove(tmpPDFName)
+
+	// Esegui wkhtmltopdf con header
+	cmd := exec.Command("wkhtmltopdf",
+		"--enable-local-file-access",
+		"--page-size", "A4",
+		"--margin-top", "25mm",
+		"--margin-bottom", "20mm",
+		"--margin-left", "15mm",
+		"--margin-right", "15mm",
+		"--encoding", "UTF-8",
+		"--enable-javascript",
+		"--javascript-delay", "100",
+		"--header-html", tmpHeaderName,
+		"--header-spacing", "5",
+		tmpHTMLName,
+		tmpPDFName)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("wkhtmltopdf error: %v, output: %s", err, string(output))
+	}
+
+	// Leggi PDF
+	return os.ReadFile(tmpPDFName)
+}
+
+// generaPDFConHeaderRipetuto genera PDF con header ripetuto su ogni pagina
+func generaPDFConHeaderRipetuto(htmlContent string, headerHTML string) ([]byte, error) {
+	// Crea file HTML temporaneo per il body
+	tmpHTML, err := os.CreateTemp("", "pdf_body_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp HTML: %v", err)
+	}
+	tmpHTMLName := tmpHTML.Name()
+	defer os.Remove(tmpHTMLName)
+
+	_, err = tmpHTML.WriteString(htmlContent)
+	tmpHTML.Close()
+	if err != nil {
+		return nil, fmt.Errorf("errore scrittura HTML: %v", err)
+	}
+
+	// Crea file HTML temporaneo per header
+	tmpHeader, err := os.CreateTemp("", "pdf_header_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp header: %v", err)
+	}
+	tmpHeaderName := tmpHeader.Name()
+	defer os.Remove(tmpHeaderName)
+
+	_, err = tmpHeader.WriteString(headerHTML)
+	tmpHeader.Close()
+	if err != nil {
+		return nil, fmt.Errorf("errore scrittura header: %v", err)
+	}
+
+	// Crea file PDF temporaneo
+	tmpPDF, err := os.CreateTemp("", "pdf_*.pdf")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file temp PDF: %v", err)
+	}
+	tmpPDFName := tmpPDF.Name()
+	tmpPDF.Close()
+	defer os.Remove(tmpPDFName)
+
+	// Esegui wkhtmltopdf con header
+	cmd := exec.Command("wkhtmltopdf",
+		"--enable-local-file-access",
+		"--enable-javascript",
+		"--javascript-delay", "100",
+		"--page-size", "A4",
+		"--margin-top", "35mm",
+		"--margin-bottom", "15mm",
+		"--margin-left", "15mm",
+		"--margin-right", "15mm",
+		"--encoding", "UTF-8",
+		"--header-html", tmpHeaderName,
+		"--header-spacing", "5",
+		tmpHTMLName,
+		tmpPDFName)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("wkhtmltopdf error: %v, output: %s", err, string(output))
+	}
+
+	// Leggi PDF
+	return os.ReadFile(tmpPDFName)
 }
