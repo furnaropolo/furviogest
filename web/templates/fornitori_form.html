@@ -7,18 +7,10 @@
 
 <div class="form-container">
     <form method="POST" class="form">
-        <!-- Riga P.IVA con ricerca -->
         <div class="form-row">
             <div class="form-group" style="flex: 2;">
                 <label for="partita_iva">Partita IVA</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="partita_iva" name="partita_iva" value="{{if .Data}}{{.Data.PartitaIVA}}{{end}}" placeholder="Es: IT01234567890" style="flex: 1;">
-                    <button type="button" class="btn btn-secondary" onclick="cercaPartitaIVA()" id="btn-cerca-piva">
-                        <span id="piva-spinner" style="display:none;">⏳</span>
-                        <span id="piva-text">Cerca</span>
-                    </button>
-                </div>
-                <small id="piva-result" style="color: var(--text-secondary);"></small>
+                <input type="text" id="partita_iva" name="partita_iva" value="{{if .Data}}{{.Data.PartitaIVA}}{{end}}" style="text-transform: uppercase;">
             </div>
             <div class="form-group">
                 <label for="codice_fiscale">Codice Fiscale</label>
@@ -94,70 +86,11 @@
 </div>
 
 <script>
-function cercaPartitaIVA() {
-    var piva = document.getElementById('partita_iva').value.trim().toUpperCase();
-    var resultEl = document.getElementById('piva-result');
-    var spinner = document.getElementById('piva-spinner');
-    var text = document.getElementById('piva-text');
-    var btn = document.getElementById('btn-cerca-piva');
-    
-    if (!piva) {
-        resultEl.textContent = 'Inserisci una partita IVA';
-        resultEl.style.color = 'var(--danger)';
-        return;
-    }
-    
-    // Rimuovi prefisso paese se presente per VIES
-    var countryCode = 'IT';
-    var vatNumber = piva;
-    if (piva.length > 2 && /^[A-Z]{2}/.test(piva)) {
-        countryCode = piva.substring(0, 2);
-        vatNumber = piva.substring(2);
-    }
-    
-    // Mostra spinner
-    spinner.style.display = 'inline';
-    text.textContent = 'Ricerca...';
-    btn.disabled = true;
-    resultEl.textContent = '';
-    
-    // Chiama API interna per verifica VIES
-    fetch('/api/verifica-piva?country=' + countryCode + '&vat=' + vatNumber)
-        .then(response => response.json())
-        .then(data => {
-            spinner.style.display = 'none';
-            text.textContent = 'Cerca';
-            btn.disabled = false;
-            
-            if (data.valid) {
-                resultEl.textContent = '✓ P.IVA valida';
-                resultEl.style.color = 'var(--success)';
-                
-                // Compila i campi se disponibili
-                if (data.name) {
-                    document.getElementById('nome').value = data.name;
-                }
-                if (data.address) {
-                    // Prova a parsare l'indirizzo
-                    var addr = data.address;
-                    document.getElementById('indirizzo').value = addr;
-                }
-            } else {
-                resultEl.textContent = '✗ P.IVA non valida o non trovata';
-                resultEl.style.color = 'var(--danger)';
-            }
-        })
-        .catch(error => {
-            spinner.style.display = 'none';
-            text.textContent = 'Cerca';
-            btn.disabled = false;
-            resultEl.textContent = 'Errore nella ricerca: ' + error.message;
-            resultEl.style.color = 'var(--danger)';
-        });
-}
-
-// Auto uppercase per partita IVA
+// Auto uppercase per partita IVA e codice fiscale
 document.getElementById('partita_iva').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+});
+document.getElementById('codice_fiscale').addEventListener('input', function() {
     this.value = this.value.toUpperCase();
 });
 </script>
