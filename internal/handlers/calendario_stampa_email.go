@@ -182,11 +182,12 @@ func preparaDatiStampaTrasferte(tecnicoID int64, anno, mese int) map[string]inte
 		"RiepilogoGiorni": map[string]int{
 			"ufficio":              int(riepilogo["giorni_ufficio"]),
 			"trasferta_giornaliera": int(riepilogo["giorni_trasferta_giornaliera"]),
-			"trasferta_pernotto":    int(riepilogo["giorni_trasferta_pernotto"]),
+			"trasferta_pernotto":    int(riepilogo["notti_pernotto"]),
 			"trasferta_festiva":     int(riepilogo["giorni_trasferta_festiva"]),
 			"ferie":                 int(riepilogo["giorni_ferie"]),
 		},
 		"TotaleTrasferte": totaleTrasferte,
+		"OrePermesso":     int(riepilogo["ore_permesso"]),
 	}
 }
 

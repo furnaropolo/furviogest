@@ -189,6 +189,7 @@
         .tipo-trasferta_pernotto { background: #d4edda; }
         .tipo-trasferta_festiva { background: #f8d7da; }
         .tipo-ferie { background: #cce5ff; }
+        .tipo-permesso { background: #e2d5f7; }
         .festivo {
             border-left: 3px solid #dc3545 !important;
         }
@@ -329,11 +330,11 @@
                     <div class="giorno-numero">{{$g.Giorno}}</div>
                     {{if $g.TipoGiornata}}
                     <div class="giorno-tipo">
-                        {{if eq $g.TipoGiornata "ufficio"}}UFF{{end}}
                         {{if eq $g.TipoGiornata "trasferta_giornaliera"}}T.G.{{end}}
                         {{if eq $g.TipoGiornata "trasferta_pernotto"}}T.P.{{end}}
                         {{if eq $g.TipoGiornata "trasferta_festiva"}}T.F.{{end}}
                         {{if eq $g.TipoGiornata "ferie"}}FER{{end}}
+                        {{if eq $g.TipoGiornata "permesso"}}PER{{end}}
                     </div>
                     {{end}}
                     {{if $g.NomeNave}}
@@ -351,11 +352,11 @@
 
         <!-- Legenda -->
         <div class="legenda">
-            <div class="legenda-item"><div class="legenda-color" style="background:#fff;"></div> UFF = Ufficio</div>
             <div class="legenda-item"><div class="legenda-color" style="background:#fff3cd;"></div> T.G. = Trasferta Giornaliera</div>
             <div class="legenda-item"><div class="legenda-color" style="background:#d4edda;"></div> T.P. = Trasferta con Pernotto</div>
             <div class="legenda-item"><div class="legenda-color" style="background:#f8d7da;"></div> T.F. = Trasferta Festiva</div>
             <div class="legenda-item"><div class="legenda-color" style="background:#cce5ff;"></div> FER = Ferie</div>
+            <div class="legenda-item"><div class="legenda-color" style="background:#e2d5f7;"></div> PER = Permesso</div>
         </div>
 
         <!-- Riepilogo -->
@@ -367,7 +368,7 @@
                 <tr><td>Trasferte con Pernotto</td><td>{{index .Data.RiepilogoGiorni "trasferta_pernotto"}}</td></tr>
                 <tr><td>Trasferte Festive</td><td>{{index .Data.RiepilogoGiorni "trasferta_festiva"}}</td></tr>
                 <tr><td>Ferie</td><td>{{index .Data.RiepilogoGiorni "ferie"}}</td></tr>
-                <tr style="background:#e0e0e0;"><td><strong>TOTALE GIORNI TRASFERTA</strong></td><td><strong>{{.Data.TotaleTrasferte}}</strong></td></tr>
+                <tr><td>Ore Permesso</td><td>{{.Data.OrePermesso}}</td></tr>
             </table>
         </div>
 

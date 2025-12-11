@@ -215,7 +215,7 @@ func CalendarioTrasferte(w http.ResponseWriter, r *http.Request) {
 		RiepilogoGiorni: map[string]int{
 			"ufficio":              int(riepilogo["giorni_ufficio"]),
 			"trasferta_giornaliera": int(riepilogo["giorni_trasferta_giornaliera"]),
-			"trasferta_pernotto":    max(0, int(riepilogo["giorni_trasferta_pernotto"])-1),
+			"trasferta_pernotto":    int(riepilogo["notti_pernotto"]),
 			"trasferta_festiva":     int(riepilogo["giorni_trasferta_festiva"]),
 			"ferie":                 int(riepilogo["giorni_ferie"]),
 		},
@@ -461,9 +461,70 @@ func calcolaRiepilogoMese(tecnicoID int64, anno, mese int) map[string]float64 {
 	altriGiorni := int(riepilogo["giorni_trasferta_giornaliera"] + riepilogo["giorni_trasferta_pernotto"] + riepilogo["giorni_trasferta_festiva"] + riepilogo["giorni_ferie"] + riepilogo["giorni_permesso"])
 	riepilogo["giorni_ufficio"] = float64(giorniLavorativi - altriGiorni)
 
+	// Calcola pernottamenti effettivi (notti, non giorni)
+	riepilogo["notti_pernotto"] = float64(calcolaPernottamenti(tecnicoID, anno, mese))
+
 	return riepilogo
 }
 
+// calcolaPernottamenti conta le notti effettive raggruppando i giorni consecutivi con pernotto
+func calcolaPernottamenti(tecnicoID int64, anno, mese int) int {
+	// Carica tutte le date con trasferta_pernotto ordinate
+	query := `
+		SELECT data FROM calendario_giornate
+		WHERE tecnico_id = ? AND strftime('%Y', data) = ? AND strftime('%m', data) = ?
+		AND tipo_giornata = 'trasferta_pernotto'
+		ORDER BY data
+	`
+	rows, err := database.DB.Query(query, tecnicoID, fmt.Sprintf("%04d", anno), fmt.Sprintf("%02d", mese))
+	if err != nil {
+		return 0
+	}
+	defer rows.Close()
+
+	var date []time.Time
+	for rows.Next() {
+		var dataStr string
+		rows.Scan(&dataStr)
+		// Parse data (può essere YYYY-MM-DD o con timestamp)
+		if len(dataStr) > 10 {
+			dataStr = dataStr[:10]
+		}
+		t, err := time.Parse("2006-01-02", dataStr)
+		if err == nil {
+			date = append(date, t)
+		}
+	}
+
+	if len(date) == 0 {
+		return 0
+	}
+
+	// Raggruppa giorni consecutivi e calcola notti
+	totaleNotti := 0
+	giorniNelBlocco := 1
+
+	for i := 1; i < len(date); i++ {
+		// Differenza in giorni tra data corrente e precedente
+		diff := date[i].Sub(date[i-1]).Hours() / 24
+		
+		if diff == 1 {
+			// Giorno consecutivo, stesso blocco
+			giorniNelBlocco++
+		} else {
+			// Nuovo blocco - calcola notti del blocco precedente
+			totaleNotti += giorniNelBlocco - 1
+			giorniNelBlocco = 1
+		}
+	}
+	
+	// Aggiungi notti dell ultimo blocco
+	totaleNotti += giorniNelBlocco - 1
+
+	return totaleNotti
+}
+
+// SalvaGiornataReq struttura richiesta salvataggio giornata
 // SalvaGiornataReq struttura richiesta salvataggio giornata
 type SalvaGiornataReq struct {
 	Data         string `json:"data"`
