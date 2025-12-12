@@ -1,0 +1,278 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>DDT {{.Data.DDT.Numero}}/{{.Data.DDT.Anno}}
+        {{if .Data.DDT.Annullato}}<span class="badge bg-danger">ANNULLATO</span>{{end}}
+    </h1>
+    <div>
+        {{if not .Data.DDT.Annullato}}
+        <a href="/ddt-uscita/modifica/{{.Data.DDT.ID}}" class="btn btn-warning">Modifica</a>
+        <a href="/ddt-uscita/pdf/{{.Data.DDT.ID}}" class="btn btn-secondary" target="_blank">Stampa PDF</a>
+        <button class="btn btn-danger" onclick="confermaAnnullamento()">Annulla DDT</button>
+        {{end}}
+        <a href="/ddt-uscita" class="btn btn-outline-secondary">Torna alla Lista</a>
+    </div>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+<!-- Dati DDT -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Dati Documento</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Data:</strong> {{.Data.DDT.DataDocumento.Format "02/01/2006"}}</p>
+                <p><strong>Destinatario:</strong> {{.Data.DDT.NomeCliente}}</p>
+                {{if .Data.Cliente.Indirizzo}}
+                <p><strong>Indirizzo:</strong> {{.Data.Cliente.Indirizzo}}, {{.Data.Cliente.CAP}} {{.Data.Cliente.Citta}} ({{.Data.Cliente.Provincia}})</p>
+                {{end}}
+                {{if .Data.DDT.Destinazione}}
+                <p><strong>Destinazione:</strong><br>{{.Data.DDT.Destinazione}}</p>
+                {{end}}
+            </div>
+            <div class="col-md-6">
+                <p><strong>Causale:</strong> {{.Data.DDT.Causale}}</p>
+                <p><strong>Porto:</strong> {{.Data.DDT.Porto}}</p>
+                <p><strong>Incaricato Trasporto:</strong> {{.Data.DDT.IncaricatoTrasporto}}</p>
+                <p><strong>Aspetto Beni:</strong> {{.Data.DDT.AspettoBeni}}</p>
+                {{if .Data.DDT.NrColli}}<p><strong>Nr. Colli:</strong> {{.Data.DDT.NrColli}}</p>{{end}}
+                {{if .Data.DDT.Peso}}<p><strong>Peso:</strong> {{.Data.DDT.Peso}}</p>{{end}}
+                {{if .Data.DDT.DataOraTrasporto}}<p><strong>Data/Ora Trasporto:</strong> {{.Data.DDT.DataOraTrasporto.Format "02/01/2006 15:04"}}</p>{{end}}
+            </div>
+        </div>
+        {{if .Data.DDT.Note}}
+        <p><strong>Note:</strong> {{.Data.DDT.Note}}</p>
+        {{end}}
+    </div>
+</div>
+
+<!-- Righe DDT -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>Prodotti</h5>
+    </div>
+    <div class="card-body">
+        {{if not .Data.DDT.Annullato}}
+        <!-- Form aggiungi prodotto -->
+        <div class="mb-4 p-3 bg-light rounded">
+            <h6>Aggiungi Prodotto</h6>
+            <form method="POST" action="/ddt-uscita/riga/aggiungi" class="row g-3 align-items-end">
+                <input type="hidden" name="ddt_id" value="{{.Data.DDT.ID}}">
+                <div class="col-md-5">
+                    <label class="form-label">Cerca Prodotto (codice o nome)</label>
+                    <input type="text" id="ricerca_prodotto" class="form-control" placeholder="Digita per cercare..." autocomplete="off">
+                    <input type="hidden" id="prodotto_id" name="prodotto_id">
+                    <div id="risultati_ricerca" class="position-absolute bg-white border rounded shadow" style="display:none; z-index:1000; max-height:300px; overflow-y:auto; width:100%;"></div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Prodotto Selezionato</label>
+                    <input type="text" id="prodotto_selezionato" class="form-control" readonly placeholder="Nessun prodotto selezionato">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Quantita</label>
+                    <input type="number" id="quantita" name="quantita" class="form-control" min="0.01" step="0.01" value="1">
+                    <small id="giacenza_info" class="text-muted"></small>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success" id="btn_aggiungi" disabled>Aggiungi</button>
+                </div>
+            </form>
+        </div>
+        {{end}}
+
+        <!-- Tabella righe -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Codice</th>
+                    <th>Descrizione</th>
+                    <th>Quantita</th>
+                    <th>U.M.</th>
+                    {{if not .Data.DDT.Annullato}}<th>Azioni</th>{{end}}
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Data.DDT.Righe}}
+                <tr>
+                    <td>{{.CodiceProdotto}}</td>
+                    <td>{{.NomeProdotto}}</td>
+                    <td>{{.Quantita}}</td>
+                    <td>{{.UnitaMisura}}</td>
+                    {{if not $.Data.DDT.Annullato}}
+                    <td>
+                        <a href="/ddt-uscita/riga/elimina/{{.ID}}" class="btn btn-sm btn-danger" onclick="return confirm('Rimuovere questo prodotto? La giacenza verra ripristinata.')">Rimuovi</a>
+                    </td>
+                    {{end}}
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="{{if .Data.DDT.Annullato}}4{{else}}5{{end}}" class="text-center">Nessun prodotto inserito</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal annullamento -->
+<div id="modalAnnulla" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>Conferma Annullamento DDT</h3>
+        <p>Stai per annullare il DDT <strong>{{.Data.DDT.Numero}}/{{.Data.DDT.Anno}}</strong>.</p>
+        <p class="text-warning">Le giacenze dei prodotti verranno ripristinate.</p>
+        <p>Questa operazione non puo essere annullata.</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModalAnnulla()">Annulla</button>
+            <a href="/ddt-uscita/annulla/{{.Data.DDT.ID}}" class="btn btn-danger">Conferma Annullamento</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.modal-content h3 {
+    margin-top: 0;
+    color: #333;
+}
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+#risultati_ricerca .item-risultato {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+#risultati_ricerca .item-risultato:hover {
+    background-color: #f0f0f0;
+}
+</style>
+
+<script>
+function confermaAnnullamento() {
+    document.getElementById('modalAnnulla').style.display = 'flex';
+}
+
+function chiudiModalAnnulla() {
+    document.getElementById('modalAnnulla').style.display = 'none';
+}
+
+document.getElementById('modalAnnulla').addEventListener('click', function(e) {
+    if (e.target === this) {
+        chiudiModalAnnulla();
+    }
+});
+
+// Ricerca prodotti
+let timeoutRicerca;
+const inputRicerca = document.getElementById('ricerca_prodotto');
+const risultatiDiv = document.getElementById('risultati_ricerca');
+const prodottoIdInput = document.getElementById('prodotto_id');
+const prodottoSelezionato = document.getElementById('prodotto_selezionato');
+const giacenzaInfo = document.getElementById('giacenza_info');
+const btnAggiungi = document.getElementById('btn_aggiungi');
+const quantitaInput = document.getElementById('quantita');
+
+let giacenzaSelezionata = 0;
+
+if (inputRicerca) {
+    inputRicerca.addEventListener('input', function() {
+        clearTimeout(timeoutRicerca);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            risultatiDiv.style.display = 'none';
+            return;
+        }
+        
+        timeoutRicerca = setTimeout(function() {
+            fetch('/api/ddt-uscita/cerca-prodotti?q=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    risultatiDiv.innerHTML = '';
+                    if (data && data.length > 0) {
+                        data.forEach(function(p) {
+                            const div = document.createElement('div');
+                            div.className = 'item-risultato';
+                            div.innerHTML = '<strong>' + p.codice + '</strong> - ' + p.nome + 
+                                           '<br><small class="text-muted">Giacenza: ' + p.giacenza + ' ' + p.unita_misura + 
+                                           (p.fornitore ? ' | Fornitore: ' + p.fornitore : '') + '</small>';
+                            div.onclick = function() {
+                                selezionaProdotto(p);
+                            };
+                            risultatiDiv.appendChild(div);
+                        });
+                        risultatiDiv.style.display = 'block';
+                    } else {
+                        risultatiDiv.innerHTML = '<div class="p-3 text-muted">Nessun prodotto trovato</div>';
+                        risultatiDiv.style.display = 'block';
+                    }
+                });
+        }, 300);
+    });
+}
+
+function selezionaProdotto(p) {
+    prodottoIdInput.value = p.id;
+    prodottoSelezionato.value = p.codice + ' - ' + p.nome;
+    giacenzaSelezionata = p.giacenza;
+    giacenzaInfo.textContent = 'Disponibile: ' + p.giacenza + ' ' + p.unita_misura;
+    quantitaInput.max = p.giacenza;
+    risultatiDiv.style.display = 'none';
+    inputRicerca.value = '';
+    btnAggiungi.disabled = false;
+    validaQuantita();
+}
+
+if (quantitaInput) {
+    quantitaInput.addEventListener('input', validaQuantita);
+}
+
+function validaQuantita() {
+    const qta = parseFloat(quantitaInput.value) || 0;
+    if (qta > giacenzaSelezionata) {
+        quantitaInput.classList.add('is-invalid');
+        btnAggiungi.disabled = true;
+    } else if (qta <= 0) {
+        btnAggiungi.disabled = true;
+    } else {
+        quantitaInput.classList.remove('is-invalid');
+        btnAggiungi.disabled = !prodottoIdInput.value;
+    }
+}
+
+// Chiudi risultati cliccando fuori
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#ricerca_prodotto') && !e.target.closest('#risultati_ricerca')) {
+        risultatiDiv.style.display = 'none';
+    }
+});
+</script>
+{{end}}

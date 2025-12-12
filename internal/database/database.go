@@ -661,3 +661,82 @@ func AddMonitoringTables() error {
 	_, err := DB.Exec(schema)
 	return err
 }
+
+// AddClientiTable aggiunge la tabella clienti
+func AddClientiTable() error {
+	schema := `
+	-- Tabella clienti (destinatari DDT uscita)
+	CREATE TABLE IF NOT EXISTS clienti (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nome TEXT NOT NULL,
+		partita_iva TEXT,
+		codice_fiscale TEXT,
+		indirizzo TEXT,
+		cap TEXT,
+		citta TEXT,
+		provincia TEXT,
+		nazione TEXT DEFAULT 'Italia',
+		telefono TEXT,
+		cellulare TEXT,
+		email TEXT,
+		referente TEXT,
+		telefono_referente TEXT,
+		note TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_clienti_nome ON clienti(nome);
+	`
+
+	_, err := DB.Exec(schema)
+	return err
+}
+
+// AddDDTUscitaTable aggiunge le tabelle per DDT uscita magazzino
+func AddDDTUscitaTable() error {
+	schema := `
+	-- Tabella DDT Uscita (merce in uscita dal magazzino)
+	CREATE TABLE IF NOT EXISTS ddt_uscita (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		numero TEXT NOT NULL,
+		anno INTEGER NOT NULL,
+		data_documento DATE NOT NULL,
+		cliente_id INTEGER NOT NULL,
+		destinazione TEXT,
+		causale TEXT NOT NULL DEFAULT 'C/Lavorazione',
+		porto TEXT NOT NULL DEFAULT 'Franco',
+		aspetto_beni TEXT NOT NULL DEFAULT 'Scatole',
+		nr_colli INTEGER,
+		peso TEXT,
+		data_ora_trasporto DATETIME,
+		incaricato_trasporto TEXT NOT NULL DEFAULT 'Mittente',
+		note TEXT,
+		annullato INTEGER NOT NULL DEFAULT 0,
+		data_annullamento DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE RESTRICT,
+		UNIQUE(numero, anno)
+	);
+
+	-- Tabella righe DDT Uscita
+	CREATE TABLE IF NOT EXISTS righe_ddt_uscita (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ddt_uscita_id INTEGER NOT NULL,
+		prodotto_id INTEGER NOT NULL,
+		quantita REAL NOT NULL,
+		descrizione TEXT,
+		FOREIGN KEY (ddt_uscita_id) REFERENCES ddt_uscita(id) ON DELETE CASCADE,
+		FOREIGN KEY (prodotto_id) REFERENCES prodotti(id) ON DELETE RESTRICT
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_ddt_uscita_numero ON ddt_uscita(numero, anno);
+	CREATE INDEX IF NOT EXISTS idx_ddt_uscita_cliente ON ddt_uscita(cliente_id);
+	CREATE INDEX IF NOT EXISTS idx_ddt_uscita_data ON ddt_uscita(data_documento);
+	CREATE INDEX IF NOT EXISTS idx_righe_ddt_uscita_ddt ON righe_ddt_uscita(ddt_uscita_id);
+	`
+
+	_, err := DB.Exec(schema)
+	return err
+}

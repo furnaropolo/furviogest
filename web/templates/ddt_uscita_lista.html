@@ -1,0 +1,95 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>DDT Uscita Magazzino</h1>
+    <a href="/ddt-uscita/nuovo" class="btn btn-primary">Nuovo DDT</a>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+{{if .Success}}
+<div class="alert alert-success">{{.Success}}</div>
+{{end}}
+
+<!-- Filtri -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Anno</label>
+                <select name="anno" class="form-select">
+                    {{range .Data.Anni}}
+                    <option value="{{.}}" {{if eq . $.Data.AnnoSelezionato}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Cliente</label>
+                <select name="cliente_id" class="form-select">
+                    <option value="">-- Tutti --</option>
+                    {{range .Data.Clienti}}
+                    <option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.ClienteSelezionato}}selected{{end}}>{{.Nome}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check">
+                    <input type="checkbox" name="annullati" value="1" class="form-check-input" id="mostraAnnullati" {{if .Data.MostraAnnullati}}checked{{end}}>
+                    <label class="form-check-label" for="mostraAnnullati">Mostra annullati</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary">Filtra</button>
+                <a href="/ddt-uscita" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Numero</th>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Destinazione</th>
+                <th>Causale</th>
+                <th>Stato</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data.DDT}}
+            <tr {{if .Annullato}}class="table-secondary text-decoration-line-through"{{end}}>
+                <td><strong>{{.Numero}}/{{.Anno}}</strong></td>
+                <td>{{.DataDocumento.Format "02/01/2006"}}</td>
+                <td>{{.NomeCliente}}</td>
+                <td>{{if .Destinazione}}{{.Destinazione}}{{else}}-{{end}}</td>
+                <td>{{.Causale}}</td>
+                <td>
+                    {{if .Annullato}}
+                    <span class="badge bg-danger">Annullato</span>
+                    {{else}}
+                    <span class="badge bg-success">Valido</span>
+                    {{end}}
+                </td>
+                <td>
+                    <a href="/ddt-uscita/dettaglio/{{.ID}}" class="btn btn-sm btn-info">Dettaglio</a>
+                    {{if not .Annullato}}
+                    <a href="/ddt-uscita/pdf/{{.ID}}" class="btn btn-sm btn-secondary" target="_blank">PDF</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="7" class="text-center">Nessun DDT presente per i filtri selezionati</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

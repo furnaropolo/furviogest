@@ -1,0 +1,117 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Gestione Clienti</h1>
+    <a href="/clienti/nuovo" class="btn btn-primary">Nuovo Cliente</a>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+{{if .Success}}
+<div class="alert alert-success">{{.Success}}</div>
+{{end}}
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Ragione Sociale</th>
+                <th>P.IVA</th>
+                <th>Città</th>
+                <th>Telefono</th>
+                <th>Email</th>
+                <th>Referente</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Data}}
+            <tr>
+                <td>{{.Nome}}</td>
+                <td>{{.PartitaIVA}}</td>
+                <td>{{if .Citta}}{{.Citta}}{{if .Provincia}} ({{.Provincia}}){{end}}{{end}}</td>
+                <td>{{.Telefono}}</td>
+                <td>{{if .Email}}<a href="mailto:{{.Email}}">{{.Email}}</a>{{end}}</td>
+                <td>{{.Referente}}</td>
+                <td>
+                    <a href="/clienti/modifica/{{.ID}}" class="btn btn-sm btn-warning">Modifica</a>
+                    <button class="btn btn-sm btn-danger" onclick="confermaEliminazioneCliente({{.ID}}, '{{.Nome}}')">Elimina</button>
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="7" class="text-center">Nessun cliente presente</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal conferma eliminazione -->
+<div id="modalEliminaCliente" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>Conferma Eliminazione Cliente</h3>
+        <p>Stai per eliminare il cliente <strong id="nomeClienteEliminare"></strong>.</p>
+        <p>Questa operazione non può essere annullata.</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModalCliente()">Annulla</button>
+            <a id="btnConfermaEliminaCliente" href="#" class="btn btn-danger">Elimina</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.modal-content h3 {
+    margin-top: 0;
+    color: #333;
+}
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+</style>
+
+<script>
+function confermaEliminazioneCliente(id, nome) {
+    document.getElementById('nomeClienteEliminare').textContent = nome;
+    document.getElementById('btnConfermaEliminaCliente').href = '/clienti/elimina/' + id;
+    document.getElementById('modalEliminaCliente').style.display = 'flex';
+}
+
+function chiudiModalCliente() {
+    document.getElementById('modalEliminaCliente').style.display = 'none';
+}
+
+// Chiudi modal cliccando fuori
+document.getElementById('modalEliminaCliente').addEventListener('click', function(e) {
+    if (e.target === this) {
+        chiudiModalCliente();
+    }
+});
+</script>
+{{end}}

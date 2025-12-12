@@ -1,0 +1,165 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>{{if .Data.DDT}}Modifica DDT {{.Data.DDT.Numero}}/{{.Data.DDT.Anno}}{{else}}Nuovo DDT Uscita{{end}}</h1>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+<div class="form-container">
+    <form method="POST" class="form">
+        {{if not .Data.DDT}}
+        <!-- Solo per nuovo DDT -->
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label for="numero">Numero DDT *</label>
+                <input type="text" id="numero" name="numero" value="{{.Data.ProssimoNumero}}" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="anno">Anno *</label>
+                <input type="number" id="anno" name="anno" value="{{.Data.Anno}}" required>
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label for="data_documento">Data Documento *</label>
+                <input type="date" id="data_documento" name="data_documento" value="{{.Data.DataDocumento}}" required>
+            </div>
+        </div>
+        {{else}}
+        <div class="form-group">
+            <label for="data_documento">Data Documento *</label>
+            <input type="date" id="data_documento" name="data_documento" value="{{.Data.DDT.DataDocumento.Format "2006-01-02"}}" required>
+        </div>
+        {{end}}
+
+        <div class="form-group">
+            <label for="cliente_id">Cliente (Destinatario) *</label>
+            <select id="cliente_id" name="cliente_id" class="form-select" required>
+                <option value="">-- Seleziona Cliente --</option>
+                {{range .Data.Clienti}}
+                <option value="{{.ID}}" {{if $.Data.DDT}}{{if eq .ID $.Data.DDT.ClienteID}}selected{{end}}{{end}}>{{.Nome}}</option>
+                {{end}}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="destinazione">Destinazione (se diversa dal cliente)</label>
+            <textarea id="destinazione" name="destinazione" rows="2" placeholder="Es: M/N Cruise Roma c/o Porto di Civitavecchia - Agenzia XYZ">{{if .Data.DDT}}{{.Data.DDT.Destinazione}}{{end}}</textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="causale">Causale Trasporto *</label>
+                <select id="causale" name="causale" class="form-select" onchange="toggleCausaleCustom()">
+                    <option value="C/Lavorazione" {{if .Data.DDT}}{{if eq .Data.DDT.Causale "C/Lavorazione"}}selected{{end}}{{end}}>C/Lavorazione</option>
+                    <option value="Vendita" {{if .Data.DDT}}{{if eq .Data.DDT.Causale "Vendita"}}selected{{end}}{{end}}>Vendita</option>
+                    <option value="altro">Altro (specifica)...</option>
+                </select>
+            </div>
+            <div class="form-group" id="causaleCustomGroup" style="display:none;">
+                <label for="causale_custom">Causale Personalizzata</label>
+                <input type="text" id="causale_custom" name="causale_custom" placeholder="Specifica causale">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="porto">Porto</label>
+                <select id="porto" name="porto" class="form-select">
+                    <option value="Franco" {{if .Data.DDT}}{{if eq .Data.DDT.Porto "Franco"}}selected{{end}}{{else}}selected{{end}}>Franco</option>
+                    <option value="Assegnato" {{if .Data.DDT}}{{if eq .Data.DDT.Porto "Assegnato"}}selected{{end}}{{end}}>Assegnato</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="incaricato_trasporto">Incaricato Trasporto</label>
+                <select id="incaricato_trasporto" name="incaricato_trasporto" class="form-select">
+                    <option value="Mittente" {{if .Data.DDT}}{{if eq .Data.DDT.IncaricatoTrasporto "Mittente"}}selected{{end}}{{else}}selected{{end}}>Mittente</option>
+                    <option value="Vettore" {{if .Data.DDT}}{{if eq .Data.DDT.IncaricatoTrasporto "Vettore"}}selected{{end}}{{end}}>Vettore</option>
+                    <option value="Destinatario" {{if .Data.DDT}}{{if eq .Data.DDT.IncaricatoTrasporto "Destinatario"}}selected{{end}}{{end}}>Destinatario</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="aspetto_beni">Aspetto Esteriore Beni</label>
+                <select id="aspetto_beni" name="aspetto_beni" class="form-select" onchange="toggleAspettoCustom()">
+                    <option value="Scatole" {{if .Data.DDT}}{{if eq .Data.DDT.AspettoBeni "Scatole"}}selected{{end}}{{else}}selected{{end}}>Scatole</option>
+                    <option value="Pallets" {{if .Data.DDT}}{{if eq .Data.DDT.AspettoBeni "Pallets"}}selected{{end}}{{end}}>Pallets</option>
+                    <option value="altro">Altro (specifica)...</option>
+                </select>
+            </div>
+            <div class="form-group" id="aspettoCustomGroup" style="display:none;">
+                <label for="aspetto_beni_custom">Aspetto Personalizzato</label>
+                <input type="text" id="aspetto_beni_custom" name="aspetto_beni_custom" placeholder="Specifica aspetto beni">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="nr_colli">Nr. Colli</label>
+                <input type="number" id="nr_colli" name="nr_colli" min="0" value="{{if .Data.DDT}}{{.Data.DDT.NrColli}}{{end}}">
+            </div>
+            <div class="form-group">
+                <label for="peso">Peso</label>
+                <input type="text" id="peso" name="peso" placeholder="Es: 5 kg" value="{{if .Data.DDT}}{{.Data.DDT.Peso}}{{end}}">
+            </div>
+            <div class="form-group">
+                <label for="data_ora_trasporto">Data/Ora Inizio Trasporto</label>
+                <input type="datetime-local" id="data_ora_trasporto" name="data_ora_trasporto" value="{{if .Data.DDT}}{{if .Data.DDT.DataOraTrasporto}}{{.Data.DDT.DataOraTrasporto.Format "2006-01-02T15:04"}}{{end}}{{else}}{{.Data.DataOraTrasporto}}{{end}}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="note">Note</label>
+            <textarea id="note" name="note" rows="2">{{if .Data.DDT}}{{.Data.DDT.Note}}{{end}}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{{if .Data.DDT}}Salva Modifiche{{else}}Crea DDT{{end}}</button>
+            <a href="{{if .Data.DDT}}/ddt-uscita/dettaglio/{{.Data.DDT.ID}}{{else}}/ddt-uscita{{end}}" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleCausaleCustom() {
+    var sel = document.getElementById('causale');
+    var customGroup = document.getElementById('causaleCustomGroup');
+    if (sel.value === 'altro') {
+        customGroup.style.display = 'block';
+    } else {
+        customGroup.style.display = 'none';
+    }
+}
+
+function toggleAspettoCustom() {
+    var sel = document.getElementById('aspetto_beni');
+    var customGroup = document.getElementById('aspettoCustomGroup');
+    if (sel.value === 'altro') {
+        customGroup.style.display = 'block';
+    } else {
+        customGroup.style.display = 'none';
+    }
+}
+
+// Controlla se la causale o aspetto sono valori custom
+document.addEventListener('DOMContentLoaded', function() {
+    var causale = '{{if .Data.DDT}}{{.Data.DDT.Causale}}{{end}}';
+    if (causale && causale !== 'C/Lavorazione' && causale !== 'Vendita') {
+        document.getElementById('causale').value = 'altro';
+        document.getElementById('causale_custom').value = causale;
+        document.getElementById('causaleCustomGroup').style.display = 'block';
+    }
+    
+    var aspetto = '{{if .Data.DDT}}{{.Data.DDT.AspettoBeni}}{{end}}';
+    if (aspetto && aspetto !== 'Scatole' && aspetto !== 'Pallets') {
+        document.getElementById('aspetto_beni').value = 'altro';
+        document.getElementById('aspetto_beni_custom').value = aspetto;
+        document.getElementById('aspettoCustomGroup').style.display = 'block';
+    }
+});
+</script>
+{{end}}

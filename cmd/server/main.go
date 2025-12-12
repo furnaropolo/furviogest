@@ -59,6 +59,16 @@ func main() {
 		log.Println("Attenzione: errore creazione tabelle monitoraggio:", err)
 	}
 
+	// Crea tabella clienti
+	if err := database.AddClientiTable(); err != nil {
+		log.Println("Attenzione: errore creazione tabella clienti:", err)
+	}
+
+	// Crea tabelle DDT uscita
+	if err := database.AddDDTUscitaTable(); err != nil {
+		log.Println("Attenzione: errore creazione tabelle DDT uscita:", err)
+	}
+
 	// Inizializza i template
 	templatesDir := filepath.Join(baseDir, "web", "templates")
 	log.Println("Caricamento templates da:", templatesDir)
@@ -140,6 +150,11 @@ func main() {
 	mux.Handle("/navi/foto/", http.HandlerFunc(handlers.ServeNaveFoto))
 
 	// Anagrafica Navi
+	// Anagrafica Clienti
+	mux.Handle("/clienti", middleware.RequireAuth(http.HandlerFunc(handlers.ListaClienti)))
+	mux.Handle("/clienti/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoCliente))))
+	mux.Handle("/clienti/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaCliente))))
+	mux.Handle("/clienti/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaCliente))))
 	mux.Handle("/navi", middleware.RequireAuth(http.HandlerFunc(handlers.ListaNavi)))
 	mux.Handle("/navi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaNave))))
 	mux.Handle("/navi/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaNave))))
@@ -294,6 +309,17 @@ func main() {
 	mux.Handle("/note-spese/nuovo", middleware.RequireAuth(http.HandlerFunc(handlers.NuovaNotaSpesa)))
 	mux.Handle("/note-spese/modifica/", middleware.RequireAuth(http.HandlerFunc(handlers.ModificaNotaSpesa)))
 	mux.Handle("/note-spese/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaNotaSpesa))))
+
+	// DDT Uscita Magazzino
+	mux.Handle("/ddt-uscita", middleware.RequireAuth(http.HandlerFunc(handlers.ListaDDTUscita)))
+	mux.Handle("/ddt-uscita/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoDDTUscita))))
+	mux.Handle("/ddt-uscita/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioDDTUscita)))
+	mux.Handle("/ddt-uscita/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaDDTUscita))))
+	mux.Handle("/ddt-uscita/annulla/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AnnullaDDTUscita))))
+	mux.Handle("/ddt-uscita/riga/aggiungi", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AggiungiRigaDDTUscita))))
+	mux.Handle("/ddt-uscita/riga/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RimuoviRigaDDTUscita))))
+	mux.Handle("/api/ddt-uscita/cerca-prodotti", middleware.RequireAuth(http.HandlerFunc(handlers.APICercaProdottiDDT)))
+	mux.Handle("/ddt-uscita/pdf/", middleware.RequireAuth(http.HandlerFunc(handlers.PDFDDTUscita)))
 
 	// DDT Tecnici
 	mux.Handle("/ddt", middleware.RequireAuth(http.HandlerFunc(handlers.ListaDDT)))

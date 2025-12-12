@@ -566,3 +566,62 @@ type DDTEntrataRiga struct {
 	NomeProdotto      string  
 	CodiceProdotto    string  
 }
+
+// Cliente rappresenta un cliente destinatario DDT
+type Cliente struct {
+	ID               int64     `json:"id"`
+	Nome             string    `json:"nome"`
+	PartitaIVA       string    `json:"partita_iva"`
+	CodiceFiscale    string    `json:"codice_fiscale"`
+	Indirizzo        string    `json:"indirizzo"`
+	CAP              string    `json:"cap"`
+	Citta            string    `json:"citta"`
+	Provincia        string    `json:"provincia"`
+	Nazione          string    `json:"nazione"`
+	Telefono         string    `json:"telefono"`
+	Cellulare        string    `json:"cellulare"`
+	Email            string    `json:"email"`
+	Referente        string    `json:"referente"`
+	TelefonoReferente string   `json:"telefono_referente"`
+	Note             string    `json:"note"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// DDTUscita rappresenta un DDT in uscita dal magazzino
+type DDTUscita struct {
+	ID                  int64      `json:"id"`
+	Numero              string     `json:"numero"`
+	Anno                int        `json:"anno"`
+	DataDocumento       time.Time  `json:"data_documento"`
+	ClienteID           int64      `json:"cliente_id"`
+	Destinazione        string     `json:"destinazione"`
+	Causale             string     `json:"causale"`
+	Porto               string     `json:"porto"`
+	AspettoBeni         string     `json:"aspetto_beni"`
+	NrColli             int        `json:"nr_colli"`
+	Peso                string     `json:"peso"`
+	DataOraTrasporto    *time.Time `json:"data_ora_trasporto,omitempty"`
+	IncaricatoTrasporto string     `json:"incaricato_trasporto"`
+	Note                string     `json:"note"`
+	Annullato           bool       `json:"annullato"`
+	DataAnnullamento    *time.Time `json:"data_annullamento,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+	// Campi virtuali per join
+	NomeCliente         string     `json:"nome_cliente,omitempty"`
+	Righe               []RigaDDTUscita `json:"righe,omitempty"`
+}
+
+// RigaDDTUscita rappresenta una riga di un DDT uscita
+type RigaDDTUscita struct {
+	ID             int64   `json:"id"`
+	DDTUscitaID    int64   `json:"ddt_uscita_id"`
+	ProdottoID     int64   `json:"prodotto_id"`
+	Quantita       float64 `json:"quantita"`
+	Descrizione    string  `json:"descrizione"`
+	// Campi virtuali per join
+	CodiceProdotto string  `json:"codice_prodotto,omitempty"`
+	NomeProdotto   string  `json:"nome_prodotto,omitempty"`
+	UnitaMisura    string  `json:"unita_misura,omitempty"`
+}
