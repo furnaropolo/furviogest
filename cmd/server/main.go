@@ -316,6 +316,7 @@ func main() {
 	mux.Handle("/ddt-uscita/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioDDTUscita)))
 	mux.Handle("/ddt-uscita/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaDDTUscita))))
 	mux.Handle("/ddt-uscita/annulla/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AnnullaDDTUscita))))
+	mux.Handle("/ddt-uscita/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaDDTUscita))))
 	mux.Handle("/ddt-uscita/riga/aggiungi", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AggiungiRigaDDTUscita))))
 	mux.Handle("/ddt-uscita/riga/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RimuoviRigaDDTUscita))))
 	mux.Handle("/api/ddt-uscita/cerca-prodotti", middleware.RequireAuth(http.HandlerFunc(handlers.APICercaProdottiDDT)))

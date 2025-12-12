@@ -6,7 +6,9 @@
         {{if .Data.DDT.Annullato}}<span class="badge bg-danger">ANNULLATO</span>{{end}}
     </h1>
     <div>
-        {{if not .Data.DDT.Annullato}}
+        {{if .Data.DDT.Annullato}}
+        <button class="btn btn-danger" onclick="confermaEliminazione()">Elimina Definitivamente</button>
+        {{else}}
         <a href="/ddt-uscita/modifica/{{.Data.DDT.ID}}" class="btn btn-warning">Modifica</a>
         <a href="/ddt-uscita/pdf/{{.Data.DDT.ID}}" class="btn btn-secondary" target="_blank">Stampa PDF</a>
         <button class="btn btn-danger" onclick="confermaAnnullamento()">Annulla DDT</button>
@@ -134,6 +136,20 @@
     </div>
 </div>
 
+<!-- Modal eliminazione definitiva -->
+<div id="modalElimina" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>Conferma Eliminazione Definitiva</h3>
+        <p>Stai per eliminare definitivamente il DDT <strong>{{.Data.DDT.Numero}}/{{.Data.DDT.Anno}}</strong>.</p>
+        <p class="text-danger"><strong>Attenzione:</strong> Questa operazione e irreversibile!</p>
+        <p>Il DDT e tutte le sue righe verranno eliminati permanentemente dal database.</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="chiudiModalElimina()">Annulla</button>
+            <a href="/ddt-uscita/elimina/{{.Data.DDT.ID}}" class="btn btn-danger">Elimina Definitivamente</a>
+        </div>
+    </div>
+</div>
+
 <style>
 .modal-overlay {
     position: fixed;
@@ -184,11 +200,29 @@ function chiudiModalAnnulla() {
     document.getElementById('modalAnnulla').style.display = 'none';
 }
 
-document.getElementById('modalAnnulla').addEventListener('click', function(e) {
-    if (e.target === this) {
-        chiudiModalAnnulla();
-    }
-});
+function confermaEliminazione() {
+    document.getElementById('modalElimina').style.display = 'flex';
+}
+
+function chiudiModalElimina() {
+    document.getElementById('modalElimina').style.display = 'none';
+}
+
+if (document.getElementById('modalAnnulla')) {
+    document.getElementById('modalAnnulla').addEventListener('click', function(e) {
+        if (e.target === this) {
+            chiudiModalAnnulla();
+        }
+    });
+}
+
+if (document.getElementById('modalElimina')) {
+    document.getElementById('modalElimina').addEventListener('click', function(e) {
+        if (e.target === this) {
+            chiudiModalElimina();
+        }
+    });
+}
 
 // Ricerca prodotti
 let timeoutRicerca;

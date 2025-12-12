@@ -132,12 +132,12 @@ func NuovoDDTUscita(w http.ResponseWriter, r *http.Request) {
 	clienteIDStr := r.FormValue("cliente_id")
 	destinazione := strings.TrimSpace(r.FormValue("destinazione"))
 	causale := strings.TrimSpace(r.FormValue("causale"))
-	if causale == "" {
+	if causale == "" || causale == "altro" {
 		causale = r.FormValue("causale_custom")
 	}
 	porto := r.FormValue("porto")
 	aspettoBeni := strings.TrimSpace(r.FormValue("aspetto_beni"))
-	if aspettoBeni == "" {
+	if aspettoBeni == "" || aspettoBeni == "altro" {
 		aspettoBeni = r.FormValue("aspetto_beni_custom")
 	}
 	nrColliStr := r.FormValue("nr_colli")
@@ -324,12 +324,12 @@ func ModificaDDTUscita(w http.ResponseWriter, r *http.Request) {
 	clienteIDStr := r.FormValue("cliente_id")
 	destinazione := strings.TrimSpace(r.FormValue("destinazione"))
 	causale := strings.TrimSpace(r.FormValue("causale"))
-	if causale == "" {
+	if causale == "" || causale == "altro" {
 		causale = r.FormValue("causale_custom")
 	}
 	porto := r.FormValue("porto")
 	aspettoBeni := strings.TrimSpace(r.FormValue("aspetto_beni"))
-	if aspettoBeni == "" {
+	if aspettoBeni == "" || aspettoBeni == "altro" {
 		aspettoBeni = r.FormValue("aspetto_beni_custom")
 	}
 	nrColliStr := r.FormValue("nr_colli")
@@ -541,35 +541,26 @@ func APICercaProdottiDDT(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	query := r.URL.Query().Get("q")
-	fornitoreID := r.URL.Query().Get("fornitore_id")
 
-	if query == "" && fornitoreID == "" {
+	if query == "" {
 		json.NewEncoder(w).Encode([]interface{}{})
 		return
 	}
 
 	sqlQuery := `
-		SELECT p.id, p.codice, p.nome, p.giacenza, p.unita_misura, COALESCE(f.nome, '') as fornitore
-		FROM prodotti p
-		LEFT JOIN fornitori f ON p.fornitore_id = f.id
-		WHERE p.giacenza > 0
+		SELECT id, codice, nome, giacenza, unita_misura
+		FROM prodotti
+		WHERE giacenza > 0
 	`
 	args := []interface{}{}
 
 	if query != "" {
-		sqlQuery += " AND (p.codice LIKE ? OR p.nome LIKE ?)"
+		sqlQuery += " AND (codice LIKE ? OR nome LIKE ?)"
 		searchTerm := "%" + query + "%"
 		args = append(args, searchTerm, searchTerm)
 	}
 
-	if fornitoreID != "" {
-		if fid, err := strconv.ParseInt(fornitoreID, 10, 64); err == nil {
-			sqlQuery += " AND p.fornitore_id = ?"
-			args = append(args, fid)
-		}
-	}
-
-	sqlQuery += " ORDER BY p.nome LIMIT 50"
+	sqlQuery += " ORDER BY nome LIMIT 50"
 
 	rows, err := database.DB.Query(sqlQuery, args...)
 	if err != nil {
@@ -584,19 +575,71 @@ func APICercaProdottiDDT(w http.ResponseWriter, r *http.Request) {
 		Nome        string  `json:"nome"`
 		Giacenza    float64 `json:"giacenza"`
 		UnitaMisura string  `json:"unita_misura"`
-		Fornitore   string  `json:"fornitore"`
 	}
 
 	var prodotti []ProdottoRicerca
 	for rows.Next() {
 		var p ProdottoRicerca
-		if err := rows.Scan(&p.ID, &p.Codice, &p.Nome, &p.Giacenza, &p.UnitaMisura, &p.Fornitore); err != nil {
+		if err := rows.Scan(&p.ID, &p.Codice, &p.Nome, &p.Giacenza, &p.UnitaMisura); err != nil {
 			continue
 		}
 		prodotti = append(prodotti, p)
 	}
 
 	json.NewEncoder(w).Encode(prodotti)
+}
+
+// Elimina definitivamente un DDT annullato
+func EliminaDDTUscita(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Redirect(w, r, "/ddt-uscita?error=invalid_path", http.StatusSeeOther)
+		return
+	}
+	id, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/ddt-uscita?error=invalid_id", http.StatusSeeOther)
+		return
+	}
+
+	// Verifica che il DDT sia annullato
+	var annullato bool
+	err = database.DB.QueryRow("SELECT annullato FROM ddt_uscita WHERE id = ?", id).Scan(&annullato)
+	if err != nil {
+		http.Redirect(w, r, "/ddt-uscita?error=not_found", http.StatusSeeOther)
+		return
+	}
+
+	if !annullato {
+		http.Redirect(w, r, fmt.Sprintf("/ddt-uscita/dettaglio/%d?error=not_annullato", id), http.StatusSeeOther)
+		return
+	}
+
+	// Inizia transazione
+	tx, err := database.DB.Begin()
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/ddt-uscita/dettaglio/%d?error=db", id), http.StatusSeeOther)
+		return
+	}
+
+	// Elimina le righe del DDT
+	_, err = tx.Exec("DELETE FROM righe_ddt_uscita WHERE ddt_uscita_id = ?", id)
+	if err != nil {
+		tx.Rollback()
+		http.Redirect(w, r, fmt.Sprintf("/ddt-uscita/dettaglio/%d?error=delete_rows", id), http.StatusSeeOther)
+		return
+	}
+
+	// Elimina il DDT
+	_, err = tx.Exec("DELETE FROM ddt_uscita WHERE id = ?", id)
+	if err != nil {
+		tx.Rollback()
+		http.Redirect(w, r, fmt.Sprintf("/ddt-uscita/dettaglio/%d?error=delete_ddt", id), http.StatusSeeOther)
+		return
+	}
+
+	tx.Commit()
+	http.Redirect(w, r, "/ddt-uscita?deleted=1", http.StatusSeeOther)
 }
 
 // Helper functions
