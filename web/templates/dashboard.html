@@ -5,7 +5,7 @@
     <h1>Dashboard</h1>
     <p class="welcome-message">Benvenuto, {{.Session.Nome}} {{.Session.Cognome}}!</p>
 
-    {{if .Data.ErroreBackup}}
+    {{if and .Data .Data.ErroreBackup}}
     <div class="alert alert-warning" style="margin: 15px 0; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; display: flex; align-items: center; gap: 10px;">
         <span style="font-size: 24px;">&#9888;</span>
         <div>

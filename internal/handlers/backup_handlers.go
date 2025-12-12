@@ -102,6 +102,10 @@ func BackupPage(w http.ResponseWriter, r *http.Request) {
 			data.Success = "Configurazione salvata"
 		case "nas_test":
 			data.Success = "Connessione NAS riuscita"
+		case "nas_saved":
+			data.Success = "Connessione NAS testata e configurazione salvata con successo"
+		case "nas_disabled":
+			data.Success = "Backup su NAS disabilitato"
 		}
 	}
 	if msg := r.URL.Query().Get("error"); msg != "" {
@@ -534,53 +538,116 @@ func TestNAS(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/backup?success=nas_test", http.StatusSeeOther)
 }
 
-func testConnessioneNAS(path, username, password string) error {
-	// Crea mount point temporaneo
-	mountPoint, err := os.MkdirTemp("", "nas_test_")
-	if err != nil {
-		return fmt.Errorf("impossibile creare directory temporanea")
+// TestAndSaveNAS testa la connessione e se ok salva la configurazione
+func TestAndSaveNAS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/backup", http.StatusSeeOther)
+		return
 	}
-	defer os.RemoveAll(mountPoint)
 
-	// Prova mount CIFS/SMB
-	cmd := exec.Command("mount", "-t", "cifs", path, mountPoint,
-		"-o", fmt.Sprintf("username=%s,password=%s,vers=3.0", username, password))
+	nasPath := strings.TrimSpace(r.FormValue("nas_path"))
+	nasUsername := strings.TrimSpace(r.FormValue("nas_username"))
+	nasPassword := r.FormValue("nas_password")
+	retentionDays, _ := strconv.Atoi(r.FormValue("retention_days"))
+	if retentionDays < 1 {
+		retentionDays = 7
+	}
+
+	// Se password vuota, usa quella salvata
+	if nasPassword == "" {
+		var savedPassword string
+		database.DB.QueryRow("SELECT nas_password FROM backup_sistema_config WHERE id = 1").Scan(&savedPassword)
+		nasPassword = savedPassword
+	}
+
+	// Prima testa la connessione
+	err := testConnessioneNAS(nasPath, nasUsername, nasPassword)
+	if err != nil {
+		http.Redirect(w, r, "/backup?error=nas_test&detail="+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	// Test OK, salva la configurazione con NAS abilitato
+	_, err = database.DB.Exec(`
+		UPDATE backup_sistema_config
+		SET nas_abilitato = 1, nas_path = ?, nas_username = ?, nas_password = ?,
+		    retention_days = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = 1
+	`, nasPath, nasUsername, nasPassword, retentionDays)
+
+	if err != nil {
+		log.Printf("Errore salvataggio config backup: %v", err)
+		http.Redirect(w, r, "/backup?error=config", http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/backup?success=nas_saved", http.StatusSeeOther)
+}
+
+// DisableNAS disabilita il backup su NAS
+func DisableNAS(w http.ResponseWriter, r *http.Request) {
+	database.DB.Exec("UPDATE backup_sistema_config SET nas_abilitato = 0, updated_at = CURRENT_TIMESTAMP WHERE id = 1")
+	http.Redirect(w, r, "/backup?success=nas_disabled", http.StatusSeeOther)
+}
+
+// parseNASPath separa share e sottocartella dal percorso NAS
+// Input: //192.168.1.15/Operational/Ciccio/furvio
+// Output: share=//192.168.1.15/Operational, subdir=Ciccio/furvio
+func parseNASPath(fullPath string) (share string, subdir string) {
+	// Rimuovi // iniziale per il parsing
+	path := strings.TrimPrefix(fullPath, "//")
+	parts := strings.SplitN(path, "/", 3) // server, share, resto
+
+	if len(parts) >= 2 {
+		share = "//" + parts[0] + "/" + parts[1]
+	}
+	if len(parts) >= 3 {
+		subdir = parts[2]
+	}
+	return
+}
+
+func testConnessioneNAS(path, username, password string) error {
+	// Usa smbclient per testare la connessione (non richiede root)
+	share, subdir := parseNASPath(path)
+
+	// Prima testa connessione alla share
+	var cmd *exec.Cmd
+	if subdir != "" {
+		// Se c'è sottocartella, prova a listare quella
+		cmd = exec.Command("smbclient", share, "-U", username+"%"+password, "-c", fmt.Sprintf("cd %s; ls", subdir))
+	} else {
+		cmd = exec.Command("smbclient", share, "-U", username+"%"+password, "-c", "ls")
+	}
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("mount fallito: %s", string(output))
+		return fmt.Errorf("connessione fallita: %s", string(output))
 	}
-
-	// Unmount
-	exec.Command("umount", mountPoint).Run()
 
 	return nil
 }
 
 func copiaSuNAS(localPath string, config BackupConfig) error {
-	// Crea mount point
-	mountPoint := "/tmp/furviogest_nas_mount"
-	os.MkdirAll(mountPoint, 0755)
+	// Usa smbclient per copiare il file (non richiede root)
+	filename := filepath.Base(localPath)
+	share, subdir := parseNASPath(config.NasPath)
 
-	// Mount NAS
-	cmd := exec.Command("mount", "-t", "cifs", config.NasPath, mountPoint,
-		"-o", fmt.Sprintf("username=%s,password=%s,vers=3.0", config.NasUsername, config.NasPassword))
+	var cmdStr string
+	if subdir != "" {
+		// cd nella sottocartella e poi put
+		cmdStr = fmt.Sprintf("cd %s; put %s %s", subdir, localPath, filename)
+	} else {
+		cmdStr = fmt.Sprintf("put %s %s", localPath, filename)
+	}
+
+	cmd := exec.Command("smbclient", share,
+		"-U", config.NasUsername+"%"+config.NasPassword,
+		"-c", cmdStr)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("mount NAS fallito: %s", string(output))
-	}
-
-	// Copia file
-	filename := filepath.Base(localPath)
-	destPath := filepath.Join(mountPoint, filename)
-	err = copyFile(localPath, destPath)
-
-	// Unmount sempre
-	exec.Command("umount", mountPoint).Run()
-
-	if err != nil {
-		return fmt.Errorf("copia file fallita: %v", err)
+		return fmt.Errorf("copia NAS fallita: %s", string(output))
 	}
 
 	// Pulizia vecchi backup su NAS
@@ -590,27 +657,60 @@ func copiaSuNAS(localPath string, config BackupConfig) error {
 }
 
 func pulisciVecchiBackupNAS(config BackupConfig) {
-	mountPoint := "/tmp/furviogest_nas_mount"
-	os.MkdirAll(mountPoint, 0755)
+	share, subdir := parseNASPath(config.NasPath)
 
-	cmd := exec.Command("mount", "-t", "cifs", config.NasPath, mountPoint,
-		"-o", fmt.Sprintf("username=%s,password=%s,vers=3.0", config.NasUsername, config.NasPassword))
+	// Lista file su NAS
+	var cmdStr string
+	if subdir != "" {
+		cmdStr = fmt.Sprintf("cd %s; ls furviogest_*.tar.gz", subdir)
+	} else {
+		cmdStr = "ls furviogest_*.tar.gz"
+	}
 
-	if err := cmd.Run(); err != nil {
+	cmd := exec.Command("smbclient", share,
+		"-U", config.NasUsername+"%"+config.NasPassword,
+		"-c", cmdStr)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
 		return
 	}
-	defer exec.Command("umount", mountPoint).Run()
 
+	// Parse output e trova file vecchi da eliminare
 	cutoffDate := time.Now().AddDate(0, 0, -config.RetentionDays)
+	lines := strings.Split(string(output), "\n")
 
-	files, _ := os.ReadDir(mountPoint)
-	for _, f := range files {
-		if strings.HasPrefix(f.Name(), "furviogest_") && strings.HasSuffix(f.Name(), ".tar.gz") {
-			info, err := f.Info()
-			if err == nil && info.ModTime().Before(cutoffDate) {
-				os.Remove(filepath.Join(mountPoint, f.Name()))
+	var filesToDelete []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "furviogest_") && strings.Contains(line, ".tar.gz") {
+			// Estrai nome file (prima colonna)
+			parts := strings.Fields(line)
+			if len(parts) > 0 {
+				filename := parts[0]
+				// Estrai data dal nome: furviogest_2025-12-12_15-31-34.tar.gz
+				namePart := strings.TrimPrefix(filename, "furviogest_")
+				namePart = strings.TrimSuffix(namePart, ".tar.gz")
+				if fileDate, err := time.Parse("2006-01-02_15-04-05", namePart); err == nil {
+					if fileDate.Before(cutoffDate) {
+						filesToDelete = append(filesToDelete, filename)
+					}
+				}
 			}
 		}
+	}
+
+	// Elimina file vecchi
+	for _, f := range filesToDelete {
+		var delCmd string
+		if subdir != "" {
+			delCmd = fmt.Sprintf("cd %s; del %s", subdir, f)
+		} else {
+			delCmd = fmt.Sprintf("del %s", f)
+		}
+		exec.Command("smbclient", share,
+			"-U", config.NasUsername+"%"+config.NasPassword,
+			"-c", delCmd).Run()
 	}
 }
 

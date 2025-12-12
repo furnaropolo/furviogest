@@ -198,6 +198,8 @@ func main() {
 	mux.Handle("/backup/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadBackup))))
 	mux.Handle("/backup/config", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.SalvaConfigBackup))))
 	mux.Handle("/backup/test-nas", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.TestNAS))))
+	mux.Handle("/backup/test-and-save", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.TestAndSaveNAS))))
+	mux.Handle("/backup/disable-nas", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.DisableNAS))))
 	mux.Handle("/backup/download/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.DownloadBackup))))
 	mux.Handle("/api/backup/automatico", http.HandlerFunc(handlers.APIBackupAutomatico))
 	mux.Handle("/azienda/logo", middleware.RequireAuth(http.HandlerFunc(handlers.ServeLogoAzienda)))

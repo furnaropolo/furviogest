@@ -132,52 +132,77 @@
         <!-- Configurazione NAS -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0">Configurazione Backup su NAS</h5>
+                <h5 class="mb-0">Backup su NAS</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="/backup/config" id="configForm">
-                    <div class="form-check mb-3">
-                        <input type="checkbox" class="form-check-input" id="nas_abilitato" name="nas_abilitato" value="1"
-                            {{if .Data.Config.NasAbilitato}}checked{{end}} onchange="toggleNasFields()">
-                        <label class="form-check-label" for="nas_abilitato">
-                            <strong>Abilita backup su NAS</strong>
-                        </label>
-                    </div>
+                {{if .Data.Config.NasAbilitato}}
+                <!-- NAS Abilitato - Mostra riepilogo -->
+                <div class="alert alert-success d-flex align-items-center mb-3">
+                    <span style="font-size: 20px; margin-right: 10px;">&#10004;</span>
+                    <strong>Backup su NAS abilitato</strong>
+                </div>
+                <p><strong>Percorso:</strong> {{.Data.Config.NasPath}}</p>
+                <p><strong>Username:</strong> {{.Data.Config.NasUsername}}</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-warning" onclick="mostraFormNAS()">Modifica</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="disabilitaNAS()">Elimina</button>
+                </div>
 
-                    <div id="nasFields" {{if not .Data.Config.NasAbilitato}}style="display:none"{{end}}>
+                <!-- Form nascosto per modifica -->
+                <div id="nasEditForm" style="display:none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <h6>Modifica configurazione NAS</h6>
+                    <form method="POST" action="/backup/config" id="configForm">
+                        <input type="hidden" name="nas_abilitato" value="1">
                         <div class="mb-3">
                             <label class="form-label">Percorso NAS (SMB/CIFS)</label>
-                            <input type="text" name="nas_path" class="form-control"
-                                   placeholder="//192.168.1.100/backup" value="{{.Data.Config.NasPath}}">
-                            <div class="form-text">Esempio: //192.168.1.100/cartella_backup</div>
+                            <input type="text" name="nas_path" class="form-control" value="{{.Data.Config.NasPath}}">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Username</label>
-                            <input type="text" name="nas_username" class="form-control"
-                                   value="{{.Data.Config.NasUsername}}">
+                            <input type="text" name="nas_username" class="form-control" value="{{.Data.Config.NasUsername}}">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" name="nas_password" class="form-control"
-                                   placeholder="{{if .Data.Config.NasPassword}}(password salvata){{else}}Inserisci password{{end}}">
-                            <div class="form-text">Lascia vuoto per mantenere la password attuale</div>
+                            <input type="password" name="nas_password" class="form-control" placeholder="(lascia vuoto per mantenere)">
                         </div>
-                        <button type="button" class="btn btn-outline-info mb-3" onclick="testNAS()">
-                            Test Connessione
-                        </button>
+                        <div class="mb-3">
+                            <label class="form-label">Giorni di retention</label>
+                            <input type="number" name="retention_days" class="form-control" style="width: 100px;" value="{{.Data.Config.RetentionDays}}" min="1" max="365">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-info" onclick="testNAS()">Test</button>
+                            <button type="button" class="btn btn-primary" onclick="testAndSaveNAS()">Testa e Salva</button>
+                            <button type="button" class="btn btn-secondary" onclick="nascondiFormNAS()">Annulla</button>
+                        </div>
+                    </form>
+                </div>
+                {{else}}
+                <!-- NAS Non configurato - Mostra form -->
+                <p class="text-muted">Il backup su NAS non e configurato. Configura una destinazione NAS per avere una copia di sicurezza remota.</p>
+                <form method="POST" action="/backup/config" id="configForm">
+                    <div class="mb-3">
+                        <label class="form-label">Percorso NAS (SMB/CIFS)</label>
+                        <input type="text" name="nas_path" class="form-control" placeholder="//192.168.1.100/backup/furviogest">
+                        <div class="form-text">Esempio: //192.168.1.15/Operational/Ciccio/furvio</div>
                     </div>
-
-                    <hr>
-
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="nas_username" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="nas_password" class="form-control">
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Giorni di retention</label>
-                        <input type="number" name="retention_days" class="form-control" style="width: 100px;"
-                               value="{{.Data.Config.RetentionDays}}" min="1" max="365">
-                        <div class="form-text">I backup piu vecchi verranno eliminati automaticamente</div>
+                        <input type="number" name="retention_days" class="form-control" style="width: 100px;" value="{{.Data.Config.RetentionDays}}" min="1" max="365">
                     </div>
-
-                    <button type="submit" class="btn btn-success">Salva Configurazione</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-info" onclick="testNAS()">Test Connessione</button>
+                        <button type="button" class="btn btn-primary" onclick="testAndSaveNAS()">Testa e Salva</button>
+                    </div>
                 </form>
+                {{end}}
             </div>
         </div>
 
@@ -253,19 +278,30 @@
 </style>
 
 <script>
-function toggleNasFields() {
-    var enabled = document.getElementById('nas_abilitato').checked;
-    document.getElementById('nasFields').style.display = enabled ? 'block' : 'none';
+function mostraFormNAS() {
+    document.getElementById('nasEditForm').style.display = 'block';
+}
+
+function nascondiFormNAS() {
+    document.getElementById('nasEditForm').style.display = 'none';
 }
 
 function testNAS() {
     var form = document.getElementById('configForm');
-    var formData = new FormData(form);
-
-    // Cambia action temporaneamente
-    var originalAction = form.action;
     form.action = '/backup/test-nas';
     form.submit();
+}
+
+function testAndSaveNAS() {
+    var form = document.getElementById('configForm');
+    form.action = '/backup/test-and-save';
+    form.submit();
+}
+
+function disabilitaNAS() {
+    if (confirm('Sei sicuro di voler disabilitare il backup su NAS?')) {
+        window.location.href = '/backup/disable-nas';
+    }
 }
 
 function confermaRestore(filename, data) {

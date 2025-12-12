@@ -18,3 +18,5 @@ web/static/uploads/*
 # OS
 .DS_Store
 Thumbs.db
+backups/
+furviogest_server
