@@ -16,6 +16,15 @@ import (
 func ListaClienti(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Clienti - FurvioGest", r)
 
+	// Gestione messaggi di errore da query string
+	errorType := r.URL.Query().Get("error")
+	switch errorType {
+	case "ddt_collegati":
+		data.Error = "Impossibile eliminare il cliente: esistono DDT collegati. Eliminare prima i DDT associati."
+	case "delete":
+		data.Error = "Errore durante l'eliminazione del cliente"
+	}
+
 	rows, err := database.DB.Query(`
 		SELECT id, nome, COALESCE(partita_iva,''), COALESCE(codice_fiscale,''), 
 		       COALESCE(indirizzo,''), COALESCE(cap,''), COALESCE(citta,''), 

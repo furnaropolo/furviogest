@@ -4,335 +4,135 @@
     <meta charset="UTF-8">
     <title>DDT {{.DDT.Numero}}/{{.DDT.Anno}}</title>
     <style>
-        @page {
-            size: A4;
-            margin: 15mm;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
-            color: #333;
-        }
-        .container {
-            max-width: 210mm;
-            margin: 0 auto;
-            padding: 10mm;
-        }
-        
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e74c3c;
-            padding-bottom: 15px;
-        }
-        .logo-section {
-            text-align: right;
-        }
-        .logo-section img {
-            max-width: 150px;
-            height: auto;
-        }
-        .company-name {
-            font-size: 24pt;
-            font-weight: bold;
-            color: #333;
-        }
-        .company-details {
-            font-size: 9pt;
-            color: #666;
-            text-align: right;
-        }
-        
-        /* Document title */
-        .doc-title {
-            font-size: 18pt;
-            margin: 20px 0 10px 0;
-        }
-        .doc-number {
-            font-size: 14pt;
-            color: #666;
-            margin-bottom: 20px;
-        }
-        
-        /* Two column layout for destinatario/destinazione */
-        .addresses {
-            display: flex;
-            gap: 30px;
-            margin-bottom: 20px;
-        }
-        .address-box {
-            flex: 1;
-        }
-        .address-label {
-            font-weight: bold;
-            color: #e74c3c;
             font-size: 10pt;
-            margin-bottom: 5px;
+            line-height: 1.3;
+            color: #333;
+            padding: 5mm;
         }
-        .address-content {
-            font-size: 11pt;
-            line-height: 1.5;
-        }
-        
-        /* Products table */
-        .products-table {
+
+        /* Header */
+        .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
         }
-        .products-table th {
-            background-color: #f5f5f5;
-            border-bottom: 2px solid #ddd;
-            padding: 10px;
-            text-align: left;
-            font-size: 10pt;
-        }
-        .products-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
-            vertical-align: top;
-        }
-        .products-table .col-codice {
-            width: 15%;
-        }
-        .products-table .col-descrizione {
-            width: 70%;
-        }
-        .products-table .col-qta {
-            width: 15%;
-            text-align: right;
-        }
-        
-        /* Footer section */
-        .footer-section {
-            margin-top: 30px;
-            border-top: 1px solid #ddd;
-            padding-top: 15px;
-        }
-        .footer-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .footer-item {
-            flex: 1;
-        }
-        .footer-label {
-            font-size: 9pt;
-            color: #666;
-        }
-        .footer-value {
-            font-size: 11pt;
-            font-weight: bold;
-        }
-        
-        /* Signatures */
-        .signatures {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 40px;
-        }
-        .signature-box {
-            width: 45%;
-            border-top: 1px solid #333;
-            padding-top: 5px;
-            text-align: center;
-            font-size: 9pt;
-            color: #666;
-        }
-        
+        .header-table td { vertical-align: top; padding: 2px; }
+        .company-name { font-size: 16pt; font-weight: bold; color: #2c3e50; }
+        .company-details { font-size: 8pt; color: #666; }
+        .logo-cell { text-align: right; width: 100px; }
+        .logo-cell img { max-width: 80px; max-height: 40px; }
+
+        /* Document title row */
+        .doc-header { margin: 8px 0; }
+        .doc-header-table { width: 100%; border-collapse: collapse; }
+        .doc-header-table td { vertical-align: bottom; }
+        .doc-title { font-size: 13pt; font-weight: bold; color: #2c3e50; }
+        .doc-number { font-size: 10pt; color: #666; }
+        .page-info { text-align: right; font-size: 9pt; color: #666; }
+
+        /* Addresses */
+        .addresses-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .addresses-table td { width: 50%; vertical-align: top; padding: 6px; border: 1px solid #ddd; }
+        .address-label { font-weight: bold; color: #2c3e50; font-size: 8pt; margin-bottom: 3px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px; }
+        .address-content { font-size: 9pt; line-height: 1.3; }
+
+        /* Products */
+        .products-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+        .products-table th { background-color: #2c3e50; color: white; padding: 5px; text-align: left; font-size: 8pt; }
+        .products-table th:last-child { text-align: right; }
+        .products-table td { padding: 4px 5px; border-bottom: 1px solid #ddd; font-size: 9pt; }
+        .products-table td:last-child { text-align: right; }
+        .products-table tr:nth-child(even) { background-color: #f9f9f9; }
+
         /* Notes */
-        .notes {
-            margin-top: 20px;
-            font-size: 10pt;
-            color: #666;
-        }
-        
-        /* Page number */
-        .page-number {
-            position: fixed;
-            bottom: 10mm;
-            right: 10mm;
-            font-size: 9pt;
-            color: #999;
-        }
-        
-        /* Print button (hidden when printing) */
-        .no-print {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-        }
-        @media print {
-            .no-print {
-                display: none;
-            }
-            body {
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-        }
-        
-        /* Annullato watermark */
+        .notes { margin: 8px 0; padding: 4px; background-color: #f9f9f9; border-left: 3px solid #2c3e50; font-size: 8pt; }
+
+        /* Watermark */
         .annullato-watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
+            position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 100pt;
-            color: rgba(255, 0, 0, 0.2);
-            font-weight: bold;
-            z-index: 1000;
-            pointer-events: none;
+            font-size: 70pt; color: rgba(255, 0, 0, 0.12);
+            font-weight: bold; z-index: 1000; pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div class="no-print">
-        <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px; cursor: pointer;">Stampa PDF</button>
-        <a href="/ddt-uscita/dettaglio/{{.DDT.ID}}" style="padding: 10px 20px; font-size: 14px; margin-left: 10px;">Torna al DDT</a>
-    </div>
+    {{if .DDT.Annullato}}<div class="annullato-watermark">ANNULLATO</div>{{end}}
 
-    {{if .DDT.Annullato}}
-    <div class="annullato-watermark">ANNULLATO</div>
-    {{end}}
-
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="company-info">
+    <!-- Header azienda -->
+    <table class="header-table">
+        <tr>
+            <td>
                 <div class="company-name">{{.Azienda.RagioneSociale}}</div>
-            </div>
-            <div class="logo-section">
-                {{if .Azienda.LogoPath}}
-                <img src="/data/{{.Azienda.LogoPath}}" alt="Logo">
-                {{end}}
                 <div class="company-details">
-                    {{if .Azienda.Indirizzo}}{{.Azienda.Indirizzo}}<br>{{end}}
-                    {{if .Azienda.CAP}}{{.Azienda.CAP}} {{end}}{{.Azienda.Citta}}{{if .Azienda.Provincia}} ({{.Azienda.Provincia}}){{end}}<br>
-                    {{if .Azienda.Telefono}}Tel. {{.Azienda.Telefono}}<br>{{end}}
-                    {{if .Azienda.Email}}e-mail: {{.Azienda.Email}}{{end}}{{if .Azienda.PEC}} Pec: {{.Azienda.PEC}}{{end}}<br>
-                    {{if .Azienda.SitoWeb}}Internet: {{.Azienda.SitoWeb}}<br>{{end}}
-                    {{if .Azienda.PartitaIVA}}P.Iva {{.Azienda.PartitaIVA}}{{end}}
+                    {{if .Azienda.Indirizzo}}{{.Azienda.Indirizzo}} - {{end}}{{if .Azienda.CAP}}{{.Azienda.CAP}} {{end}}{{.Azienda.Citta}}{{if .Azienda.Provincia}} ({{.Azienda.Provincia}}){{end}}<br>
+                    {{if .Azienda.Telefono}}Tel. {{.Azienda.Telefono}} - {{end}}{{if .Azienda.Email}}{{.Azienda.Email}}{{end}}{{if .Azienda.PEC}} - PEC: {{.Azienda.PEC}}{{end}}<br>
+                    {{if .Azienda.PartitaIVA}}P.IVA {{.Azienda.PartitaIVA}}{{end}}
                 </div>
-            </div>
-        </div>
+            </td>
+            <td class="logo-cell">{{if .LogoPath}}<img src="{{.LogoPath}}" alt="Logo">{{end}}</td>
+        </tr>
+    </table>
 
-        <!-- Document title -->
-        <h1 class="doc-title">Doc. di trasporto</h1>
-        <div class="doc-number">n. <strong>{{.DDT.Numero}}/{{.DDT.Anno}}</strong> &nbsp;&nbsp;&nbsp; del <strong>{{.DDT.DataDocumento.Format "02/01/2006"}}</strong></div>
-
-        <!-- Addresses -->
-        <div class="addresses">
-            <div class="address-box">
-                <div class="address-label">Destinatario</div>
-                <div class="address-content">
-                    <strong>{{.Cliente.Nome}}</strong><br>
-                    {{if .Cliente.Indirizzo}}{{.Cliente.Indirizzo}}<br>{{end}}
-                    {{if .Cliente.CAP}}{{.Cliente.CAP}} {{end}}{{.Cliente.Citta}}{{if .Cliente.Provincia}} ({{.Cliente.Provincia}}){{end}}
-                </div>
-            </div>
-            <div class="address-box">
-                <div class="address-label">Destinazione</div>
-                <div class="address-content">
-                    {{if .DDT.Destinazione}}
-                    {{.DDT.Destinazione}}
-                    {{else}}
-                    <strong>{{.Cliente.Nome}}</strong><br>
-                    {{if .Cliente.Indirizzo}}{{.Cliente.Indirizzo}}<br>{{end}}
-                    {{if .Cliente.CAP}}{{.Cliente.CAP}} {{end}}{{.Cliente.Citta}}{{if .Cliente.Provincia}} ({{.Cliente.Provincia}}){{end}}
-                    {{end}}
-                </div>
-            </div>
-        </div>
-
-        <!-- Products table -->
-        <table class="products-table">
-            <thead>
-                <tr>
-                    <th class="col-codice">Codice</th>
-                    <th class="col-descrizione">Descrizione</th>
-                    <th class="col-qta">Quantita</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .DDT.Righe}}
-                <tr>
-                    <td>{{.CodiceProdotto}}</td>
-                    <td>{{.NomeProdotto}}</td>
-                    <td class="col-qta">{{.Quantita}} {{.UnitaMisura}}</td>
-                </tr>
-                {{else}}
-                <tr>
-                    <td colspan="3" style="text-align: center; color: #999;">Nessun prodotto</td>
-                </tr>
-                {{end}}
-            </tbody>
+    <!-- Titolo documento -->
+    <div class="doc-header">
+        <table class="doc-header-table">
+            <tr>
+                <td>
+                    <div class="doc-title">DOCUMENTO DI TRASPORTO</div>
+                    <div class="doc-number">N. <strong>{{.DDT.Numero}}/{{.DDT.Anno}}</strong> del <strong>{{.DDT.DataDocumento.Format "02/01/2006"}}</strong></div>
+                </td>
+            </tr>
         </table>
-
-        <!-- Footer section -->
-        <div class="footer-section">
-            <div class="footer-row">
-                <div class="footer-item">
-                    <div class="footer-label">Incaricato del trasporto</div>
-                    <div class="footer-value">{{.DDT.IncaricatoTrasporto}}</div>
-                </div>
-                <div class="footer-item">
-                    <div class="footer-label">Causale del trasporto</div>
-                    <div class="footer-value">{{.DDT.Causale}}</div>
-                </div>
-                <div class="footer-item">
-                    <div class="footer-label">Porto</div>
-                    <div class="footer-value">{{.DDT.Porto}}</div>
-                </div>
-            </div>
-            <div class="footer-row">
-                <div class="footer-item">
-                    <div class="footer-label">Nr. colli</div>
-                    <div class="footer-value">{{if .DDT.NrColli}}{{.DDT.NrColli}}{{else}}-{{end}}</div>
-                </div>
-                <div class="footer-item">
-                    <div class="footer-label">Peso</div>
-                    <div class="footer-value">{{if .DDT.Peso}}{{.DDT.Peso}}{{else}}-{{end}}</div>
-                </div>
-                <div class="footer-item">
-                    <div class="footer-label">Aspetto esteriore dei beni</div>
-                    <div class="footer-value">{{.DDT.AspettoBeni}}</div>
-                </div>
-                <div class="footer-item">
-                    <div class="footer-label">Data e ora inizio trasporto</div>
-                    <div class="footer-value">{{if .DDT.DataOraTrasporto}}{{.DDT.DataOraTrasporto.Format "02/01/2006 15:04"}}{{else}}-{{end}}</div>
-                </div>
-            </div>
-        </div>
-
-        {{if .DDT.Note}}
-        <div class="notes">
-            <strong>Note:</strong> {{.DDT.Note}}
-        </div>
-        {{end}}
-
-        <!-- Signatures -->
-        <div class="signatures">
-            <div class="signature-box">
-                Firma incaricato del trasporto
-            </div>
-            <div class="signature-box">
-                Firma destinatario
-            </div>
-        </div>
-
-        <div class="page-number">Pag. 1</div>
     </div>
+
+    <!-- Addresses -->
+    <table class="addresses-table">
+        <tr>
+            <td>
+                <div class="address-label">DESTINATARIO</div>
+                <div class="address-content">
+                    <strong>{{.Cliente.Nome}}</strong><br>
+                    {{if .Cliente.Indirizzo}}{{.Cliente.Indirizzo}}<br>{{end}}
+                    {{if .Cliente.CAP}}{{.Cliente.CAP}} {{end}}{{.Cliente.Citta}}{{if .Cliente.Provincia}} ({{.Cliente.Provincia}}){{end}}
+                </div>
+            </td>
+            <td>
+                <div class="address-label">DESTINAZIONE</div>
+                <div class="address-content">
+                    {{if .DDT.Destinazione}}{{.DDT.Destinazione}}{{else}}<strong>IDEM</strong>{{end}}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Products -->
+    <table class="products-table">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Codice</th>
+                <th style="width: 65%;">Descrizione</th>
+                <th style="width: 20%;">Quantita</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .DDT.Righe}}
+            <tr>
+                <td>{{.CodiceProdotto}}</td>
+                <td>{{.NomeProdotto}}</td>
+                <td>{{.Quantita}} {{.UnitaMisura}}</td>
+            </tr>
+            {{else}}
+            <tr><td colspan="3" style="text-align: center; color: #999; padding: 15px;">Nessun prodotto inserito</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    {{if .DDT.Note}}<div class="notes"><strong>Note:</strong> {{.DDT.Note}}</div>{{end}}
 </body>
 </html>

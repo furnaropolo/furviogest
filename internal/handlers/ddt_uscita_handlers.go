@@ -1,12 +1,17 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"furviogest/internal/database"
 	"furviogest/internal/models"
+	"html/template"
+	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -716,7 +721,7 @@ func getAnniDDTUscita() []int {
 	return anni
 }
 
-// PDFDDTUscita genera la pagina stampabile del DDT
+// PDFDDTUscita genera il PDF del DDT usando wkhtmltopdf
 func PDFDDTUscita(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 4 {
@@ -734,7 +739,7 @@ func PDFDDTUscita(w http.ResponseWriter, r *http.Request) {
 	var d models.DDTUscita
 	var dataOraTrasporto sql.NullTime
 	err = database.DB.QueryRow(`
-		SELECT d.id, d.numero, d.anno, d.data_documento, d.cliente_id, 
+		SELECT d.id, d.numero, d.anno, d.data_documento, d.cliente_id,
 		       COALESCE(d.destinazione,''), d.causale, d.porto, d.aspetto_beni,
 		       COALESCE(d.nr_colli, 0), COALESCE(d.peso,''), d.data_ora_trasporto,
 		       d.incaricato_trasporto, COALESCE(d.note,''), d.annullato,
@@ -760,10 +765,10 @@ func PDFDDTUscita(w http.ResponseWriter, r *http.Request) {
 	// Recupera cliente completo
 	var cliente models.Cliente
 	database.DB.QueryRow(`
-		SELECT id, nome, COALESCE(indirizzo,''), COALESCE(cap,''), COALESCE(citta,''), 
+		SELECT id, nome, COALESCE(indirizzo,''), COALESCE(cap,''), COALESCE(citta,''),
 		       COALESCE(provincia,''), COALESCE(nazione,'Italia')
 		FROM clienti WHERE id = ?
-	`, d.ClienteID).Scan(&cliente.ID, &cliente.Nome, &cliente.Indirizzo, &cliente.CAP, 
+	`, d.ClienteID).Scan(&cliente.ID, &cliente.Nome, &cliente.Indirizzo, &cliente.CAP,
 		&cliente.Citta, &cliente.Provincia, &cliente.Nazione)
 
 	// Recupera righe DDT
@@ -783,11 +788,225 @@ func PDFDDTUscita(w http.ResponseWriter, r *http.Request) {
 		&azienda.Telefono, &azienda.Email, &azienda.PEC,
 		&azienda.SitoWeb, &azienda.LogoPath)
 
-	data := map[string]interface{}{
-		"DDT":     d,
-		"Cliente": cliente,
-		"Azienda": azienda,
+	// Fix logo path per wkhtmltopdf - usa path assoluto
+	logoPath := azienda.LogoPath
+	if logoPath != "" && !strings.HasPrefix(logoPath, "/home/") {
+		logoPath = "/home/ies/furviogest/data/" + strings.TrimPrefix(logoPath, "/")
 	}
 
-	renderTemplate(w, "ddt_uscita_pdf.html", data)
+	data := map[string]interface{}{
+		"DDT":      d,
+		"Cliente":  cliente,
+		"Azienda":  azienda,
+		"LogoPath": logoPath,
+	}
+
+	// Parse e render template HTML
+	tmpl, err := template.ParseFiles("web/templates/ddt_uscita_pdf.html")
+	if err != nil {
+		log.Printf("Errore parse template DDT PDF: %v", err)
+		http.Error(w, "Errore template", http.StatusInternalServerError)
+		return
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, data)
+	if err != nil {
+		log.Printf("Errore execute template DDT PDF: %v", err)
+		http.Error(w, "Errore rendering", http.StatusInternalServerError)
+		return
+	}
+
+	// Genera footer HTML con i dati del DDT
+	footerHTML := generaFooterDDT(d)
+
+	// Genera PDF con wkhtmltopdf
+	pdfData, err := generaPDFDDTUscita(buf.String(), footerHTML)
+	if err != nil {
+		log.Printf("Errore generazione PDF DDT: %v", err)
+		http.Error(w, "Errore generazione PDF: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Invia PDF al browser
+	filename := fmt.Sprintf("DDT_%s_%d.pdf", d.Numero, d.Anno)
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", filename))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfData)))
+	w.Write(pdfData)
+}
+
+// generaPDFDDTUscita genera un PDF da HTML usando wkhtmltopdf con header e footer dinamici
+func generaPDFDDTUscita(htmlContent string, footerHTML string) ([]byte, error) {
+	// Scrivi footer in file temporaneo
+	footerFile, err := os.CreateTemp("", "ddt_footer_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file footer: %v", err)
+	}
+	defer os.Remove(footerFile.Name())
+	footerFile.WriteString(footerHTML)
+	footerFile.Close()
+
+	// Header con numero pagina (visibile solo dalla pagina 2 in poi)
+	headerHTML := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; padding: 0 8mm; }
+        .page-info { text-align: right; color: #666; }
+        .page-info.hidden { display: none; }
+    </style>
+    <script>
+        function subst() {
+            var vars = {};
+            var query_strings_from_url = document.location.search.substring(1).split('&');
+            for (var query_string in query_strings_from_url) {
+                if (query_strings_from_url.hasOwnProperty(query_string)) {
+                    var temp_var = query_strings_from_url[query_string].split('=', 2);
+                    vars[temp_var[0]] = decodeURI(temp_var[1]);
+                }
+            }
+            var page = parseInt(vars['page'] || '1');
+            var topage = parseInt(vars['topage'] || '1');
+
+            if (page > 1 && topage > 1) {
+                document.getElementById('page-info').classList.remove('hidden');
+                document.getElementById('page-num').textContent = page;
+                document.getElementById('page-total').textContent = topage;
+            }
+        }
+    </script>
+</head>
+<body onload="subst()">
+    <div id="page-info" class="page-info hidden">
+        Pagina <span id="page-num"></span> di <span id="page-total"></span>
+    </div>
+</body>
+</html>`
+
+	headerFile, err := os.CreateTemp("", "ddt_header_*.html")
+	if err != nil {
+		return nil, fmt.Errorf("errore creazione file header: %v", err)
+	}
+	defer os.Remove(headerFile.Name())
+	headerFile.WriteString(headerHTML)
+	headerFile.Close()
+
+	cmd := exec.Command("wkhtmltopdf",
+		"--page-size", "A4",
+		"--margin-top", "15mm",
+		"--margin-bottom", "50mm",
+		"--margin-left", "8mm",
+		"--margin-right", "8mm",
+		"--encoding", "UTF-8",
+		"--enable-local-file-access",
+		"--header-html", headerFile.Name(),
+		"--header-spacing", "2",
+		"--footer-html", footerFile.Name(),
+		"--footer-spacing", "2",
+		"--quiet",
+		"-", "-")
+
+	cmd.Stdin = strings.NewReader(htmlContent)
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("wkhtmltopdf error: %v, stderr: %s", err, stderr.String())
+	}
+
+	return out.Bytes(), nil
+}
+
+// generaFooterDDT genera l'HTML del footer con logica per pagine multiple
+// Usa JavaScript per mostrare "SEGUE" sulle pagine intermedie e i dati completi sull'ultima
+func generaFooterDDT(d models.DDTUscita) string {
+	colli := "-"
+	if d.NrColli > 0 {
+		colli = fmt.Sprintf("%d", d.NrColli)
+	}
+	peso := "-"
+	if d.Peso != "" {
+		peso = d.Peso
+	}
+	dataOra := "-"
+	if d.DataOraTrasporto != nil {
+		dataOra = d.DataOraTrasporto.Format("02/01/2006 15:04")
+	}
+
+	footer := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 8pt; padding: 0 5mm; }
+        .segue { text-align: center; font-size: 12pt; font-weight: bold; color: #2c3e50; padding: 15px 0; display: none; }
+        .footer-content { display: block; }
+        .info-table { width: 100%; border-collapse: collapse; border: 1px solid #ddd; }
+        .info-table td { padding: 3px 5px; border: 1px solid #ddd; }
+        .info-label { color: #666; font-size: 7pt; }
+        .info-value { font-weight: bold; font-size: 8pt; }
+        .signatures-table { width: 100%; margin-top: 12px; border-collapse: collapse; }
+        .signatures-table td { width: 45%; padding-top: 18px; border-top: 1px solid #333; text-align: center; font-size: 7pt; color: #666; }
+        .signatures-table td.spacer { width: 10%; border-top: none; }
+    </style>
+    <script>
+        function subst() {
+            var vars = {};
+            var query_strings_from_url = document.location.search.substring(1).split('&');
+            for (var query_string in query_strings_from_url) {
+                if (query_strings_from_url.hasOwnProperty(query_string)) {
+                    var temp_var = query_strings_from_url[query_string].split('=', 2);
+                    vars[temp_var[0]] = decodeURI(temp_var[1]);
+                }
+            }
+            var page = parseInt(vars['page'] || '1');
+            var topage = parseInt(vars['topage'] || '1');
+
+            if (page < topage) {
+                // Pagina intermedia: mostra SEGUE
+                document.getElementById('segue').style.display = 'block';
+                document.getElementById('footer-content').style.display = 'none';
+            } else {
+                // Ultima pagina: mostra dati trasporto e firme
+                document.getElementById('segue').style.display = 'none';
+                document.getElementById('footer-content').style.display = 'block';
+            }
+        }
+    </script>
+</head>
+<body onload="subst()">
+    <div id="segue" class="segue">- - - SEGUE - - -</div>
+    <div id="footer-content" class="footer-content">
+        <table class="info-table">
+            <tr>
+                <td><span class="info-label">Causale trasporto</span><br><span class="info-value">` + d.Causale + `</span></td>
+                <td><span class="info-label">Porto</span><br><span class="info-value">` + d.Porto + `</span></td>
+                <td><span class="info-label">Aspetto beni</span><br><span class="info-value">` + d.AspettoBeni + `</span></td>
+                <td><span class="info-label">N. Colli</span><br><span class="info-value">` + colli + `</span></td>
+            </tr>
+            <tr>
+                <td><span class="info-label">Incaricato trasporto</span><br><span class="info-value">` + d.IncaricatoTrasporto + `</span></td>
+                <td><span class="info-label">Peso</span><br><span class="info-value">` + peso + `</span></td>
+                <td colspan="2"><span class="info-label">Data/ora inizio trasporto</span><br><span class="info-value">` + dataOra + `</span></td>
+            </tr>
+        </table>
+        <table class="signatures-table">
+            <tr>
+                <td>Firma conducente</td>
+                <td class="spacer"></td>
+                <td>Firma destinatario</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>`
+	return footer
 }
