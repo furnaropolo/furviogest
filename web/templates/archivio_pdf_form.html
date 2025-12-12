@@ -1,0 +1,113 @@
+{{template "header" .}}
+
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-upload me-2"></i>
+                        Carica PDF Documento
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {{if .Error}}
+                    <div class="alert alert-danger">{{.Error}}</div>
+                    {{end}}
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Questa sezione serve per archiviare i documenti cartacei in formato PDF.
+                        <strong>Non movimenta il magazzino.</strong>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" id="formPDF">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Fornitore *</label>
+                                <select name="fornitore_id" id="fornitore_id" class="form-select" required onchange="aggiornaLabelCampi()">
+                                    <option value="">-- Seleziona fornitore --</option>
+                                    {{range .Data.Fornitori}}
+                                    <option value="{{.ID}}" data-amazon="{{.IsAmazon}}">
+                                        {{.Nome}}{{if .IsAmazon}} 📦{{end}}
+                                    </option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3" id="tipoDocContainer">
+                                <label class="form-label" id="labelTipo">Tipo Documento *</label>
+                                <select name="tipo" id="tipo" class="form-select" required>
+                                    <option value="ddt">DDT</option>
+                                    <option value="fattura">Fattura</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" id="labelNumero">Numero Documento *</label>
+                                <input type="text" name="numero" id="numero" class="form-control" required placeholder="Es. 001/2025">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" id="labelData">Data Documento *</label>
+                                <input type="date" name="data_documento" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">File PDF *</label>
+                            <input type="file" name="pdf_file" class="form-control" accept=".pdf" required>
+                            <small class="text-muted">Formato accettato: PDF (max 32MB)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Note</label>
+                            <textarea name="note" class="form-control" rows="2" placeholder="Es. Documento scannerizzato"></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload me-1"></i> Carica
+                            </button>
+                            <a href="/archivio-pdf" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function aggiornaLabelCampi() {
+    const select = document.getElementById('fornitore_id');
+    const option = select.options[select.selectedIndex];
+    const isAmazon = option.dataset.amazon === 'true';
+    
+    const tipoContainer = document.getElementById('tipoDocContainer');
+    const labelNumero = document.getElementById('labelNumero');
+    const labelData = document.getElementById('labelData');
+    const tipoSelect = document.getElementById('tipo');
+    const numero = document.getElementById('numero');
+    
+    if (isAmazon) {
+        tipoContainer.style.display = 'none';
+        tipoSelect.value = 'ordine';
+        labelNumero.textContent = 'Numero Ordine Amazon *';
+        labelData.textContent = 'Data Ordine *';
+        numero.placeholder = 'Es. 402-1234567-8901234';
+    } else {
+        tipoContainer.style.display = 'block';
+        if (tipoSelect.value === 'ordine') {
+            tipoSelect.value = 'ddt';
+        }
+        labelNumero.textContent = 'Numero Documento *';
+        labelData.textContent = 'Data Documento *';
+        numero.placeholder = 'Es. 001/2025';
+    }
+}
+</script>
+
+{{template "footer" .}}

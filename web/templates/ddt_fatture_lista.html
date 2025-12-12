@@ -1,0 +1,120 @@
+{{template "header" .}}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-earmark-text me-2"></i>Registro DDT/Fatture</h2>
+        <a href="/ddt-fatture/nuovo" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Nuovo Documento
+        </a>
+    </div>
+
+    {{if .Error}}
+    <div class="alert alert-danger">{{.Error}}</div>
+    {{end}}
+
+    {{if .Success}}
+    <div class="alert alert-success">{{.Success}}</div>
+    {{end}}
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Numero</th>
+                            <th>Data</th>
+                            <th>Fornitore</th>
+                            <th>Note</th>
+                            <th width="150">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data}}
+                        <tr>
+                            <td>
+                                {{if .IsAmazon}}
+                                <span class="badge bg-warning text-dark">Ordine Amazon</span>
+                                {{else if eq .Tipo "fattura"}}
+                                <span class="badge bg-info">Fattura</span>
+                                {{else}}
+                                <span class="badge bg-secondary">DDT</span>
+                                {{end}}
+                            </td>
+                            <td><strong>{{.Numero}}</strong></td>
+                            <td>{{.DataDocumento.Format "02/01/2006"}}</td>
+                            <td>{{.NomeFornitore}}</td>
+                            <td>{{if .Note}}<small class="text-muted">{{.Note}}</small>{{end}}</td>
+                            <td>
+                                <a href="/ddt-fatture/modifica/{{.ID}}" class="btn btn-sm btn-outline-primary" title="Modifica">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confermaEliminazione({{.ID}})" title="Elimina">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {{else}}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Nessun documento registrato
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal conferma eliminazione -->
+<div class="modal fade" id="modalEliminazione" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Conferma Eliminazione</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalEliminazioneBody">
+                Caricamento...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <a href="#" id="btnConfermaElimina" class="btn btn-danger">Elimina</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confermaEliminazione(id) {
+    fetch('/api/ddt-fatture/info-eliminazione?id=' + id)
+        .then(r => r.json())
+        .then(info => {
+            let html = '<p>Stai per eliminare il documento <strong>' + info.numero_doc + '</strong> di <strong>' + info.nome_fornitore + '</strong>.</p>';
+            
+            if (info.num_movimenti > 0) {
+                html += '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>';
+                html += 'Ci sono <strong>' + info.num_movimenti + '</strong> prodotti collegati a questo documento.<br>';
+                html += 'Le giacenze verranno ricalcolate.</div>';
+            }
+            
+            if (info.prodotti_eliminati && info.prodotti_eliminati.length > 0) {
+                html += '<div class="alert alert-danger"><strong>Prodotti che verranno eliminati:</strong><ul class="mb-0">';
+                info.prodotti_eliminati.forEach(p => {
+                    html += '<li>' + p + '</li>';
+                });
+                html += '</ul></div>';
+            }
+            
+            document.getElementById('modalEliminazioneBody').innerHTML = html;
+            document.getElementById('btnConfermaElimina').href = '/ddt-fatture/elimina/' + id;
+            new bootstrap.Modal(document.getElementById('modalEliminazione')).show();
+        });
+}
+</script>
+
+{{template "footer" .}}

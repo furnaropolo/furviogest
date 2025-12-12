@@ -1,0 +1,112 @@
+{{template "header" .}}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-earmark-pdf me-2"></i>Archivio PDF Documenti</h2>
+        <a href="/archivio-pdf/nuovo" class="btn btn-primary">
+            <i class="bi bi-upload me-1"></i> Carica PDF
+        </a>
+    </div>
+
+    {{if .Error}}
+    <div class="alert alert-danger">{{.Error}}</div>
+    {{end}}
+
+    {{if .Success}}
+    <div class="alert alert-success">{{.Success}}</div>
+    {{end}}
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Numero</th>
+                            <th>Data</th>
+                            <th>Fornitore</th>
+                            <th>Note</th>
+                            <th>Caricato il</th>
+                            <th width="150">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Data}}
+                        <tr>
+                            <td>
+                                {{if .IsAmazon}}
+                                <span class="badge bg-warning text-dark">Ordine Amazon</span>
+                                {{else if eq .Tipo "fattura"}}
+                                <span class="badge bg-info">Fattura</span>
+                                {{else}}
+                                <span class="badge bg-secondary">DDT</span>
+                                {{end}}
+                            </td>
+                            <td><strong>{{.Numero}}</strong></td>
+                            <td>{{.DataDocumento.Format "02/01/2006"}}</td>
+                            <td>{{.NomeFornitore}}</td>
+                            <td>{{if .Note}}<small class="text-muted">{{.Note}}</small>{{end}}</td>
+                            <td><small>{{.CreatedAt.Format "02/01/2006 15:04"}}</small></td>
+                            <td>
+                                <a href="/archivio-pdf/visualizza/{{.ID}}" class="btn btn-sm btn-outline-info" target="_blank" title="Visualizza">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/archivio-pdf/download/{{.ID}}" class="btn btn-sm btn-outline-primary" title="Scarica">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confermaEliminazione({{.ID}}, '{{.Numero}}')" title="Elimina">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {{else}}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-file-earmark-x fs-1 d-block mb-2"></i>
+                                Nessun documento archiviato
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Nota:</strong> Questa sezione è solo per l'archiviazione dei documenti cartacei in formato PDF.
+        Non movimenta il magazzino. Per registrare acquisti usa la sezione <a href="/ddt-fatture">DDT/Fatture</a> e poi <a href="/magazzino/nuovo">Nuovo Prodotto</a>.
+    </div>
+</div>
+
+<!-- Modal conferma eliminazione -->
+<div class="modal fade" id="modalEliminazione" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Conferma Eliminazione</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Sei sicuro di voler eliminare il documento <strong id="numeroDoc"></strong>?</p>
+                <p class="text-muted">Il file PDF verrà eliminato definitivamente.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <a href="#" id="btnConfermaElimina" class="btn btn-danger">Elimina</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confermaEliminazione(id, numero) {
+    document.getElementById('numeroDoc').textContent = numero;
+    document.getElementById('btnConfermaElimina').href = '/archivio-pdf/elimina/' + id;
+    new bootstrap.Modal(document.getElementById('modalEliminazione')).show();
+}
+</script>
+
+{{template "footer" .}}

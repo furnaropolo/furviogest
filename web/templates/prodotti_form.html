@@ -1,161 +1,255 @@
-{{template "base" .}}
+{{template "header" .}}
 
-{{define "content"}}
-<div class="page-header">
-    <h1>{{if .Data.Prodotto.ID}}Modifica Prodotto{{else}}Nuovo Prodotto{{end}}</h1>
-</div>
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-box-seam me-2"></i>
+                        {{if .Data.FormData.Prodotto.ID}}Modifica{{else}}Nuovo{{end}} Prodotto
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {{if .Error}}
+                    <div class="alert alert-danger">{{.Error}}</div>
+                    {{end}}
 
-<div class="form-container">
-    <form method="POST" class="form">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="codice">Codice *</label>
-                <input type="text" id="codice" name="codice" value="{{.Data.Prodotto.Codice}}" required style="text-transform: uppercase;">
-            </div>
-            <div class="form-group">
-                <label for="nome">Nome *</label>
-                <input type="text" id="nome" name="nome" value="{{.Data.Prodotto.Nome}}" required>
+                    {{if .Success}}
+                    <div class="alert alert-success">{{.Success}}</div>
+                    {{end}}
+
+                    <form method="POST" id="formProdotto">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Codice *</label>
+                                <input type="text" name="codice" class="form-control text-uppercase" required
+                                       value="{{.Data.FormData.Prodotto.Codice}}" {{if .Data.FormData.Prodotto.ID}}readonly{{end}}>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">Nome *</label>
+                                <input type="text" name="nome" class="form-control" required
+                                       value="{{.Data.FormData.Prodotto.Nome}}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descrizione</label>
+                            <textarea name="descrizione" class="form-control" rows="2">{{.Data.FormData.Prodotto.Descrizione}}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Categoria *</label>
+                                <select name="categoria" class="form-select" required>
+                                    <option value="materiale" {{if eq .Data.FormData.Prodotto.Categoria "materiale"}}selected{{end}}>Materiale (pezzi)</option>
+                                    <option value="cavo" {{if eq .Data.FormData.Prodotto.Categoria "cavo"}}selected{{end}}>Cavo (metri)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Tipo *</label>
+                                <select name="tipo" class="form-select" required>
+                                    <option value="wifi" {{if eq .Data.FormData.Prodotto.Tipo "wifi"}}selected{{end}}>WiFi</option>
+                                    <option value="gsm" {{if eq .Data.FormData.Prodotto.Tipo "gsm"}}selected{{end}}>GSM</option>
+                                    <option value="entrambi" {{if eq .Data.FormData.Prodotto.Tipo "entrambi"}}selected{{end}}>Entrambi</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Origine *</label>
+                                <select name="origine" id="origine" class="form-select" required onchange="toggleCampiOrigine()"
+                                        {{if .Data.FormData.Prodotto.ID}}disabled{{end}}>
+                                    <option value="nuovo" {{if eq .Data.FormData.Prodotto.Origine "nuovo"}}selected{{end}}>Nuovo (acquistato)</option>
+                                    <option value="spare" {{if eq .Data.FormData.Prodotto.Origine "spare"}}selected{{end}}>Spare (da nave)</option>
+                                </select>
+                                {{if .Data.FormData.Prodotto.ID}}
+                                <input type="hidden" name="origine" value="{{.Data.FormData.Prodotto.Origine}}">
+                                {{end}}
+                            </div>
+                        </div>
+
+                        <!-- Campi per SPARE -->
+                        <div id="campiSpare" style="display: none;">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="bi bi-ship me-2"></i>Provenienza Spare</h6>
+                                    <div class="row">
+                                        <div class="col-md-8 mb-3">
+                                            <label class="form-label">Nave di origine *</label>
+                                            <select name="nave_origine" id="nave_origine" class="form-select">
+                                                <option value="">-- Seleziona nave --</option>
+                                                {{range .Data.FormData.Navi}}
+                                                <option value="{{.Nome}}" {{if eq .Nome $.Data.FormData.Prodotto.NaveOrigine}}selected{{end}}>{{.Nome}}</option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Quantità</label>
+                                            <input type="number" name="quantita" id="quantita_spare" class="form-control" min="0" value="{{if .Data.FormData.Prodotto.ID}}{{printf "%.0f" .Data.FormData.Prodotto.Giacenza}}{{else}}1{{end}}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campi per NUOVO (acquistato) -->
+                        <div id="campiNuovo" style="display: none;">
+                            {{if not .Data.FormData.Prodotto.ID}}
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title"><i class="bi bi-file-earmark-text me-2"></i>Documento di Acquisto</h6>
+                                    <div class="row">
+                                        <div class="col-md-8 mb-3">
+                                            <label class="form-label">DDT/Fattura *</label>
+                                            <select name="ddt_fattura_id" id="ddt_fattura_id" class="form-select">
+                                                <option value="">-- Seleziona documento --</option>
+                                                {{range .Data.FormData.DDTFatture}}
+                                                <option value="{{.ID}}" data-fornitore="{{.FornitoreID}}">{{.Label}}</option>
+                                                {{end}}
+                                            </select>
+                                            <small class="text-muted">Non trovi il documento? <a href="/ddt-fatture/nuovo" target="_blank">Registrane uno nuovo</a></small>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Quantità *</label>
+                                            <input type="number" name="quantita" id="quantita_nuovo" class="form-control" min="1" value="1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Note</label>
+                            <textarea name="note" class="form-control" rows="2">{{.Data.FormData.Prodotto.Note}}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i> Salva
+                            </button>
+                            <a href="/magazzino" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annulla
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="descrizione">Descrizione</label>
-            <textarea id="descrizione" name="descrizione">{{.Data.Prodotto.Descrizione}}</textarea>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="categoria">Categoria *</label>
-                <select id="categoria" name="categoria" required onchange="toggleCategoriaFields()">
-                    <option value="materiale" {{if eq .Data.Prodotto.Categoria "materiale"}}selected{{end}}{{if not .Data.Prodotto.ID}}selected{{end}}>Materiale (pezzi)</option>
-                    <option value="cavo" {{if eq .Data.Prodotto.Categoria "cavo"}}selected{{end}}>Cavo (metri)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="tipo">Tipo Impianto *</label>
-                <select id="tipo" name="tipo" required>
-                    <option value="">Seleziona...</option>
-                    <option value="wifi" {{if eq .Data.Prodotto.Tipo "wifi"}}selected{{end}}>WiFi</option>
-                    <option value="gsm" {{if eq .Data.Prodotto.Tipo "gsm"}}selected{{end}}>GSM</option>
-                    <option value="entrambi" {{if eq .Data.Prodotto.Tipo "entrambi"}}selected{{end}}>WiFi + GSM (entrambi)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="origine">Origine *</label>
-                <select id="origine" name="origine" required onchange="toggleOrigineFields()">
-                    <option value="">Seleziona...</option>
-                    <option value="nuovo" {{if eq .Data.Prodotto.Origine "nuovo"}}selected{{end}}>Nuovo (acquistato)</option>
-                    <option value="spare" {{if eq .Data.Prodotto.Origine "spare"}}selected{{end}}>Spare (recuperato)</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Campi per prodotti NUOVI -->
-        <div id="campi-nuovo" class="conditional-fields" style="display: none;">
-            <h3>Dati Acquisto</h3>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="fornitore_id">Fornitore</label>
-                    <select id="fornitore_id" name="fornitore_id">
-                        <option value="">Nessuno</option>
-                        {{range .Data.Fornitori}}
-                        <option value="{{.ID}}" {{if $.Data.Prodotto.FornitoreID}}{{if eq $.Data.Prodotto.FornitoreID .ID}}selected{{end}}{{end}}>{{.Nome}}</option>
+        <!-- Colonna laterale: Storico acquisti (solo in modifica) -->
+        {{if .Data.FormData.Prodotto.ID}}
+        {{if eq .Data.FormData.Prodotto.Origine "nuovo"}}
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Storico Acquisti</h5>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuovoAcquisto">
+                        <i class="bi bi-plus"></i> Aggiungi
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {{range .Data.Movimenti}}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{if .IsAmazon}}Ordine{{else if eq .TipoDoc "fattura"}}Fattura{{else}}DDT{{end}} n.{{.NumeroDoc}}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{.NomeFornitore}} - {{.DataDoc.Format "02/01/2006"}}
+                                    </small>
+                                    {{if .Note}}<br><small class="text-info">{{.Note}}</small>{{end}}
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success">+{{.Quantita}}</span>
+                                    <br>
+                                    <a href="/magazzino/movimento-acquisto/elimina/{{.ID}}" class="btn btn-sm btn-link text-danger p-0" 
+                                       onclick="return confirm('Eliminare questo movimento? La giacenza verrà ricalcolata.')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="list-group-item text-center text-muted py-4">
+                            Nessun acquisto registrato
+                        </div>
                         {{end}}
-                    </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="numero_fattura">Numero Fattura</label>
-                    <input type="text" id="numero_fattura" name="numero_fattura" value="{{.Data.Prodotto.NumeroFattura}}">
+                <div class="card-footer">
+                    <strong>Giacenza attuale: {{printf "%.0f" .Data.FormData.Prodotto.Giacenza}} {{.Data.FormData.Prodotto.UnitaMisura}}</strong>
                 </div>
-                <div class="form-group">
-                    <label for="data_fattura">Data Fattura</label>
-                    <input type="date" id="data_fattura" name="data_fattura" value="{{if .Data.Prodotto.DataFattura}}{{.Data.Prodotto.DataFattura.Format "2006-01-02"}}{{end}}">
-                </div>
-            </div>
-        </div>
-
-        <!-- Campi per prodotti SPARE -->
-        <div id="campi-spare" class="conditional-fields" style="display: none;">
-            <h3>Dati Recupero</h3>
-            <div class="form-group">
-                <label for="nave_origine">Nave di Origine</label>
-                <input type="text" id="nave_origine" name="nave_origine" value="{{.Data.Prodotto.NaveOrigine}}" placeholder="Nome della nave da cui e' stato recuperato">
-            </div>
-        </div>
-
-        {{if not .Data.Prodotto.ID}}
-        <div class="form-row">
-            <div class="form-group">
-                <label for="giacenza" id="label-giacenza">Giacenza Iniziale</label>
-                <input type="number" id="giacenza" name="giacenza" value="{{printf "%.0f" .Data.Prodotto.Giacenza}}" min="0" step="1">
-                <small id="hint-giacenza">pezzi</small>
             </div>
         </div>
         {{end}}
-
-        <div class="form-group">
-            <label for="note">Note</label>
-            <textarea id="note" name="note">{{.Data.Prodotto.Note}}</textarea>
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">{{if .Data.Prodotto.ID}}Salva Modifiche{{else}}Crea Prodotto{{end}}</button>
-            <a href="/magazzino" class="btn btn-secondary">Annulla</a>
-        </div>
-    </form>
+        {{end}}
+    </div>
 </div>
 
-<style>
-.conditional-fields {
-    background: var(--bg-secondary);
-    padding: 1rem;
-    border-radius: 8px;
-    margin: 1rem 0;
-}
-.conditional-fields h3 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    font-size: 1rem;
-    color: var(--text-secondary);
-}
-</style>
+<!-- Modal Nuovo Acquisto -->
+{{if .Data.FormData.Prodotto.ID}}
+<div class="modal fade" id="modalNuovoAcquisto" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/magazzino/movimento-acquisto/aggiungi">
+                <input type="hidden" name="prodotto_id" value="{{.Data.FormData.Prodotto.ID}}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Aggiungi Acquisto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">DDT/Fattura *</label>
+                        <select name="ddt_fattura_id" class="form-select" required>
+                            <option value="">-- Seleziona documento --</option>
+                            {{range .Data.FormData.DDTFatture}}
+                            <option value="{{.ID}}">{{.Label}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantità *</label>
+                        <input type="number" name="quantita" class="form-control" min="1" value="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Note</label>
+                        <input type="text" name="note" class="form-control" placeholder="Es. Secondo lotto">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Aggiungi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}
 
 <script>
-function toggleOrigineFields() {
-    var origine = document.getElementById('origine').value;
-    var campiNuovo = document.getElementById('campi-nuovo');
-    var campiSpare = document.getElementById('campi-spare');
-
-    if (origine === 'nuovo') {
-        campiNuovo.style.display = 'block';
-        campiSpare.style.display = 'none';
-    } else if (origine === 'spare') {
-        campiNuovo.style.display = 'none';
+function toggleCampiOrigine() {
+    const origine = document.getElementById('origine').value;
+    const campiSpare = document.getElementById('campiSpare');
+    const campiNuovo = document.getElementById('campiNuovo');
+    
+    if (origine === 'spare') {
         campiSpare.style.display = 'block';
-    } else {
         campiNuovo.style.display = 'none';
-        campiSpare.style.display = 'none';
-    }
-}
-
-function toggleCategoriaFields() {
-    var categoria = document.getElementById('categoria').value;
-    var hintGiacenza = document.getElementById('hint-giacenza');
-    var giacenzaInput = document.getElementById('giacenza');
-
-    if (categoria === 'cavo') {
-        if (hintGiacenza) hintGiacenza.textContent = 'metri';
-        if (giacenzaInput) giacenzaInput.step = '1';
+        document.getElementById('nave_origine').required = true;
+        const ddtSelect = document.getElementById('ddt_fattura_id');
+        if (ddtSelect) ddtSelect.required = false;
     } else {
-        if (hintGiacenza) hintGiacenza.textContent = 'pezzi';
-        if (giacenzaInput) giacenzaInput.step = '1';
+        campiSpare.style.display = 'none';
+        campiNuovo.style.display = 'block';
+        document.getElementById('nave_origine').required = false;
+        const ddtSelect = document.getElementById('ddt_fattura_id');
+        if (ddtSelect) ddtSelect.required = true;
     }
 }
 
 // Esegui all'avvio
-document.addEventListener('DOMContentLoaded', function() {
-    toggleOrigineFields();
-    toggleCategoriaFields();
-});
+document.addEventListener('DOMContentLoaded', toggleCampiOrigine);
 </script>
-{{end}}
+
+{{template "footer" .}}

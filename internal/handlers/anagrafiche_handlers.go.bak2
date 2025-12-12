@@ -257,14 +257,6 @@ func EliminaFornitore(w http.ResponseWriter, r *http.Request) {
 
 	id, _ := strconv.ParseInt(pathParts[3], 10, 64)
 	
-	// Non permettere eliminazione di Amazon
-	var isAmazon bool
-	database.DB.QueryRow(`SELECT COALESCE(is_amazon, 0) FROM fornitori WHERE id = ?`, id).Scan(&isAmazon)
-	if isAmazon {
-		http.Redirect(w, r, "/fornitori", http.StatusSeeOther)
-		return
-	}
-	
 	tx, err := database.DB.Begin()
 	if err != nil {
 		http.Redirect(w, r, "/fornitori", http.StatusSeeOther)
@@ -272,7 +264,7 @@ func EliminaFornitore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 1. Trova tutti i DDT di questo fornitore
-	ddtRows, _ := tx.Query(`SELECT id FROM ddt_fatture WHERE fornitore_id = ?`, id)
+	ddtRows, _ := tx.Query(`SELECT id FROM ddt_entrata WHERE fornitore_id = ?`, id)
 	var ddtIDs []int64
 	for ddtRows.Next() {
 		var ddtID int64
@@ -281,52 +273,58 @@ func EliminaFornitore(w http.ResponseWriter, r *http.Request) {
 	}
 	ddtRows.Close()
 
-	// 2. Per ogni DDT, trova prodotti collegati e ricalcola giacenze
-	var prodottiDaVerificare []int64
+	// 2. Per ogni DDT, ripristina giacenze e trova prodotti da eliminare
+	var prodottiDaEliminare []int64
 	for _, ddtID := range ddtIDs {
-		movRows, _ := tx.Query(`SELECT prodotto_id, quantita FROM movimenti_acquisto WHERE ddt_fattura_id = ?`, ddtID)
+		righeRows, _ := tx.Query(`
+			SELECT prodotto_id, quantita, prodotto_creato_da_ddt 
+			FROM ddt_entrata_righe WHERE ddt_entrata_id = ?
+		`, ddtID)
 		
-		for movRows.Next() {
+		for righeRows.Next() {
 			var prodID int64
 			var qta int
-			movRows.Scan(&prodID, &qta)
+			var creato bool
+			righeRows.Scan(&prodID, &qta, &creato)
 			
 			// Sottrai giacenza
 			tx.Exec(`UPDATE prodotti SET giacenza = giacenza - ? WHERE id = ?`, qta, prodID)
-			prodottiDaVerificare = append(prodottiDaVerificare, prodID)
+			
+			// Se prodotto creato da DDT di questo fornitore, verifica se è usato altrove
+			if creato {
+				var count int
+				tx.QueryRow(`
+					SELECT COUNT(*) FROM ddt_entrata_righe r
+					JOIN ddt_entrata d ON r.ddt_entrata_id = d.id
+					WHERE r.prodotto_id = ? AND d.fornitore_id != ?
+				`, prodID, id).Scan(&count)
+				if count == 0 {
+					prodottiDaEliminare = append(prodottiDaEliminare, prodID)
+				}
+			}
 		}
-		movRows.Close()
+		righeRows.Close()
 		
-		// Elimina movimenti_acquisto del DDT
-		tx.Exec(`DELETE FROM movimenti_acquisto WHERE ddt_fattura_id = ?`, ddtID)
+		// Elimina righe DDT
+		tx.Exec(`DELETE FROM ddt_entrata_righe WHERE ddt_entrata_id = ?`, ddtID)
+		
+		// Elimina PDF
+		var pdfPath sql.NullString
+		tx.QueryRow(`SELECT pdf_path FROM ddt_entrata WHERE id = ?`, ddtID).Scan(&pdfPath)
+		if pdfPath.Valid && pdfPath.String != "" {
+			os.Remove(pdfPath.String)
+		}
 	}
 
 	// 3. Elimina DDT del fornitore
-	tx.Exec(`DELETE FROM ddt_fatture WHERE fornitore_id = ?`, id)
+	tx.Exec(`DELETE FROM ddt_entrata WHERE fornitore_id = ?`, id)
 
-	// 4. Elimina archivio PDF del fornitore
-	pdfRows, _ := tx.Query(`SELECT file_path FROM archivio_pdf WHERE fornitore_id = ?`, id)
-	for pdfRows.Next() {
-		var filePath string
-		pdfRows.Scan(&filePath)
-		if filePath != "" {
-			os.Remove("/home/ies/furviogest/uploads/archivio_pdf/" + filePath)
-		}
-	}
-	pdfRows.Close()
-	tx.Exec(`DELETE FROM archivio_pdf WHERE fornitore_id = ?`, id)
-
-	// 5. Verifica ed elimina prodotti senza più movimenti
-	for _, prodID := range prodottiDaVerificare {
-		var countMov int
-		tx.QueryRow(`SELECT COUNT(*) FROM movimenti_acquisto WHERE prodotto_id = ?`, prodID).Scan(&countMov)
-		if countMov == 0 {
-			// Nessun altro movimento, elimina prodotto non-spare
-			tx.Exec(`DELETE FROM prodotti WHERE id = ? AND origine = 'nuovo'`, prodID)
-		}
+	// 4. Elimina prodotti creati solo da DDT di questo fornitore
+	for _, prodID := range prodottiDaEliminare {
+		tx.Exec(`DELETE FROM prodotti WHERE id = ?`, prodID)
 	}
 
-	// 6. Elimina il fornitore
+	// 5. Elimina il fornitore
 	tx.Exec(`DELETE FROM fornitori WHERE id = ?`, id)
 
 	tx.Commit()
@@ -343,23 +341,22 @@ func APIInfoEliminazioneFornitore(w http.ResponseWriter, r *http.Request) {
 	var info struct {
 		NomeFornitore     string   `json:"nome_fornitore"`
 		NumDDT            int      `json:"num_ddt"`
-		IsAmazon          bool     `json:"is_amazon"`
 		ProdottiEliminati []string `json:"prodotti_eliminati"`
 	}
 
-	database.DB.QueryRow(`SELECT nome, COALESCE(is_amazon, 0) FROM fornitori WHERE id = ?`, id).Scan(&info.NomeFornitore, &info.IsAmazon)
-	database.DB.QueryRow(`SELECT COUNT(*) FROM ddt_fatture WHERE fornitore_id = ?`, id).Scan(&info.NumDDT)
+	database.DB.QueryRow(`SELECT nome FROM fornitori WHERE id = ?`, id).Scan(&info.NomeFornitore)
+	database.DB.QueryRow(`SELECT COUNT(*) FROM ddt_entrata WHERE fornitore_id = ?`, id).Scan(&info.NumDDT)
 
-	// Prodotti che verranno eliminati
+	// Prodotti che verranno eliminati (creati solo da DDT di questo fornitore)
 	rows, _ := database.DB.Query(`
 		SELECT DISTINCT p.nome FROM prodotti p
-		JOIN movimenti_acquisto m ON m.prodotto_id = p.id
-		JOIN ddt_fatture d ON m.ddt_fattura_id = d.id
-		WHERE d.fornitore_id = ? AND p.origine = 'nuovo'
+		JOIN ddt_entrata_righe r ON r.prodotto_id = p.id
+		JOIN ddt_entrata d ON r.ddt_entrata_id = d.id
+		WHERE d.fornitore_id = ? AND r.prodotto_creato_da_ddt = 1
 		AND NOT EXISTS (
-			SELECT 1 FROM movimenti_acquisto m2
-			JOIN ddt_fatture d2 ON m2.ddt_fattura_id = d2.id
-			WHERE m2.prodotto_id = p.id AND d2.fornitore_id != ?
+			SELECT 1 FROM ddt_entrata_righe r2
+			JOIN ddt_entrata d2 ON r2.ddt_entrata_id = d2.id
+			WHERE r2.prodotto_id = p.id AND d2.fornitore_id != ?
 		)
 	`, id, id)
 	defer rows.Close()
@@ -371,7 +368,6 @@ func APIInfoEliminazioneFornitore(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(info)
 }
-
 // ============================================
 // PORTI
 // ============================================
