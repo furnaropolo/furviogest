@@ -190,6 +190,16 @@ func main() {
 	mux.Handle("/impostazioni", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ImpostazioniAziendaHandler))))
 	mux.Handle("/impostazioni/elimina-logo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaLogo))))
 	mux.Handle("/impostazioni/elimina-firma", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaFirmaEmail))))
+
+	// Backup e Ripristino
+	mux.Handle("/backup", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.BackupPage))))
+	mux.Handle("/backup/esegui", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EseguiBackup))))
+	mux.Handle("/backup/ripristina", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.RipristinaBackup))))
+	mux.Handle("/backup/upload", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadBackup))))
+	mux.Handle("/backup/config", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.SalvaConfigBackup))))
+	mux.Handle("/backup/test-nas", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.TestNAS))))
+	mux.Handle("/backup/download/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.DownloadBackup))))
+	mux.Handle("/api/backup/automatico", http.HandlerFunc(handlers.APIBackupAutomatico))
 	mux.Handle("/azienda/logo", middleware.RequireAuth(http.HandlerFunc(handlers.ServeLogoAzienda)))
 	mux.Handle("/azienda/firma", middleware.RequireAuth(http.HandlerFunc(handlers.ServeFirmaEmail)))
 

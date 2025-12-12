@@ -1,0 +1,294 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Backup e Ripristino</h1>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+{{if .Success}}
+<div class="alert alert-success">{{.Success}}</div>
+{{end}}
+
+{{if .Data.ErroreBackup}}
+<div class="alert alert-warning">
+    <strong>Attenzione Backup:</strong> {{.Data.ErroreBackup}}
+</div>
+{{end}}
+
+<div class="row">
+    <!-- Colonna Backup -->
+    <div class="col-md-6">
+        <!-- Stato Backup -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Stato Backup</h5>
+            </div>
+            <div class="card-body">
+                {{if .Data.UltimoBackup.ID}}
+                <p>
+                    <strong>Ultimo backup:</strong>
+                    {{.Data.UltimoBackup.CreatedAt.Format "02/01/2006 15:04"}}
+                    ({{.Data.UltimoBackup.Tipo}})
+                    {{if .Data.UltimoBackup.LocaleOK}}
+                        <span class="badge bg-success">Locale OK</span>
+                    {{else}}
+                        <span class="badge bg-danger">Locale FALLITO</span>
+                    {{end}}
+                    {{if .Data.Config.NasAbilitato}}
+                        {{if .Data.UltimoBackup.NasOK}}
+                            <span class="badge bg-success">NAS OK</span>
+                        {{else}}
+                            <span class="badge bg-danger">NAS FALLITO</span>
+                        {{end}}
+                    {{end}}
+                </p>
+                {{else}}
+                <p class="text-muted">Nessun backup ancora eseguito</p>
+                {{end}}
+
+                <form method="POST" action="/backup/esegui" class="mt-3">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        Esegui Backup Manuale
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista Backup Disponibili -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Backup Disponibili</h5>
+            </div>
+            <div class="card-body">
+                {{if .Data.Backups}}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Data/Ora</th>
+                                <th>Dimensione</th>
+                                <th>Tipo</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Data.Backups}}
+                            <tr>
+                                <td>{{.DataOra.Format "02/01/2006 15:04"}}</td>
+                                <td>{{printf "%.2f" (divFloat .Dimensione 1048576)}} MB</td>
+                                <td>
+                                    {{if eq .Tipo "automatico"}}
+                                    <span class="badge bg-info">Auto</span>
+                                    {{else}}
+                                    <span class="badge bg-secondary">Manuale</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" data-filename="{{.Filename}}" data-data="{{.DataOra.Format `02/01/2006 15:04`}}" onclick="confermaRestoreBtn(this)">
+                                        Ripristina
+                                    </button>
+                                    <a href="/backup/download/{{.Filename}}" class="btn btn-sm btn-outline-secondary">
+                                        Scarica
+                                    </a>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <p class="text-muted">Nessun backup disponibile</p>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Upload Backup -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Carica Backup Esterno</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Carica un file di backup .tar.gz per ripristinare i dati (es. da NAS o altra macchina)</p>
+                <form method="POST" action="/backup/upload" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" name="backup_file" class="form-control" accept=".tar.gz" required>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="restore_now" name="restore_now" value="1">
+                        <label class="form-check-label" for="restore_now">Ripristina immediatamente dopo il caricamento</label>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary">Carica Backup</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Colonna Configurazione -->
+    <div class="col-md-6">
+        <!-- Configurazione NAS -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Configurazione Backup su NAS</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/backup/config" id="configForm">
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="nas_abilitato" name="nas_abilitato" value="1"
+                            {{if .Data.Config.NasAbilitato}}checked{{end}} onchange="toggleNasFields()">
+                        <label class="form-check-label" for="nas_abilitato">
+                            <strong>Abilita backup su NAS</strong>
+                        </label>
+                    </div>
+
+                    <div id="nasFields" {{if not .Data.Config.NasAbilitato}}style="display:none"{{end}}>
+                        <div class="mb-3">
+                            <label class="form-label">Percorso NAS (SMB/CIFS)</label>
+                            <input type="text" name="nas_path" class="form-control"
+                                   placeholder="//192.168.1.100/backup" value="{{.Data.Config.NasPath}}">
+                            <div class="form-text">Esempio: //192.168.1.100/cartella_backup</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" name="nas_username" class="form-control"
+                                   value="{{.Data.Config.NasUsername}}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" name="nas_password" class="form-control"
+                                   placeholder="{{if .Data.Config.NasPassword}}(password salvata){{else}}Inserisci password{{end}}">
+                            <div class="form-text">Lascia vuoto per mantenere la password attuale</div>
+                        </div>
+                        <button type="button" class="btn btn-outline-info mb-3" onclick="testNAS()">
+                            Test Connessione
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label class="form-label">Giorni di retention</label>
+                        <input type="number" name="retention_days" class="form-control" style="width: 100px;"
+                               value="{{.Data.Config.RetentionDays}}" min="1" max="365">
+                        <div class="form-text">I backup piu vecchi verranno eliminati automaticamente</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Salva Configurazione</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info Backup Automatico -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Backup Automatico</h5>
+            </div>
+            <div class="card-body">
+                <p>Il backup automatico viene eseguito ogni giorno a mezzanotte.</p>
+                <p>Vengono salvati:</p>
+                <ul>
+                    <li>Database completo</li>
+                    <li>File caricati (logo, allegati)</li>
+                </ul>
+                <p class="text-muted small">
+                    I backup vengono mantenuti per <strong>{{.Data.Config.RetentionDays}} giorni</strong>,
+                    poi eliminati automaticamente.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Restore -->
+<div id="modalRestore" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>Conferma Ripristino</h3>
+        <p>Stai per ripristinare il backup del <strong id="restoreData"></strong>.</p>
+        <p class="text-danger"><strong>Attenzione:</strong> Tutti i dati attuali verranno sovrascritti!</p>
+        <p>Il server potrebbe riavviarsi dopo il ripristino.</p>
+        <form method="POST" action="/backup/ripristina" id="restoreForm">
+            <input type="hidden" name="filename" id="restoreFilename">
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="chiudiModalRestore()">Annulla</button>
+                <button type="submit" class="btn btn-danger">Ripristina</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.modal-content h3 {
+    margin-top: 0;
+    color: #333;
+}
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+</style>
+
+<script>
+function toggleNasFields() {
+    var enabled = document.getElementById('nas_abilitato').checked;
+    document.getElementById('nasFields').style.display = enabled ? 'block' : 'none';
+}
+
+function testNAS() {
+    var form = document.getElementById('configForm');
+    var formData = new FormData(form);
+
+    // Cambia action temporaneamente
+    var originalAction = form.action;
+    form.action = '/backup/test-nas';
+    form.submit();
+}
+
+function confermaRestore(filename, data) {
+    document.getElementById('restoreFilename').value = filename;
+    document.getElementById('restoreData').textContent = data;
+    document.getElementById('modalRestore').style.display = 'flex';
+}
+
+function confermaRestoreBtn(btn) {
+    var filename = btn.getAttribute('data-filename');
+    var data = btn.getAttribute('data-data');
+    confermaRestore(filename, data);
+}
+
+function chiudiModalRestore() {
+    document.getElementById('modalRestore').style.display = 'none';
+}
+
+// Chiudi modal cliccando fuori
+document.getElementById('modalRestore').addEventListener('click', function(e) {
+    if (e.target === this) {
+        chiudiModalRestore();
+    }
+});
+</script>
+{{end}}

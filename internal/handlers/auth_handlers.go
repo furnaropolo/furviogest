@@ -49,6 +49,7 @@ func InitTemplates(templatesDir string) error {
 				return result
 			},
 			"euro": func(f float64) string { return strings.Replace(fmt.Sprintf("%.2f €", f), ".", ",", 1) },
+			"divFloat": func(a int64, b int64) float64 { return float64(a) / float64(b) },
 		}
 		tmpl, err := template.New(file.Name()).Funcs(funcMap).ParseFiles(baseFile, templateFile)
 		if err != nil {
@@ -155,6 +156,17 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := NewPageData("Dashboard - FurvioGest", r)
+
+	// Mostra avviso backup solo per tecnici
+	if data.Session != nil && data.Session.IsTecnico() {
+		erroreBackup := GetUltimoBackupErrore()
+		if erroreBackup != "" {
+			data.Data = map[string]interface{}{
+				"ErroreBackup": erroreBackup,
+			}
+		}
+	}
+
 	renderTemplate(w, "dashboard.html", data)
 }
 
