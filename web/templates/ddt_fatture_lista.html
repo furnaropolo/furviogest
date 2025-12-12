@@ -1,8 +1,9 @@
-{{template "header" .}}
+{{template "base" .}}
 
+{{define "content"}}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-file-earmark-text me-2"></i>Registro DDT/Fatture</h2>
+        <h2><i class="bi bi-file-earmark-text me-2"></i>Registro DDT/Fatture (Entrata Merce)</h2>
         <a href="/ddt-fatture/nuovo" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i> Nuovo Documento
         </a>
@@ -116,5 +117,4 @@ function confermaEliminazione(id) {
         });
 }
 </script>
-
-{{template "footer" .}}
+{{end}}

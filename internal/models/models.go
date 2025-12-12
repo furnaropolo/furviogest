@@ -52,6 +52,7 @@ type Fornitore struct {
 	TelefonoReferente string   `json:"telefono_referente"`
 	Note             string    `json:"note"`
 	EmailDestinatari string    `json:"email_destinatari"`
+	IsAmazon         bool      `json:"is_amazon"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
@@ -98,6 +99,7 @@ type Compagnia struct {
 	Logo             string    `json:"logo"`
 	Note             string    `json:"note"`
 	EmailDestinatari string    `json:"email_destinatari"`
+	IsAmazon         bool      `json:"is_amazon"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

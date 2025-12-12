@@ -1,5 +1,6 @@
-{{template "header" .}}
+{{template "base" .}}
 
+{{define "content"}}
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-lg-8">
@@ -68,28 +69,22 @@
                         </div>
 
                         <!-- Campi per SPARE -->
+                        <!-- Campi per SPARE -->
                         <div id="campiSpare" style="display: none;">
                             <div class="card bg-light mb-3">
                                 <div class="card-body">
-                                    <h6 class="card-title"><i class="bi bi-ship me-2"></i>Provenienza Spare</h6>
+                                    <h6 class="card-title"><i class="bi bi-archive me-2"></i>Materiale Spare</h6>
                                     <div class="row">
-                                        <div class="col-md-8 mb-3">
-                                            <label class="form-label">Nave di origine *</label>
-                                            <select name="nave_origine" id="nave_origine" class="form-select">
-                                                <option value="">-- Seleziona nave --</option>
-                                                {{range .Data.FormData.Navi}}
-                                                <option value="{{.Nome}}" {{if eq .Nome $.Data.FormData.Prodotto.NaveOrigine}}selected{{end}}>{{.Nome}}</option>
-                                                {{end}}
-                                            </select>
-                                        </div>
                                         <div class="col-md-4 mb-3">
-                                            <label class="form-label">Quantità</label>
+                                            <label class="form-label">Quantita iniziale</label>
                                             <input type="number" name="quantita" id="quantita_spare" class="form-control" min="0" value="{{if .Data.FormData.Prodotto.ID}}{{printf "%.0f" .Data.FormData.Prodotto.Giacenza}}{{else}}1{{end}}">
                                         </div>
                                     </div>
+                                    <small class="text-muted">Materiale gia presente in magazzino (non richiede DDT)</small>
                                 </div>
                             </div>
                         </div>
+
 
                         <!-- Campi per NUOVO (acquistato) -->
                         <div id="campiNuovo" style="display: none;">
@@ -109,7 +104,7 @@
                                             <small class="text-muted">Non trovi il documento? <a href="/ddt-fatture/nuovo" target="_blank">Registrane uno nuovo</a></small>
                                         </div>
                                         <div class="col-md-4 mb-3">
-                                            <label class="form-label">Quantità *</label>
+                                            <label class="form-label">Quantita *</label>
                                             <input type="number" name="quantita" id="quantita_nuovo" class="form-control" min="1" value="1">
                                         </div>
                                     </div>
@@ -164,7 +159,7 @@
                                     <span class="badge bg-success">+{{.Quantita}}</span>
                                     <br>
                                     <a href="/magazzino/movimento-acquisto/elimina/{{.ID}}" class="btn btn-sm btn-link text-danger p-0" 
-                                       onclick="return confirm('Eliminare questo movimento? La giacenza verrà ricalcolata.')">
+                                       onclick="return confirm('Eliminare questo movimento? La giacenza verra ricalcolata.')">
                                         <i class="bi bi-trash"></i>
                                     </a>
                                 </div>
@@ -209,7 +204,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Quantità *</label>
+                        <label class="form-label">Quantita *</label>
                         <input type="number" name="quantita" class="form-control" min="1" value="1" required>
                     </div>
                     <div class="mb-3">
@@ -229,6 +224,8 @@
 
 <script>
 function toggleCampiOrigine() {
+    const quantitaSpare = document.getElementById('quantita_spare');
+    const quantitaNuovo = document.getElementById('quantita_nuovo');
     const origine = document.getElementById('origine').value;
     const campiSpare = document.getElementById('campiSpare');
     const campiNuovo = document.getElementById('campiNuovo');
@@ -236,20 +233,23 @@ function toggleCampiOrigine() {
     if (origine === 'spare') {
         campiSpare.style.display = 'block';
         campiNuovo.style.display = 'none';
-        document.getElementById('nave_origine').required = true;
+        
         const ddtSelect = document.getElementById('ddt_fattura_id');
         if (ddtSelect) ddtSelect.required = false;
+        if (quantitaSpare) quantitaSpare.disabled = false;
+        if (quantitaNuovo) quantitaNuovo.disabled = true;
     } else {
         campiSpare.style.display = 'none';
         campiNuovo.style.display = 'block';
-        document.getElementById('nave_origine').required = false;
+        
         const ddtSelect = document.getElementById('ddt_fattura_id');
         if (ddtSelect) ddtSelect.required = true;
+        if (quantitaSpare) quantitaSpare.disabled = true;
+        if (quantitaNuovo) quantitaNuovo.disabled = false;
     }
 }
 
 // Esegui all'avvio
 document.addEventListener('DOMContentLoaded', toggleCampiOrigine);
 </script>
-
-{{template "footer" .}}
+{{end}}

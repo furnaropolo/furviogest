@@ -200,7 +200,7 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		data.Data = formData
+		data.Data = map[string]interface{}{"FormData": formData}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
@@ -220,7 +220,7 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 	// Validazione base
 	if codice == "" || nome == "" {
 		data.Error = "Codice e nome sono obbligatori"
-		data.Data = formData
+		data.Data = map[string]interface{}{"FormData": formData}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
@@ -238,14 +238,14 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 
 	if tipo != "wifi" && tipo != "gsm" && tipo != "entrambi" {
 		data.Error = "Tipo deve essere 'wifi', 'gsm' o 'entrambi'"
-		data.Data = formData
+		data.Data = map[string]interface{}{"FormData": formData}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
 
 	if origine != "spare" && origine != "nuovo" {
 		data.Error = "Origine deve essere 'spare' o 'nuovo'"
-		data.Data = formData
+		data.Data = map[string]interface{}{"FormData": formData}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
@@ -262,31 +262,24 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 		ddtFatturaID, _ = strconv.ParseInt(ddtFatturaIDStr, 10, 64)
 		if ddtFatturaID == 0 {
 			data.Error = "Per i prodotti nuovi è obbligatorio selezionare un DDT/Fattura di acquisto"
-			data.Data = formData
+			data.Data = map[string]interface{}{"FormData": formData}
 			renderTemplate(w, "prodotti_form.html", data)
 			return
 		}
 		if quantita <= 0 {
 			data.Error = "Per i prodotti nuovi la quantità deve essere maggiore di 0"
-			data.Data = formData
+			data.Data = map[string]interface{}{"FormData": formData}
 			renderTemplate(w, "prodotti_form.html", data)
 			return
 		}
 	}
 
-	// Per spare è obbligatoria la nave di origine
-	if origine == "spare" && naveOrigine == "" {
-		data.Error = "Per i prodotti spare è obbligatorio indicare la nave di origine"
-		data.Data = formData
-		renderTemplate(w, "prodotti_form.html", data)
-		return
-	}
 
 	// Inizia transazione
 	tx, err := database.DB.Begin()
 	if err != nil {
 		data.Error = "Errore database"
-		data.Data = formData
+		data.Data = map[string]interface{}{"FormData": formData}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
@@ -311,7 +304,7 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 		} else {
 			data.Error = "Errore durante il salvataggio: " + err.Error()
 		}
-		data.Data = formData
+		data.Data = map[string]interface{}{"FormData": formData}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
@@ -327,7 +320,7 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			tx.Rollback()
 			data.Error = "Errore creazione movimento: " + err.Error()
-			data.Data = formData
+			data.Data = map[string]interface{}{"FormData": formData}
 			renderTemplate(w, "prodotti_form.html", data)
 			return
 		}
@@ -535,12 +528,12 @@ func AggiungiMovimentoAcquisto(w http.ResponseWriter, r *http.Request) {
 // EliminaMovimentoAcquisto elimina un movimento e ricalcola la giacenza
 func EliminaMovimentoAcquisto(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
+	if len(pathParts) < 5 {
 		http.Redirect(w, r, "/magazzino", http.StatusSeeOther)
 		return
 	}
 
-	id, _ := strconv.ParseInt(pathParts[3], 10, 64)
+	id, _ := strconv.ParseInt(pathParts[4], 10, 64)
 
 	// Recupera info movimento
 	var prodottoID int64
@@ -616,7 +609,7 @@ func ListaMovimenti(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Movimenti Magazzino - FurvioGest", r)
 
 	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
+	if len(pathParts) < 5 {
 		http.Redirect(w, r, "/magazzino", http.StatusSeeOther)
 		return
 	}

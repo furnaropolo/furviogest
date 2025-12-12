@@ -15,7 +15,7 @@
             <tr>
                 <th>Ragione Sociale</th>
                 <th>P.IVA</th>
-                <th>Città</th>
+                <th>Citta</th>
                 <th>Telefono</th>
                 <th>Email</th>
                 <th>Referente</th>
@@ -27,7 +27,10 @@
         <tbody>
             {{range .Data}}
             <tr>
-                <td><strong>{{.Nome}}</strong></td>
+                <td>
+                    <strong>{{.Nome}}</strong>
+                    {{if .IsAmazon}}<span class="badge-amazon">Amazon</span>{{end}}
+                </td>
                 <td>{{.PartitaIVA}}</td>
                 <td>{{.Citta}}{{if .Provincia}} ({{.Provincia}}){{end}}</td>
                 <td>{{if .Telefono}}<a href="tel:{{.Telefono}}">{{.Telefono}}</a>{{end}}</td>
@@ -36,7 +39,11 @@
                 {{if $.Session.IsTecnico}}
                 <td class="table-actions">
                     <a href="/fornitori/modifica/{{.ID}}" class="btn btn-sm btn-secondary">Modifica</a>
+                    {{if not .IsAmazon}}
                     <button class="btn btn-sm btn-danger" onclick="confermaEliminazioneFornitore({{.ID}})">Elimina</button>
+                    {{else}}
+                    <span class="badge-protected" title="Fornitore di sistema non eliminabile">Protetto</span>
+                    {{end}}
                 </td>
                 {{end}}
             </tr>
@@ -54,21 +61,23 @@
 {{end}}
 
 <!-- Modal conferma eliminazione -->
-<div id="modal-elimina" class="modal" style="display:none;">
-    <div class="modal-content">
-        <h3>Conferma Eliminazione Fornitore</h3>
-        <div id="modal-body">
+<div id="modal-elimina" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <div class="modal-header-custom">
+            <h3>Conferma Eliminazione Fornitore</h3>
+        </div>
+        <div class="modal-body-custom" id="modal-body">
             <p>Stai per eliminare il fornitore <strong id="fornitore-nome"></strong>.</p>
-            <div id="info-ddt" style="display:none;">
-                <p class="text-warning"><strong>Verranno eliminati anche <span id="num-ddt"></span> DDT/Fatture in entrata.</strong></p>
+            <div id="info-ddt" class="alert-warning-custom" style="display:none;">
+                <strong>Verranno eliminati anche <span id="num-ddt"></span> DDT/Fatture in entrata.</strong>
             </div>
-            <div id="prodotti-eliminati" style="display:none;">
-                <p class="text-danger"><strong>I seguenti prodotti verranno eliminati definitivamente:</strong></p>
+            <div id="prodotti-eliminati" class="alert-danger-custom" style="display:none;">
+                <strong>I seguenti prodotti verranno eliminati definitivamente:</strong>
                 <ul id="lista-prodotti-eliminati"></ul>
             </div>
             <p>Tutte le giacenze collegate verranno ripristinate.</p>
         </div>
-        <div class="modal-actions">
+        <div class="modal-footer-custom">
             <button class="btn btn-secondary" onclick="chiudiModal()">Annulla</button>
             <button class="btn btn-danger" id="btn-conferma-elimina">Elimina</button>
         </div>
@@ -76,36 +85,84 @@
 </div>
 
 <style>
-.modal {
+.badge-amazon {
+    display: inline-block;
+    background: #ff9900;
+    color: #000;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-left: 8px;
+}
+.badge-protected {
+    display: inline-block;
+    background: #6c757d;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: help;
+}
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.6);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 9999;
 }
-.modal-content {
-    background: var(--bg-primary);
-    padding: 2rem;
+.modal-box {
+    background: #ffffff;
     border-radius: 8px;
     max-width: 500px;
     width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    overflow: hidden;
 }
-.modal-actions {
+.modal-header-custom {
+    background: #dc3545;
+    color: #fff;
+    padding: 1rem 1.5rem;
+}
+.modal-header-custom h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+.modal-body-custom {
+    padding: 1.5rem;
+    color: #333;
+}
+.modal-footer-custom {
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
     display: flex;
     gap: 1rem;
     justify-content: flex-end;
-    margin-top: 1.5rem;
 }
-.text-warning {
-    color: var(--warning);
+.alert-warning-custom {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
 }
-.text-danger {
-    color: var(--danger);
+.alert-danger-custom {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+.alert-danger-custom ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
 }
 </style>
 

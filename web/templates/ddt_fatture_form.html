@@ -1,5 +1,6 @@
-{{template "header" .}}
+{{template "base" .}}
 
+{{define "content"}}
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
@@ -33,6 +34,7 @@
                                 <select name="tipo" id="tipo" class="form-select" required>
                                     <option value="ddt" {{if eq .Data.DDT.Tipo "ddt"}}selected{{end}}>DDT</option>
                                     <option value="fattura" {{if eq .Data.DDT.Tipo "fattura"}}selected{{end}}>Fattura</option>
+                                    <option value="ordine" {{if eq .Data.DDT.Tipo "ordine"}}selected{{end}} style="display:none;">Ordine Amazon</option>
                                 </select>
                             </div>
                         </div>
@@ -86,7 +88,7 @@ function aggiornaLabelCampi() {
         tipoContainer.style.display = 'none';
         tipoSelect.value = 'ordine';
         labelNumero.textContent = 'Numero Ordine Amazon *';
-        labelData.textContent = 'Data Ordine *';
+        labelData.textContent = 'Data Ricevimento *';
         numero.placeholder = 'Es. 402-1234567-8901234';
     } else {
         tipoContainer.style.display = 'block';
@@ -102,5 +104,4 @@ function aggiornaLabelCampi() {
 // Esegui all'avvio
 document.addEventListener('DOMContentLoaded', aggiornaLabelCampi);
 </script>
-
-{{template "footer" .}}
+{{end}}

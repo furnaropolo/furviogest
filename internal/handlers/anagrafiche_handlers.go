@@ -24,7 +24,7 @@ func ListaFornitori(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Fornitori - FurvioGest", r)
 
 	rows, err := database.DB.Query(`
-		SELECT id, nome, partita_iva, codice_fiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefono_referente, note, created_at
+		SELECT id, nome, partita_iva, codice_fiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefono_referente, note, created_at, COALESCE(is_amazon, 0) as is_amazon
 		FROM fornitori ORDER BY nome
 	`)
 	if err != nil {
@@ -38,7 +38,7 @@ func ListaFornitori(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var f models.Fornitore
 		var partitaIVA, codiceFiscale, indirizzo, cap, citta, provincia, nazione, telefono, cellulare, email, referente, telefonoReferente, note sql.NullString
-		err := rows.Scan(&f.ID, &f.Nome, &partitaIVA, &codiceFiscale, &indirizzo, &cap, &citta, &provincia, &nazione, &telefono, &cellulare, &email, &referente, &telefonoReferente, &note, &f.CreatedAt)
+		err := rows.Scan(&f.ID, &f.Nome, &partitaIVA, &codiceFiscale, &indirizzo, &cap, &citta, &provincia, &nazione, &telefono, &cellulare, &email, &referente, &telefonoReferente, &note, &f.CreatedAt, &f.IsAmazon)
 		if err != nil {
 			continue
 		}

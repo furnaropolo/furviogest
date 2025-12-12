@@ -32,15 +32,39 @@ type ArchivioPDF struct {
 func ListaArchivioPDF(w http.ResponseWriter, r *http.Request) {
 	data := NewPageData("Archivio PDF - FurvioGest", r)
 
-	rows, err := database.DB.Query(`
+	// Leggi filtri dalla query string
+	fornitoreIDStr := r.URL.Query().Get("fornitore_id")
+	dataDa := r.URL.Query().Get("data_da")
+	dataA := r.URL.Query().Get("data_a")
+
+	// Costruisci query con filtri
+	query := `
 		SELECT a.id, a.fornitore_id, a.tipo, a.numero, a.data_documento, a.file_path, a.note, a.created_at,
 		       f.nome as nome_fornitore, COALESCE(f.is_amazon, 0) as is_amazon
 		FROM archivio_pdf a
 		LEFT JOIN fornitori f ON a.fornitore_id = f.id
-		ORDER BY a.data_documento DESC, a.id DESC
-	`)
+		WHERE 1=1
+	`
+	var args []interface{}
+
+	if fornitoreIDStr != "" {
+		query += " AND a.fornitore_id = ?"
+		args = append(args, fornitoreIDStr)
+	}
+	if dataDa != "" {
+		query += " AND a.data_documento >= ?"
+		args = append(args, dataDa)
+	}
+	if dataA != "" {
+		query += " AND a.data_documento <= ?"
+		args = append(args, dataA)
+	}
+
+	query += " ORDER BY a.data_documento DESC, a.id DESC"
+
+	rows, err := database.DB.Query(query, args...)
 	if err != nil {
-		data.Error = "Errore nel caricamento dell'archivio: " + err.Error()
+		data.Error = "Errore nel caricamento: " + err.Error()
 		renderTemplate(w, "archivio_pdf_lista.html", data)
 		return
 	}
@@ -60,9 +84,19 @@ func ListaArchivioPDF(w http.ResponseWriter, r *http.Request) {
 		archivio = append(archivio, a)
 	}
 
-	data.Data = archivio
+	// Carica fornitori per il filtro
+	fornitori := caricaFornitoriConAmazon()
+
+	data.Data = map[string]interface{}{
+		"Archivio":        archivio,
+		"Fornitori":       fornitori,
+		"FiltroFornitore": fornitoreIDStr,
+		"FiltroDataDa":    dataDa,
+		"FiltroDataA":     dataA,
+	}
 	renderTemplate(w, "archivio_pdf_lista.html", data)
 }
+
 
 // NuovoArchivioPDF gestisce l'upload di un nuovo PDF
 func NuovoArchivioPDF(w http.ResponseWriter, r *http.Request) {

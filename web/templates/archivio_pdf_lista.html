@@ -1,5 +1,6 @@
-{{template "header" .}}
+{{template "base" .}}
 
+{{define "content"}}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-file-earmark-pdf me-2"></i>Archivio PDF Documenti</h2>
@@ -15,6 +16,36 @@
     {{if .Success}}
     <div class="alert alert-success">{{.Success}}</div>
     {{end}}
+
+    <!-- Filtri -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Fornitore</label>
+                    <select name="fornitore_id" class="form-select">
+                        <option value="">Tutti i fornitori</option>
+                        {{range .Data.Fornitori}}
+                        <option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.FiltroFornitore}}selected{{end}}>{{.Nome}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data da</label>
+                    <input type="date" name="data_da" class="form-control" value="{{.Data.FiltroDataDa}}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data a</label>
+                    <input type="date" name="data_a" class="form-control" value="{{.Data.FiltroDataA}}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i> Filtra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="card">
         <div class="card-body">
@@ -32,7 +63,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{range .Data}}
+                        {{range .Data.Archivio}}
                         <tr>
                             <td>
                                 {{if .IsAmazon}}
@@ -76,7 +107,7 @@
 
     <div class="alert alert-info mt-3">
         <i class="bi bi-info-circle me-2"></i>
-        <strong>Nota:</strong> Questa sezione è solo per l'archiviazione dei documenti cartacei in formato PDF.
+        <strong>Nota:</strong> Questa sezione e solo per l archiviazione dei documenti cartacei in formato PDF.
         Non movimenta il magazzino. Per registrare acquisti usa la sezione <a href="/ddt-fatture">DDT/Fatture</a> e poi <a href="/magazzino/nuovo">Nuovo Prodotto</a>.
     </div>
 </div>
@@ -91,7 +122,7 @@
             </div>
             <div class="modal-body">
                 <p>Sei sicuro di voler eliminare il documento <strong id="numeroDoc"></strong>?</p>
-                <p class="text-muted">Il file PDF verrà eliminato definitivamente.</p>
+                <p class="text-muted">Il file PDF verra eliminato definitivamente.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
@@ -108,5 +139,4 @@ function confermaEliminazione(id, numero) {
     new bootstrap.Modal(document.getElementById('modalEliminazione')).show();
 }
 </script>
-
-{{template "footer" .}}
+{{end}}

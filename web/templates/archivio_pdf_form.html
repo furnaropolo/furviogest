@@ -1,4 +1,6 @@
-{{template "header" .}}
+{{template "base" .}}
+
+{{define "content"}}
 
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
@@ -110,4 +112,4 @@ function aggiornaLabelCampi() {
 }
 </script>
 
-{{template "footer" .}}
+{{end}}
