@@ -238,7 +238,7 @@ furviogest/
 ### 2025-12-14 (sessione 16)
 - **Fix Backup Automatico**:
   - Corretto script cron (CRLF -> LF)
-  - Corretto percorso log (/var/log -> /home/ies/furviogest)
+  - Corretto percorso log (/var/log -> /home/user/furviogest)
   - Backup notturno ora funzionante
 - **Licenze AP su Access Controller**:
   - Sostituito campo Note con Licenze Totali/Utilizzate
