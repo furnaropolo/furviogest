@@ -84,7 +84,8 @@ Il programma è stato completato e testato con successo, incluso:
 - [x] Automezzi (con upload libretto)
 - [x] Compagnie (con opzione destinatari email, logo, sede legale completa)
 - [x] Navi (con email master, direttore macchina, ispettore + config Observium)
-- [x] **Disegni Nave** - Upload multipli PDF (schemi rete, layout AP, cablaggi) per ogni nave
+- [x] **Disegni Nave**
+- [x] **Apparati Nave** - Gestione server/VM per nave (nome, IP, porta, protocollo) con pulsante GUI - Upload multipli PDF (schemi rete, layout AP, cablaggi) per ogni nave
 - [x] Uffici (gestione sedi con rete AC/Switch)
 - [x] Sale Server (gestione con Switch per backup)
 
@@ -265,6 +266,14 @@ furviogest/
   - Bottoni con emoji al posto di liste link
   - Layout verticale con ombre e bordi arrotondati
   - Miglior contrasto e leggibilità
+- **Apparati Nave**:
+  - Nuova sezione per gestire server/VM per ogni nave
+  - Campi: nome, indirizzo IP, porta, protocollo (HTTP/HTTPS)
+  - Pulsante GUI per aprire interfaccia web in nuova finestra
+  - Pulsante nella barra navigazione e nella lista navi
+- **Emoji UI**:
+  - Sostituite icone Bootstrap con emoji colorate
+  - Applicato a lista navi e dettaglio nave
 - **Disegni Nave**:
   - Nuova tabella disegni_nave per upload multipli per nave
   - Supporto PDF formato A3 (schemi rete, layout AP, cablaggi)
