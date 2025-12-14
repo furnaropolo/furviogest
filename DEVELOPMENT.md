@@ -84,6 +84,7 @@ Il programma è stato completato e testato con successo, incluso:
 - [x] Automezzi (con upload libretto)
 - [x] Compagnie (con opzione destinatari email, logo, sede legale completa)
 - [x] Navi (con email master, direttore macchina, ispettore + config Observium)
+- [x] **Disegni Nave** - Upload multipli PDF (schemi rete, layout AP, cablaggi) per ogni nave
 - [x] Uffici (gestione sedi con rete AC/Switch)
 - [x] Sale Server (gestione con Switch per backup)
 
@@ -264,6 +265,11 @@ furviogest/
   - Bottoni con emoji al posto di liste link
   - Layout verticale con ombre e bordi arrotondati
   - Miglior contrasto e leggibilità
+- **Disegni Nave**:
+  - Nuova tabella disegni_nave per upload multipli per nave
+  - Supporto PDF formato A3 (schemi rete, layout AP, cablaggi)
+  - Form upload con nome personalizzabile per ogni disegno
+  - Lista disegni con visualizzazione e eliminazione
 - **Fix Upload Libretto Automezzi**:
   - Corretta gestione upload file per nuovo automezzo e modifica
   - File salvati in /uploads/libretti/
