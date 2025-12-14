@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"database/sql"
 	"fmt"
 	"furviogest/internal/database"
@@ -20,6 +21,7 @@ type OrariNaveData struct {
 	Orari    []models.OrarioNave
 	Soste    []models.SostaNave
 	Porti    []models.Porto
+	Disegni  []models.DisegnoNave
 }
 
 // DettaglioNave mostra gli orari e le soste di una nave specifica
@@ -48,14 +50,14 @@ func DettaglioNave(w http.ResponseWriter, r *http.Request) {
 	err = database.DB.QueryRow(`
 		SELECT n.id, n.compagnia_id, n.nome, n.imo, n.email_master, n.email_direttore_macchina,
 		       n.email_ispettore, n.note, n.ferma_per_lavori, n.data_inizio_lavori, 
-		       n.data_fine_lavori_prevista, n.porto_lavori_id, c.nome, p.nome
+		       n.data_fine_lavori_prevista, n.porto_lavori_id, c.nome, p.nome, COALESCE(n.piantina_path, '')
 		FROM navi n
 		JOIN compagnie c ON n.compagnia_id = c.id
 		LEFT JOIN porti p ON n.porto_lavori_id = p.id
 		WHERE n.id = ?
 	`, naveID).Scan(&nave.ID, &nave.CompagniaID, &nave.Nome, &imo, &emailMaster, &emailDirettore,
 		&emailIspettore, &note, &nave.FermaPerLavori, &dataInizioLavori, &dataFineLavori,
-		&portoLavoriID, &nave.NomeCompagnia, &nomePortoLavori)
+		&portoLavoriID, &nave.NomeCompagnia, &nomePortoLavori, &nave.PiantinaPath)
 
 	if err != nil {
 		data.Error = "Nave non trovata"
@@ -178,11 +180,24 @@ func DettaglioNave(w http.ResponseWriter, r *http.Request) {
 	// Carica porti per form
 	porti, _ := caricaPorti()
 
+	// Carica disegni nave
+	var disegni []models.DisegnoNave
+	rowsDisegni, _ := database.DB.Query("SELECT id, nave_id, nome, path, created_at FROM disegni_nave WHERE nave_id = ? ORDER BY created_at DESC", naveID)
+	if rowsDisegni != nil {
+		defer rowsDisegni.Close()
+		for rowsDisegni.Next() {
+			var d models.DisegnoNave
+			rowsDisegni.Scan(&d.ID, &d.NaveID, &d.Nome, &d.Path, &d.CreatedAt)
+			disegni = append(disegni, d)
+		}
+	}
+
 	pageData := OrariNaveData{
 		Nave:  nave,
 		Orari: orari,
 		Soste: soste,
-		Porti: porti,
+		Porti:    porti,
+		Disegni:  disegni,
 	}
 
 	data.Data = pageData
@@ -431,4 +446,85 @@ func getCompagnieList() ([]models.Compagnia, error) {
 		compagnie = append(compagnie, c)
 	}
 	return compagnie, nil
+}
+
+// UploadDisegnoNave gestisce l upload dei disegni PDF della nave
+func UploadPiantinaNave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	naveID, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	err = r.ParseMultipartForm(50 << 20)
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+		return
+	}
+
+	nomeDisegno := strings.TrimSpace(r.FormValue("nome_disegno"))
+	if nomeDisegno == "" {
+		nomeDisegno = "Disegno"
+	}
+
+	file, header, err := r.FormFile("disegno")
+	if err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+		return
+	}
+	defer file.Close()
+
+	uploadDir := filepath.Join("web", "static", "uploads", "disegni")
+	os.MkdirAll(uploadDir, 0755)
+
+	ext := filepath.Ext(header.Filename)
+	newFilename := fmt.Sprintf("disegno_nave_%d_%d%s", naveID, time.Now().Unix(), ext)
+	filePath := filepath.Join(uploadDir, newFilename)
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		log.Println("Errore creazione file disegno:", err)
+		http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+		return
+	}
+	defer dst.Close()
+	io.Copy(dst, file)
+
+	disegnoPath := filepath.Join("uploads", "disegni", newFilename)
+	database.DB.Exec("INSERT INTO disegni_nave (nave_id, nome, path) VALUES (?, ?, ?)", naveID, nomeDisegno, disegnoPath)
+
+	http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+}
+
+// EliminaDisegnoNave elimina un disegno
+func EliminaDisegnoNave(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 5 {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	naveID, _ := strconv.ParseInt(pathParts[3], 10, 64)
+	disegnoID, _ := strconv.ParseInt(pathParts[4], 10, 64)
+
+	// Recupera path per eliminare file
+	var path string
+	database.DB.QueryRow("SELECT path FROM disegni_nave WHERE id = ?", disegnoID).Scan(&path)
+	if path != "" {
+		os.Remove(filepath.Join("web", "static", path))
+	}
+
+	database.DB.Exec("DELETE FROM disegni_nave WHERE id = ?", disegnoID)
+	http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
 }

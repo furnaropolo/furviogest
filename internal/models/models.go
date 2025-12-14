@@ -136,6 +136,7 @@ type Nave struct {
 	ObserviumSSHPort     int       `json:"observium_ssh_port,omitempty"`
 	SNMPCommunity        string    `json:"snmp_community,omitempty"`
 	Foto             string    `json:"foto,omitempty"`
+	PiantinaPath     string    `json:"piantina_path,omitempty"`
 }
 
 // TipoProdotto indica se il prodotto è per WiFi, GSM o entrambi
@@ -420,6 +421,15 @@ type ImpostazioniAzienda struct {
 }
 
 // OrarioNave rappresenta un singolo movimento/tratta di una nave
+// DisegnoNave rappresenta un disegno/schema caricato per una nave
+type DisegnoNave struct {
+	ID        int64     `json:"id"`
+	NaveID    int64     `json:"nave_id"`
+	Nome      string    `json:"nome"`
+	Path      string    `json:"path"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type OrarioNave struct {
 	ID                int64     `json:"id"`
 	NaveID            int64     `json:"nave_id"`
@@ -489,6 +499,7 @@ type ApparatoNave struct {
 	Location      string
 	SNMPCommunity string
 	Foto             string    `json:"foto,omitempty"`
+	PiantinaPath     string    `json:"piantina_path,omitempty"`
 	SSHUser       string
 	SSHPass       string
 	SSHPort       int
@@ -525,6 +536,7 @@ type ObserviumConfig struct {
 	SSHPort      int
 	SNMPCommunity string
 	Foto             string    `json:"foto,omitempty"`
+	PiantinaPath     string    `json:"piantina_path,omitempty"`
 }
 
 // DeviceDiscovery risultato discovery

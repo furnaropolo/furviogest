@@ -12,6 +12,50 @@
     </div>
 </div>
 
+<!-- Sezione Disegni Nave -->
+<div class="section-card" style="margin-bottom: 20px;">
+    <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h2><i class="bi bi-file-earmark-pdf"></i> Disegni Nave</h2>
+        {{if $.Session.IsTecnico}}
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('disegnoForm').style.display=document.getElementById('disegnoForm').style.display=='none'?'block':'none'">
+            <i class="bi bi-plus"></i> Aggiungi Disegno
+        </button>
+        {{end}}
+    </div>
+    
+    {{if $.Session.IsTecnico}}
+    <div id="disegnoForm" style="display:none; margin:15px 0; padding:15px; background:#e8f4fd; border-radius:8px;">
+        <form method="POST" action="/navi/piantina/{{.Data.Nave.ID}}" enctype="multipart/form-data">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <input type="text" name="nome_disegno" placeholder="Nome disegno (es. Schema Rete, Layout AP...)" class="form-control" style="max-width:250px;" required>
+                <input type="file" name="disegno" accept=".pdf" required class="form-control" style="max-width:250px;">
+                <button type="submit" class="btn btn-success"><i class="bi bi-upload"></i> Carica</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('disegnoForm').style.display='none'">Annulla</button>
+            </div>
+        </form>
+    </div>
+    {{end}}
+    
+    {{if .Data.Disegni}}
+    <div style="display:flex; flex-wrap:wrap; gap:10px; padding:15px 0;">
+        {{range .Data.Disegni}}
+        <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px; padding:10px 15px; display:flex; align-items:center; gap:10px;">
+            <i class="bi bi-file-pdf" style="font-size:1.5rem; color:#dc3545;"></i>
+            <div>
+                <a href="/static/{{.Path}}" target="_blank" style="font-weight:500;">{{.Nome}}</a>
+                <div style="font-size:0.8rem; color:#6c757d;">{{.CreatedAt.Format "02/01/2006"}}</div>
+            </div>
+            {{if $.Session.IsTecnico}}
+            <a href="/navi/elimina-disegno/{{$.Data.Nave.ID}}/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminare questo disegno?')"><i class="bi bi-trash"></i></a>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <p style="color:#6c757d; padding:15px 0;">Nessun disegno caricato</p>
+    {{end}}
+</div>
+
 <div class="nave-info-grid">
     <div class="info-card">
         <h3>Informazioni Nave</h3>

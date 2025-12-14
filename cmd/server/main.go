@@ -219,6 +219,8 @@ func main() {
 
 	// Dettaglio Nave e Orari
 	mux.Handle("/navi/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioNave)))
+	mux.Handle("/navi/piantina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.UploadPiantinaNave))))
+	mux.Handle("/navi/elimina-disegno/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaDisegnoNave))))
 	mux.Handle("/navi/orario/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoOrario))))
 	mux.Handle("/navi/orario/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaOrario))))
 	mux.Handle("/navi/sosta/nuovo/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovaSosta))))
