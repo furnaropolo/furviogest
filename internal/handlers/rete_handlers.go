@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
@@ -32,7 +33,8 @@ type AccessController struct {
 	SSHPort      int
 	SSHUser      string
 	SSHPass      string
-	Note         string
+	LicenzeTotali     int
+	LicenzeUtilizzate int
 	UltimoCheck  string
 	UltimoBackup string
 	Protocollo   string // ssh o telnet
@@ -243,7 +245,8 @@ func SalvaAccessController(w http.ResponseWriter, r *http.Request) {
 	}
 	sshUser := strings.TrimSpace(r.FormValue("ssh_user"))
 	sshPass := strings.TrimSpace(r.FormValue("ssh_pass"))
-	note := strings.TrimSpace(r.FormValue("note"))
+	licenzeTotali, _ := strconv.Atoi(r.FormValue("licenze_totali"))
+	licenzeUtilizzate, _ := strconv.Atoi(r.FormValue("licenze_utilizzate"))
 	protocollo := r.FormValue("protocollo")
 	if protocollo == "" {
 		protocollo = "ssh"
@@ -256,15 +259,15 @@ func SalvaAccessController(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		// Inserisci nuovo
 		_, err = database.DB.Exec(`
-			INSERT INTO access_controller (nave_id, ip, ssh_port, ssh_user, ssh_pass, note)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, naveID, ip, sshPort, sshUser, sshPass, note)
+			INSERT INTO access_controller (nave_id, ip, ssh_port, ssh_user, ssh_pass, licenze_totali, licenze_utilizzate)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, naveID, ip, sshPort, sshUser, sshPass, licenzeTotali, licenzeUtilizzate)
 	} else if err == nil {
 		// Aggiorna esistente
 		_, err = database.DB.Exec(`
-			UPDATE access_controller SET ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+			UPDATE access_controller SET ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, licenze_totali = ?, licenze_utilizzate = ?, updated_at = CURRENT_TIMESTAMP
 			WHERE nave_id = ?
-		`, ip, sshPort, sshUser, sshPass, note, naveID)
+		`, ip, sshPort, sshUser, sshPass, licenzeTotali, licenzeUtilizzate, naveID)
 	}
 
 	if err != nil {
@@ -914,9 +917,9 @@ func getAccessControllerByNave(naveID int64) *AccessController {
 	var ac AccessController
 	var ultimoCheck, ultimoBackup sql.NullString
 	err := database.DB.QueryRow(`
-		SELECT id, nave_id, ip, ssh_port, ssh_user, ssh_pass, COALESCE(note, ''), ultimo_check, ultimo_backup, COALESCE(modello, '')
+		SELECT id, nave_id, ip, ssh_port, ssh_user, ssh_pass, COALESCE(licenze_totali, 0), COALESCE(licenze_utilizzate, 0), ultimo_check, ultimo_backup, COALESCE(modello, '')
 		FROM access_controller WHERE nave_id = ?
-	`, naveID).Scan(&ac.ID, &ac.NaveID, &ac.IP, &ac.SSHPort, &ac.SSHUser, &ac.SSHPass, &ac.Note, &ultimoCheck, &ultimoBackup, &ac.Modello)
+	`, naveID).Scan(&ac.ID, &ac.NaveID, &ac.IP, &ac.SSHPort, &ac.SSHUser, &ac.SSHPass, &ac.LicenzeTotali, &ac.LicenzeUtilizzate, &ultimoCheck, &ultimoBackup, &ac.Modello)
 	if err != nil {
 		return nil
 	}
@@ -2191,4 +2194,121 @@ func runBackupUfficioBatch(ufficioID, salaServerID int64, tipo string, apparatoI
 	database.DB.Exec(fmt.Sprintf("UPDATE %s SET ultimo_backup = CURRENT_TIMESTAMP WHERE id = ?", tabella), apparatoID)
 
 	log.Printf("[Monitoring] Backup %s salvato", nome)
+}
+
+// APIRilevaLicenzeAC rileva le licenze dall'Access Controller via SSH
+func APIRilevaLicenzeAC(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	acIDStr := r.URL.Query().Get("ac_id")
+	acID, err := strconv.ParseInt(acIDStr, 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "ID AC non valido"})
+		return
+	}
+
+	// Recupera dati AC dal database
+	var ip, sshUser, sshPass string
+	var sshPort int
+	err = database.DB.QueryRow("SELECT ip, ssh_port, ssh_user, ssh_pass FROM access_controller WHERE id = ?", acID).
+		Scan(&ip, &sshPort, &sshUser, &sshPass)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "AC non trovato"})
+		return
+	}
+
+	// Esegui comando SSH per ottenere licenze
+	output, err := executeSSHCommandAC(ip, sshPort, sshUser, sshPass, "display license resource usage")
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Errore connessione SSH: " + err.Error()})
+		return
+	}
+
+	// Parsa output per trovare licenze AP (cerca pattern X/Y)
+	licenzeTotali, licenzeUtilizzate := parseLicenseOutput(output)
+
+	if licenzeTotali == 0 {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Impossibile rilevare licenze dall'output"})
+		return
+	}
+
+	// Aggiorna database
+	_, err = database.DB.Exec("UPDATE access_controller SET licenze_totali = ?, licenze_utilizzate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+		licenzeTotali, licenzeUtilizzate, acID)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Errore aggiornamento database"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":              "ok",
+		"licenze_totali":      licenzeTotali,
+		"licenze_utilizzate":  licenzeUtilizzate,
+	})
+}
+
+// parseLicenseOutput estrae licenze totali e utilizzate dall'output del comando
+func parseLicenseOutput(output string) (totali int, utilizzate int) {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		// Cerca pattern come "46/48" nella riga
+		if strings.Contains(line, "/") && (strings.Contains(line, "LICAC") || strings.Contains(line, "SSAP") || strings.Contains(line, "AP")) {
+			// Trova il pattern X/Y
+			parts := strings.Fields(line)
+			for _, part := range parts {
+				if strings.Contains(part, "/") {
+					var u, t int
+					_, err := fmt.Sscanf(part, "%d/%d", &u, &t)
+					if err == nil && t > 0 {
+						return t, u
+					}
+				}
+			}
+		}
+	}
+	return 0, 0
+}
+
+// executeSSHCommandAC esegue un comando SSH sull'AC e ritorna l'output
+func executeSSHCommandAC(ip string, port int, user, pass, command string) (string, error) {
+	// Crea script expect temporaneo
+	script := fmt.Sprintf(`#!/usr/bin/expect -f
+set timeout 30
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p %d %s@%s
+expect {
+    "*assword*" { send "%s\r" }
+    timeout { exit 1 }
+}
+expect {
+    "*>*" { send "%s\r" }
+    "*#*" { send "%s\r" }
+    timeout { exit 1 }
+}
+expect {
+    "*>*" { }
+    "*#*" { }
+    timeout { exit 1 }
+}
+send "quit\r"
+expect eof
+`, port, user, ip, pass, command, command)
+
+	// Scrivi script temporaneo
+	tmpFile := fmt.Sprintf("/tmp/ac_license_%d.exp", time.Now().UnixNano())
+	if err := os.WriteFile(tmpFile, []byte(script), 0755); err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpFile)
+
+	// Esegui script
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	cmd := exec.CommandContext(ctx, tmpFile)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), err
+	}
+
+	return string(output), nil
 }

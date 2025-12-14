@@ -2,12 +2,11 @@
 
 {{define "content"}}
 <div class="dashboard">
-    <h1>Dashboard</h1>
-    <p class="welcome-message">Benvenuto, {{.Session.Nome}} {{.Session.Cognome}}!</p>
+    <p class="welcome-message" style="font-size: 1.8rem; font-weight: 600; font-family: 'Poppins', sans-serif; margin-bottom: 2rem;">Benvenuto, {{.Session.Nome}} {{.Session.Cognome}}!</p>
 
     {{if and .Data .Data.ErroreBackup}}
     <div class="alert alert-warning" style="margin: 15px 0; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 24px;">&#9888;</span>
+        <span style="font-size: 24px;">⚠️</span>
         <div>
             <strong>Attenzione - Sistema di Backup:</strong><br>
             {{.Data.ErroreBackup}}
@@ -16,63 +15,93 @@
     </div>
     {{end}}
 
-    <div class="dashboard-cards" style="display: flex; flex-wrap: wrap; gap: 20px;">
-        <div class="card" style="flex: 1; min-width: 250px;">
-            <div class="card-header">
-                <h3>Anagrafiche</h3>
+    <div class="dashboard-cards" style="display: flex; flex-direction: column; gap: 25px;">
+        
+        <!-- ANAGRAFICHE - Sfondo viola -->
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);">
+            <div class="card-header" style="background: transparent; border: none; padding: 1.5rem 2rem 1rem;">
+                <h3 style="color: white; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 1px 1px 3px rgba(0,0,0,0.3);">📒 Anagrafiche</h3>
             </div>
-            <div class="card-body">
-                <ul class="quick-links">
-                    <li><a href="/tecnici">Tecnici</a></li>
-                    <li><a href="/fornitori">Fornitori</a></li>
-                    <li><a href="/porti">Porti</a></li>
-                    <li><a href="/automezzi">Automezzi</a></li>
-                    <li><a href="/compagnie">Compagnie</a></li>
-                    <li><a href="/navi">Navi</a></li>
-                    <li><a href="/uffici">Uffici</a></li>
-                    <li><a href="/sale-server">Sale Server</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="card" style="flex: 1; min-width: 250px;">
-            <div class="card-header">
-                <h3>Magazzino</h3>
-            </div>
-            <div class="card-body">
-                <ul class="quick-links">
-                    <li><a href="/magazzino">Prodotti</a></li>
-                    <li><a href="/attrezzi">Attrezzi</a></li>
-                    <li><a href="/ddt-fatture">DDT/Fatture (Entrata)</a></li>
-                    <li><a href="/ddt-uscita">DDT (Uscita)</a></li>
-                </ul>
+            <div class="card-body" style="padding: 1rem 2rem 1.5rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <a href="/tecnici" class="dash-btn">👷 Tecnici</a>
+                    <a href="/fornitori" class="dash-btn">🚚 Fornitori</a>
+                    <a href="/porti" class="dash-btn">⚓ Porti</a>
+                    <a href="/automezzi" class="dash-btn">🚗 Automezzi</a>
+                    <a href="/compagnie" class="dash-btn">🏢 Compagnie</a>
+                    <a href="/navi" class="dash-btn">🚢 Navi</a>
+                    <a href="/uffici" class="dash-btn">🏬 Uffici</a>
+                    <a href="/sale-server" class="dash-btn">🖥️ Sale Server</a>
+                </div>
             </div>
         </div>
 
-        <div class="card" style="flex: 1; min-width: 250px;">
-            <div class="card-header">
-                <h3>Operazioni</h3>
+        <!-- MAGAZZINO - Sfondo rosa/rosso -->
+        <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);">
+            <div class="card-header" style="background: transparent; border: none; padding: 1.5rem 2rem 1rem;">
+                <h3 style="color: white; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 1px 1px 3px rgba(0,0,0,0.3);">📦 Magazzino</h3>
             </div>
-            <div class="card-body">
-                <ul class="quick-links">
-                    <li><a href="/permessi">Richieste Permessi</a></li>
-                    <li><a href="/rapporti">Rapporti Intervento</a></li>
-                    <li><a href="/guasti-nave">Segnalazione Guasti Nave</a></li>
-                    <li><a href="/guasti-nave/storico">Storico Guasti Nave</a></li>
-                </ul>
+            <div class="card-body" style="padding: 1rem 2rem 1.5rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <a href="/magazzino" class="dash-btn">📋 Prodotti</a>
+                    <a href="/attrezzi" class="dash-btn">🛠️ Attrezzi</a>
+                    <a href="/ddt-fatture" class="dash-btn">📄 DDT Entrata</a>
+                    <a href="/ddt-uscita" class="dash-btn">📤 DDT Uscita</a>
+                </div>
             </div>
         </div>
 
-        <div class="card" style="flex: 1; min-width: 250px;">
-            <div class="card-header">
-                <h3>Trasferte e Spese</h3>
+        <!-- OPERAZIONI - Sfondo verde/teal -->
+        <div class="card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(17, 153, 142, 0.4);">
+            <div class="card-header" style="background: transparent; border: none; padding: 1.5rem 2rem 1rem;">
+                <h3 style="color: white; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 1px 1px 3px rgba(0,0,0,0.3);">⚙️ Operazioni</h3>
             </div>
-            <div class="card-body">
-                <ul class="quick-links">
-                    <li><a href="/calendario-trasferte">Calendario Trasferte e Spese</a></li>
-                </ul>
+            <div class="card-body" style="padding: 1rem 2rem 1.5rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <a href="/permessi" class="dash-btn">🛡️ Permessi</a>
+                    <a href="/rapporti" class="dash-btn">📋 Rapporti</a>
+                    <a href="/guasti-nave" class="dash-btn">🔧 Guasti Nave</a>
+                    <a href="/guasti-nave/storico" class="dash-btn">📜 Storico Guasti</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRASFERTE - Sfondo arancione/giallo -->
+        <div class="card" style="background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); border: none; border-radius: 20px; box-shadow: 0 10px 30px rgba(242, 153, 74, 0.4);">
+            <div class="card-header" style="background: transparent; border: none; padding: 1.5rem 2rem 1rem;">
+                <h3 style="color: white; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; text-shadow: 1px 1px 3px rgba(0,0,0,0.3);">📅 Trasferte e Spese</h3>
+            </div>
+            <div class="card-body" style="padding: 1rem 2rem 1.5rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <a href="/calendario-trasferte" class="dash-btn">📆 Calendario Trasferte e Spese</a>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.dash-btn {
+    background: rgba(0,0,0,0.25);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.dash-btn:hover {
+    background: rgba(0,0,0,0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    color: white;
+}
+</style>
 {{end}}

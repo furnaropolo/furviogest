@@ -1,8 +1,76 @@
 # FurvioGest - Sistema Gestionale Interventi Manutenzione WiFi/GSM
 
 ## Accesso
-- **URL**: http://192.168.1.39:8080
+- **URL**: http://localhost:8080
 - **Credenziali default**: admin / admin
+
+
+---
+
+## REGOLE DI SVILUPPO - LEGGERE PRIMA DI QUALSIASI MODIFICA
+
+### Principio Fondamentale: COMPARTIMENTI BLINDATI
+
+Questo progetto segue un approccio a **compartimenti blindati**. Ogni funzionalita e isolata e indipendente.
+
+### Regole INVIOLABILI:
+
+1. **NON MODIFICARE MAI codice funzionante**
+   - Se una funzionalita funziona, NON si tocca
+   - Nessuna "ottimizzazione" o "refactoring" di codice esistente
+   - Nessuna modifica "cosmetica" a file che funzionano
+
+2. **Nuove funzionalita = Nuovo codice**
+   - Aggiungere, mai modificare
+   - Nuovi handler in file separati se possibile
+   - Nuovi template senza toccare quelli esistenti
+
+3. **Test prima e dopo**
+   - Prima di modificare: verificare che tutto funzioni
+   - Dopo ogni modifica: verificare che TUTTO funzioni ancora
+   - Se qualcosa si rompe: ROLLBACK immediato
+
+4. **Un cambiamento alla volta**
+   - Una funzionalita per sessione
+   - Testare completamente prima di passare ad altro
+   - Mai modifiche multiple in parallelo
+
+5. **Database: solo ADD, mai ALTER/DROP**
+   - Nuove tabelle: OK
+   - Nuove colonne: OK (con ALTER TABLE ADD)
+   - Modificare colonne esistenti: VIETATO
+   - Eliminare tabelle/colonne: VIETATO
+
+6. **Template: isolare le modifiche**
+   - Usare blocchi {{define}} separati
+   - CSS/JS aggiuntivo in file separati o in fondo
+   - Mai modificare struttura HTML esistente che funziona
+
+### Prima di ogni modifica, chiedersi:
+
+- Questa modifica puo rompere qualcosa che funziona?
+- Posso aggiungere invece di modificare?
+- Ho testato la funzionalita PRIMA di toccarla?
+- Ho un modo per tornare indietro se qualcosa va storto?
+
+7. **RIAVVIARE SEMPRE il server dopo modifiche**
+   - Go serve i file statici e template dalla memoria
+   - Dopo OGNI modifica a .go, .html, .css, .js: RIAVVIARE
+   - Comando: pkill -9 furviogest && ./furviogest
+   - Se modifichi .go: ricompilare prima con go build
+
+### In caso di dubbio: NON MODIFICARE
+
+Se non sei sicuro al 100% che una modifica sia sicura, NON farla.
+Meglio codice "brutto" che funziona che codice "elegante" che rompe tutto.
+
+
+## Stato Progetto: ✅ COMPLETATO E TESTATO
+
+Il programma è stato completato e testato con successo, incluso:
+- ✅ Test completo di tutte le funzionalità
+- ✅ Installazione da zero su Fedora Linux con recupero da backup
+- ⏳ Installazione da Windows (in sospeso - previsto installer .exe)
 
 ---
 
@@ -10,21 +78,37 @@
 
 ### Anagrafiche
 - [x] Tecnici (con upload documento identità, configurazione SMTP personale)
-- [x] Fornitori
+- [x] Fornitori (con verifica P.IVA, gestione DDT/Fatture collegati)
+- [x] Clienti (ragione sociale, indirizzo, P.IVA, contatti)
 - [x] Porti (con dati agenzia: nome, email, telefono)
 - [x] Automezzi (con upload libretto)
-- [x] Compagnie (con opzione destinatari email: solo agenzia / tutti)
+- [x] Compagnie (con opzione destinatari email, logo, sede legale completa)
 - [x] Navi (con email master, direttore macchina, ispettore + config Observium)
+- [x] Uffici (gestione sedi con rete AC/Switch)
+- [x] Sale Server (gestione con Switch per backup)
 
 ### Magazzino
-- [x] Prodotti con gestione giacenza
+- [x] Prodotti con gestione giacenza e prezzi
 - [x] Movimenti carico/scarico
 - [x] Attrezzi con tracciamento posizione (sede/tecnico/nave)
+- [x] **DDT/Fatture Entrata** - Registro documenti acquisto con collegamento a fornitore
+- [x] **DDT Uscita** - Documenti di trasporto uscita con:
+  - Numerazione automatica progressiva per anno
+  - Selezione destinatario (cliente/nave)
+  - Righe prodotti con scarico automatico giacenza
+  - Generazione PDF professionale
+  - Gestione stato (bozza/emesso/annullato)
+- [x] **Archivio PDF** - Upload e gestione documenti PDF (fatture, DDT, manuali)
 
 ### Apparati Nave
 - [x] Gestione apparati per nave (router, switch, AP, firewall, ecc.)
-- [x] Configurazione credenziali SSH/HTTP per ogni apparato
-- [x] Integrazione predisposta per Observium
+- [x] Configurazione credenziali SSH/HTTP/Telnet per ogni apparato
+- [x] Scan AP da Access Controller Huawei
+- [x] Scan MAC table da switch Huawei/HP
+- [x] Backup automatico configurazione switch/AC
+- [x] Auto-rilevamento hostname switch
+- [x] **Rilevamento automatico licenze AP** - pulsante "Rileva Licenze" per AC Huawei
+- [x] Export CSV lista AP
 
 ### Richiesta Permessi Porto
 - [x] Creazione richiesta con: nave, porto, tecnici, automezzo, date
@@ -32,353 +116,278 @@
 - [x] Campo Rientro in giornata (checkbox) - uso interno
 - [x] Descrizione intervento (inclusa nell'email)
 - [x] Anteprima email prima dell'invio
-- [x] Invio email automatico all'agenzia (e opzionalmente a master/DDM/ispettore per Grimaldi)
+- [x] Invio email automatico all'agenzia (e opzionalmente a master/DDM/ispettore)
 - [x] Allegati automatici: documenti tecnici + libretto automezzo
+- [x] Download file .eml per invio manuale
+- [x] Alert guasti nave e AP fault nel dettaglio permesso
 
 ### Calendario Trasferte + Note Spese Integrato
-- [x] **Calendario mensile a griglia** (visualizzazione tipo foglio presenze)
-- [x] **Colori per tipo giornata**:
+- [x] Calendario mensile a griglia (visualizzazione tipo foglio presenze)
+- [x] Colori per tipo giornata:
   - Bianco = Ufficio
   - Giallo = Trasferta Giornaliera
   - Verde = Trasferta con Pernotto
   - Rosso = Trasferta Festiva
   - Blu = Ferie
   - Viola = Permesso
-- [x] **Calcolo automatico festivi** (nazionali + Sant'Ambrogio per Milano)
-- [x] **Click su giorno** apre modale per:
-  - Selezionare tipo giornata
-  - Se trasferta: inserire luogo, compagnia, nave
-  - Aggiungere spese del giorno
-- [x] **Tipi spesa**: Carburante, Cibo/Hotel, Pedaggi/Taxi, Materiali, Varie
-- [x] **Metodo pagamento**: Carta aziendale / Carta personale (da rimborsare)
-- [x] **Riepilogo mensile**: totale spese per categoria + totale da rimborsare
-- [x] **Conteggio giorni** per tipo (ufficio, trasferte, ferie)
-- [x] Scollegato dai permessi (sistema indipendente)
-- [x] Editabile dal tecnico
+- [x] Calcolo automatico festivi (nazionali + Sant'Ambrogio per Milano)
+- [x] Click su giorno apre modale per inserire tipo giornata e spese
+- [x] Tipi spesa: Carburante, Cibo/Hotel, Pedaggi/Taxi, Materiali, Varie
+- [x] Metodo pagamento: Carta aziendale / Carta personale (da rimborsare)
+- [x] Riepilogo mensile con totali per categoria
+- [x] Conteggio giorni per tipo (ufficio, trasferte, ferie)
 
 ### Stampa e Invio Email Documenti
-- [x] **Anteprima Foglio Trasferte** (formato A4) con logo e dati azienda
-- [x] **Anteprima Nota Spese** (formato A4) con logo e dati azienda
-- [x] **Stampa / Salva PDF** diretta da anteprima (barra nascosta in stampa)
-- [x] **Invio Email** da anteprima (richiede password per app Gmail)
-- [x] **Campi email destinatari** in Impostazioni Azienda
+- [x] Anteprima Foglio Trasferte (formato A4) con logo e dati azienda
+- [x] Anteprima Nota Spese (formato A4) con logo e dati azienda
+- [x] Stampa / Salva PDF diretta da anteprima
+- [x] Download PDF diretto
+- [x] Invio Email da anteprima
 
 ### Rapporti Intervento
 - [x] Creazione rapporti con dettaglio lavori
 - [x] Collegamento a nave e tecnici
+- [x] Upload foto intervento
+- [x] Generazione PDF professionale
+- [x] Storico interventi per nave
 
-### DDT (Documenti di Trasporto)
-- [x] Generazione DDT con righe prodotti
-- [x] Numerazione automatica
+### Segnalazione Guasti Nave
+- [x] Lista navi con conteggio guasti attivi e badge gravità
+- [x] Pagina guasti per singola nave con card colorate per gravità
+- [x] Gestione stato: aperto → preso in carico → risolto
+- [x] Selezione tecnico obbligatoria per presa in carico/risoluzione
+- [x] Auto-inserimento guasto quando AP va in fault
+- [x] Auto-chiusura guasto quando AP torna online
+- [x] Storico guasti con filtro date
 
-### Foglio Mensile
-- [x] Riepilogo mensile per tecnico
+### Backup e Ripristino
+- [x] Backup manuale database (download .zip)
+- [x] Ripristino da file .zip (upload)
+- [x] Backup automatico programmabile
+- [x] Backup su NAS via SMB/CIFS
+- [x] Test connessione NAS
+- [x] Lista backup locali con download/elimina
+- [x] Alert in dashboard se backup fallisce
+- [x] **Backup Configurazioni Rete su NAS** - backup notturno config AC/Switch
+  - Retention configurabile (default 3 backup)
+  - Esclusione automatica navi ferme per lavori
+  - UI con riepilogo/modifica/disabilita
 
 ### Amministrazione
 - [x] Dashboard separata per ruolo "amministrazione"
 - [x] Visualizzazione rapporti, note spese, trasferte
-- [x] Riepilogo mensile
+- [x] Riepilogo mensile con totali
+- [x] Export CSV (magazzino, note spese, trasferte, DDT)
 
 ### Impostazioni
 - [x] Dati azienda (ragione sociale, indirizzo, P.IVA, ecc.)
 - [x] Firma email personalizzabile (HTML)
 - [x] Logo azienda
-- [x] **Configurazione SMTP** per invio email
-- [x] **Email destinatari** foglio trasferte e nota spese
+- [x] Configurazione SMTP per invio email
+- [x] Email destinatari foglio trasferte e nota spese
 
 ### UI/UX
-- [x] **Datepicker italiano** (formato GG/MM/AAAA) su tutti i campi data
+- [x] Datepicker italiano (formato GG/MM/AAAA) su tutti i campi data
 - [x] Interfaccia responsive
 - [x] Menu contestuale per ruolo (tecnico/amministrazione)
+- [x] Bootstrap 5 + Bootstrap Icons
+- [x] Accordion collapsabili per liste lunghe (es. navi per compagnia)
+- [x] Filtri ricerca nelle liste
+- [x] **Menu con emoji colorate** - icone intuitive sotto ogni voce
+- [x] **Font Poppins** - tipografia moderna e professionale
+- [x] **Pulsanti navigazione** - Indietro/Home su tutte le pagine
 
 ---
 
-## Da Fare
+## Stack Tecnologico
 
-### Priorità Alta
-- [ ] **Rapporto di Intervento** - revisione completa interfaccia e funzionalità
-- [ ] Invio email (richiede abilitazione "Password per le app" su Google Workspace)
-
-### Priorità Media
-- [ ] Export Excel riepilogo mensile
-- [ ] Notifiche email per scadenze (permessi in scadenza, ecc.)
-- [ ] Dashboard con statistiche
-
-### Priorità Bassa
-- [ ] Integrazione completa Observium (polling apparati)
-- [ ] App mobile / PWA
-- [ ] Backup automatico database
-- [ ] Log attività utenti
-
----
-
-## Da Testare
-
-- [ ] Creazione/modifica/eliminazione anagrafiche (Tecnici, Fornitori, Porti, Automezzi, Compagnie, Navi)
-- [ ] Magazzino: carico/scarico prodotti, movimenti attrezzi
-- [ ] Permessi porto: creazione, anteprima email, invio (quando SMTP abilitato)
-- [ ] Calendario trasferte: inserimento giornate, modifica, eliminazione
-- [ ] Note spese: aggiunta spese, riepilogo corretto
-- [ ] Stampa/PDF foglio trasferte e nota spese
-- [ ] Rapporti intervento: creazione, modifica, stampa
-- [ ] DDT: generazione, numerazione
-- [ ] Impostazioni azienda: salvataggio dati, upload logo
-
----
-
-## Note Tecniche
-
-### Stack
-- **Backend**: Go (Golang)
-- **Database**: SQLite
+- **Backend**: Go (Golang) 1.21+
+- **Database**: SQLite3
 - **Frontend**: HTML/CSS/JS + Go Templates
+- **CSS Framework**: Bootstrap 5.3
+- **Icons**: Bootstrap Icons
 - **Datepicker**: Flatpickr (locale italiano)
-- **Email**: SMTP (richiede Gmail con "Password per le app")
+- **Email**: SMTP (compatibile Gmail con App Password)
 
-### File Principali Calendario Trasferte
-- `internal/handlers/calendario_trasferte_handlers.go` - Handler principale calendario
-- `internal/handlers/calendario_stampa_email.go` - Stampa e invio email
-- `web/templates/calendario_trasferte.html` - Template calendario
-- `web/templates/stampa_trasferte.html` - Template stampa foglio trasferte
-- `web/templates/stampa_note_spese.html` - Template stampa nota spese
+---
 
-### Tabelle Database Calendario
-- `calendario_giornate` - Dati giornalieri (tipo, luogo, nave, ecc.)
-- `spese_giornaliere` - Spese collegate alle giornate
+## Struttura Progetto
+
+```
+furviogest/
+├── cmd/server/          # Entry point applicazione
+├── internal/
+│   ├── auth/            # Autenticazione e sessioni
+│   ├── database/        # Connessione e setup DB
+│   ├── handlers/        # Handler HTTP
+│   ├── middleware/      # Autenticazione e middleware
+│   └── models/          # Strutture dati
+├── web/
+│   ├── static/          # CSS, JS, immagini
+│   └── templates/       # Template HTML
+├── data/                # Database e uploads
+├── uploads/             # File caricati (documenti, foto)
+└── backups/             # Backup database
+```
 
 ---
 
 ## Changelog
 
-### 2025-12-07 (sessione 4)
-- **Fix Nota Spese**:
-  - Corretto parsing data (supporto formato RFC3339 da SQLite)
-  - Ora la colonna Data mostra correttamente le date (es. 01/12)
-- **Fix Logo nei documenti**:
-  - Corretto percorso logo in Foglio Trasferte e Nota Spese
-  - Ora usa la route /azienda/logo invece del path diretto
+### 2025-12-14 (sessione 16)
+- **Fix Backup Automatico**:
+  - Corretto script cron (CRLF -> LF)
+  - Corretto percorso log (/var/log -> /home/ies/furviogest)
+  - Backup notturno ora funzionante
+- **Licenze AP su Access Controller**:
+  - Sostituito campo Note con Licenze Totali/Utilizzate
+  - Pulsante "Rileva Licenze" per rilevamento automatico
+  - Comando SSH: display license resource usage
+  - Parsing automatico output Huawei (es. 46/48)
+- **Backup Configurazioni Rete su NAS**:
+  - Opzione backup notturno automatico configurazioni AC/Switch
+  - Destinazione: cartella NAS configurata + /config_navi/nave_X/
+  - Retention configurabile (default 3 backup per apparato)
+  - Esclusione automatica navi ferme per lavori
+  - UI coerente con sezione NAS (riepilogo/modifica/disabilita)
+- **Navigazione migliorata**:
+  - Pulsanti Indietro (←) e Home (🏠) in alto a sinistra su tutte le pagine
+  - Nascosti automaticamente nella dashboard
+- **Restyling Menu**:
+  - Emoji colorate sotto ogni voce di menu
+  - Font Poppins professionale
+  - Testo maiuscolo grassetto
+  - Layout centrato e proporzionato
+- **Restyling Dashboard**:
+  - Rimossa scritta "Dashboard", solo benvenuto utente
+  - Card colorate con gradient (viola, rosa, verde, arancione)
+  - Bottoni con emoji al posto di liste link
+  - Layout verticale con ombre e bordi arrotondati
+  - Miglior contrasto e leggibilità
+- **Fix Upload Libretto Automezzi**:
+  - Corretta gestione upload file per nuovo automezzo e modifica
+  - File salvati in /uploads/libretti/
 
-### 2025-12-07 (sessione 3)
-- **Fix Calendario Trasferte**:
-  - Corretti errori JavaScript (null check per elementi mancanti)
-  - Ora il modale mostra correttamente sezione Spese e pulsante Elimina
-  - Funziona eliminazione giornate (ferie, trasferte, ecc.)
-- **Dati azienda dinamici nei documenti**:
-  - Foglio Trasferte e Nota Spese ora mostrano i dati dalle Impostazioni
-  - Logo, ragione sociale, indirizzo, P.IVA, telefono, email
-  - Rimossi dati hardcoded dai template
 
-### 2025-12-07 (sessione 2)
-- **Anteprima documenti con barra azioni**:
-  - Foglio Trasferte e Nota Spese visualizzabili in anteprima A4
-  - Pulsante Stampa (apre dialogo stampa browser)
-  - Pulsante Invia Email (con conferma)
-  - Pulsante Indietro (torna al calendario)
-  - Barra azioni nascosta in fase di stampa
-- **Campi email in Impostazioni Azienda**:
-  - email_foglio_trasferte
-  - email_nota_spese
-- Semplificata UI: un pulsante "Anteprima" invece di stampa+email separati
+### 2025-12-12 (sessione 13-15) - COMPLETAMENTO PROGETTO
+- **Sistema Backup Completo**:
+  - Backup manuale con download .zip
+  - Ripristino da upload .zip
+  - Backup automatico programmabile (giornaliero/settimanale)
+  - Integrazione NAS via SMB/CIFS
+  - Test connessione NAS con feedback
+  - Alert in dashboard se backup fallisce
+- **DDT Uscita Completo**:
+  - Lista DDT con filtri e ricerca
+  - Form creazione con selezione cliente/nave
+  - Dettaglio DDT con righe prodotti
+  - Aggiunta/rimozione righe con scarico giacenza
+  - Stati: bozza, emesso, annullato
+  - Generazione PDF professionale
+- **Anagrafica Clienti**:
+  - CRUD completo
+  - Campi: ragione sociale, indirizzo, città, CAP, provincia, P.IVA, CF, telefono, email, note
+- **DDT/Fatture Entrata**:
+  - Registro documenti acquisto
+  - Collegamento a fornitore
+  - Collegamento movimenti magazzino
+  - Ricerca documenti per numero/fornitore
+- **Archivio PDF**:
+  - Upload documenti PDF
+  - Categorizzazione (fattura, DDT, manuale, altro)
+  - Collegamento opzionale a fornitore
+  - Download e visualizzazione inline
+- **Test Installazione**:
+  - ✅ Testata installazione da zero su Fedora Linux
+  - ✅ Testato recupero completo da backup
+  - ⏳ Installazione Windows (previsto installer .exe)
 
-### 2025-12-07 (sessione 1)
-- **NUOVO Sistema Calendario Trasferte**:
-  - Calendario mensile a griglia con colori per tipo giornata
-  - Integrazione note spese direttamente nel giorno
-  - Calcolo automatico festivi italiani + Sant'Ambrogio (Milano)
-  - Riepilogo mensile con totali spese e da rimborsare
-  - Sistema indipendente (scollegato dai permessi)
+### 2025-12-11 (sessione 12)
+- Alert Guasti e AP Fault nel Dettaglio Permesso
+- Fix visualizzazione dati nave/compagnia nel dettaglio permesso
+- Miglioramento API AP Fault
+
+### 2025-12-08 (sessioni 6-11)
+- Supporto Telnet per Switch
+- Auto-hostname Switch
+- Sezione Uffici con gestione rete
+- Sezione Sale Server con gestione rete
+- Segnalazione Guasti Nave completa
+- Navi raggruppate per compagnia in accordion
+- Ampliamento anagrafica Compagnie con logo
+
+### 2025-12-07 (sessioni 1-5)
+- Sistema Calendario Trasferte + Note Spese
+- Stampa/PDF foglio trasferte e nota spese
+- Fix gestione rete nave (scan AP, MAC table)
 
 ### 2025-12-06
-- Aggiunto campo "Rientro in giornata" ai permessi
-- Generazione automatica trasferte da permessi (quando pernotto)
-- Collegamento trasferte <-> richieste permesso
-- Sostituito "Km percorsi" con "Nave" nelle trasferte
-- Fix salvataggio "Descrizione intervento" nei permessi
-- Implementato datepicker italiano (Flatpickr) globale
+- Richiesta permessi porto completa
+- Datepicker italiano globale
 
-### 2025-12-05
-- Implementata funzionalità completa richiesta permessi
-- Anteprima e invio email con allegati
-- Gestione destinatari email per compagnia
-
-### 2025-12-04
-- Gestione apparati nave
-- Configurazione Observium
-- Miglioramenti UI vari
-
-### 2025-12-03
+### 2025-12-03-05
 - Setup iniziale progetto
 - Anagrafiche base
+- Magazzino e movimenti
 - Autenticazione e ruoli
 
-### 2025-12-07 (sessione 5)
-- **Gestione Rete Nave - AC e Switch**:
-  - Fix scan AP da Access Controller Huawei
-  - Corretto parser output "display ap all" per formato reale Huawei
-  - Mapping stato AP: nor → online, idle → offline
-  - Fix scan tabella MAC da switch Huawei
-  - Corretto parser output "display mac-address" con porte GE/XGE
-  - Gestione paginazione "---- More ----" negli switch
-  - Associazione automatica AP ↔ porta switch tramite MAC address
-  - Supporto porte Huawei formato 0/0/x e 1/0/x
-  - Backup automatico configurazione switch
+---
 
-### 2025-12-08 (sessione 6)
-- **Supporto Telnet per Switch**:
-  - Aggiunto campo "Protocollo" (SSH/Telnet) per ogni switch
-  - Cambio automatico porta quando si seleziona protocollo (22→SSH, 23→Telnet)
-  - Implementata funzione executeTelnetCommand per switch senza SSH
-  - Test connessione supporta entrambi i protocolli
-  - Backup configurazione via Telnet funzionante
-- **Fix eliminazione AC**:
-  - Eliminazione AC ora rimuove anche i file di backup associati
-  - Pulizia corretta record config_backup per tipo 'ac'
-- **Fix JavaScript rete_nave.html**:
-  - Risolto errore sintassi JS che impediva caricamento funzioni
-  - Corretto testSSHAC con gestione errori (.catch)
-  - Rimosso codice duplicato che causava errori di parsing
+## TODO Futuro (Miglioramenti Opzionali)
 
-### 2025-12-08 (sessione 7)
-- **Auto-hostname Switch**:
-  - Rimosso campo "Nome" dal form di inserimento switch
-  - Il nome viene ora recuperato automaticamente dall'hostname dello switch
-  - Funzione getSwitchHostname: esegue comando "display current-configuration | include sysname" (Huawei) o "show running-config | include hostname" (HP)
-  - Supporta sia SSH che Telnet in base alla configurazione
-  - Fallback: se non riesce a recuperare l'hostname, usa "Switch-IP"
-  - In modifica switch: il nome esistente non viene modificato
-- **Fix Test Connessione Telnet**:
-  - APITestSSH ora supporta correttamente sia SSH che Telnet
-  - Script expect separati per i due protocolli
-  - Messaggi di errore specifici per protocollo
-- **Fix Backup/Modello via Telnet**:
-  - Backup configurazione funziona correttamente via Telnet
-  - Recupero modello usa il protocollo corretto dello switch
-- **Scan LLDP/MAC funzionante**:
-  - Testato su Zeus Palace con 5 switch
-  - Associazione automatica AP ↔ porta switch tramite MAC
+### Priorità Alta
+- [ ] **Installer Windows (.exe)** - Per semplificare installazione su Windows
 
-### 2025-12-08 (sessione 8)
-- **Nuova sezione Uffici**:
-  - CRUD completo (nome, indirizzo, città, CAP, telefono, email, note)
-  - Gestione rete con AC e Switch (solo backup, no scan)
-  - Backup configurazione manuale e automatico settimanale
-- **Nuova sezione Sale Server**:
-  - CRUD completo (nome, indirizzo, città, CAP, telefono, email, note)
-  - Gestione rete con soli Switch (solo backup, no scan)
-  - Backup configurazione manuale e automatico settimanale
-- **Tabelle DB aggiunte**:
-  - uffici, ac_ufficio, switch_ufficio
-  - sale_server, switch_sala_server
-  - config_backup_ufficio
-- **Integrazione backup settimanale**:
-  - Job settimanale esteso per includere uffici e sale server
-  - Supporto SSH e Telnet per tutti gli apparati
+### Miglioramenti UI/UX
+- [ ] Dashboard con statistiche e grafici (chart.js)
+- [ ] Icone nelle voci menu e bottoni
+- [ ] Notifiche toast animate invece di alert
+- [ ] Breadcrumb per navigazione
+- [ ] Dark mode
+- [ ] Animazioni sottili (transizioni, hover effects)
+- [ ] Skeleton loading per caricamenti
 
-### 2025-12-08 (sessione 9)
-- **Nuova sezione Segnalazione Guasti Nave**:
-  - Lista navi con conteggio guasti attivi e badge colore per gravità
-  - Pagina guasti per singola nave con card colorate (rosso=alta, giallo=media, grigio=bassa)
-  - Ogni guasto ha: data apertura, gravità (bassa/media/alta), descrizione, stato (aperto/preso in carico/risolto)
-  - Quando risolto: data risoluzione, tecnico che ha risolto, descrizione risoluzione
-  - **Auto-inserimento AP fault**: quando uno scan AP rileva un AP in fault, viene creato automaticamente un guasto
-  - **Auto-chiusura AP fault**: quando l'AP torna online, il guasto viene chiuso automaticamente con descrizione "AP tornato online"
-  - **Storico guasti**: filtro per data inizio/fine, statistiche per gravità
-- **Tabelle DB aggiunte**:
-  - guasti_nave (id, nave_id, tipo, ap_id, gravita, descrizione, stato, tecnico_apertura_id, data_apertura, tecnico_risoluzione_id, data_risoluzione, descrizione_risoluzione)
-- **Templates creati**:
-  - guasti_navi_lista.html - lista navi con conteggio
-  - guasti_nave.html - guasti singola nave con CRUD
-  - guasti_storico.html - storico con filtro date
-- **Routes aggiunte**:
-  - /guasti-nave - lista navi
-  - /guasti-nave/{id} - guasti nave
-  - /guasti-nave/nuovo/{id} - nuovo guasto
-  - /guasti-nave/modifica/{id} - modifica guasto
-  - /guasti-nave/elimina/{id} - elimina guasto
-  - /guasti-nave/storico - storico guasti
+### Funzionalità Aggiuntive
+- [ ] Export Excel report (xlsx)
+- [ ] Notifiche email automatiche (scadenze, promemoria)
+- [ ] PWA per uso offline/mobile
+- [ ] Log attività utenti (audit trail)
+- [ ] Sistema notifiche interne
+- [ ] Integrazione completa Observium
 
-## TODO - Prossima sessione
-1. **TEST Segnalazione Guasti Nave**:
-   - Testare lista navi con conteggio guasti
-   - Testare inserimento nuovo guasto manuale
-   - Testare modifica stato guasto (aperto → preso in carico → risolto)
-   - Testare storico guasti con filtro date
-   - Testare auto-inserimento guasto quando AP va in fault (scan AP)
-   - Testare auto-chiusura guasto quando AP torna online
+### Sicurezza
+- [ ] Two-factor authentication (2FA)
+- [ ] Rate limiting login
+- [ ] Audit log accessi
 
-2. **TEST Uffici e Sale Server** (se non già testato):
-   - Testare CRUD uffici
-   - Testare CRUD sale server
-   - Testare backup configurazione switch/AC
+### Performance
+- [ ] Caching query frequenti
+- [ ] Lazy loading immagini
+- [ ] Compressione response gzip
 
-### 2025-12-08 (sessione 10)
-- **TEST Segnalazione Guasti Nave** - COMPLETATO:
-  - ✅ Lista navi con conteggio guasti e badge colorati per gravità
-  - ✅ Inserimento nuovo guasto manuale (form modale con gravità e descrizione)
-  - ✅ Modifica stato guasto (aperto → preso in carico → risolto)
-  - ✅ Storico guasti con filtro date (fix: allineati nomi parametri form data_da/data_a)
-  - ✅ Auto-inserimento guasto quando AP in fault (testato con simulazione DB)
-  - ✅ Auto-chiusura guasto quando AP torna online (descrizione automatica)
-- **TEST Uffici e Sale Server** - COMPLETATO:
-  - ✅ CRUD Uffici (creazione, modifica, lista)
-  - ✅ Gestione rete Uffici (AC + Switch con backup)
-  - ✅ CRUD Sale Server (creazione, modifica, lista)
-  - ✅ Gestione rete Sale Server (solo Switch con backup)
-- **Miglioramento Lista Navi**:
-  - Navi ora raggruppate per compagnia in accordion collassabili
-  - Spazio per logo compagnia in ogni header accordion
-  - Pulsanti "Espandi tutti" / "Chiudi tutti"
-  - Filtro ricerca nasconde automaticamente compagnie vuote
-- **Ampliamento Anagrafica Compagnie**:
-  - Nuovi campi sede legale: città, CAP, provincia, P.IVA, codice fiscale
-  - Upload logo compagnia
-  - Form riorganizzato in sezioni card (Dati, Sede Legale, Contatti, Logo)
-  - Route /compagnie/logo/{id} per servire i loghi
-- **Aggiornamenti DB**:
-  - Tabella compagnie: aggiunti campi citta, cap, provincia, piva, codice_fiscale, logo
+---
 
-## TODO - Prossima sessione
-1. Testare upload logo compagnie e visualizzazione in lista navi
-2. Completare test backup configurazione su uffici/sale server reali
-3. Revisione Rapporto di Intervento (priorità alta da backlog)
+## Note Installazione
 
-### 2025-12-08 (sessione 11)
-- **Gestione Guasti Nave - Selezione Tecnico**:
-  - Aggiunta selezione tecnico obbligatoria quando si cambia stato a 'preso_in_carico'
-  - Aggiunta selezione tecnico obbligatoria quando si cambia stato a 'risolto'
-  - Campo note per presa in carico (opzionale)
-  - Campo descrizione risoluzione (obbligatorio)
-  - Visualizzazione tecnico e note nella card del guasto
-- **Fix sezione AP Fault**:
-  - Cambiato da classe 'alert' a 'card' per evitare auto-hide JavaScript
-  - La sezione AP in fault/offline ora rimane visibile permanentemente
-- **Aggiornamenti DB**:
-  - guasti_nave: aggiunti campi tecnico_presa_in_carico_id, data_presa_in_carico, note_presa_in_carico
+### Linux (Fedora/RHEL)
+```bash
+# Installa Go
+sudo dnf install golang
 
-## TODO - Prossima sessione
-1. Testare se i fault AP vengono mostrati anche nella richiesta permessi
-2. Revisione Rapporto di Intervento (priorità alta da backlog)
+# Clona e compila
+git clone https://github.com/furnaropolo/furviogest.git
+cd furviogest
+go build -o furviogest ./cmd/server
 
-### 2025-12-08 (sessione 12)
-- **Alert Guasti e AP Fault nel Dettaglio Permesso**:
-  - Aggiunto alert rosso per AP in stato offline/fault quando si visualizza il dettaglio permesso
-  - Aggiunto alert giallo per guasti aperti sulla nave
-  - Alert caricati via API JavaScript al caricamento pagina
-  - Link diretti a "Vedi Rete Nave" e "Gestisci Guasti"
-  - Gli alert sono solo informativi per uso interno, non inclusi nell'email
-- **Fix visualizzazione dati nel Dettaglio Permesso**:
-  - Corretto errore Scan nella query nave/compagnia (mismatch numero campi)
-  - Ora vengono visualizzati correttamente: nome nave, compagnia, IMO
-- **Rimosso #ID dal titolo**:
-  - Il titolo ora mostra solo "Dettaglio Richiesta Permesso" senza il numero
-- **Migliorato API AP Fault**:
-  - /api/rete/ap-fault ora restituisce anche la lista degli AP (nome, MAC, IP, stato)
-  - Supporta sia stato 'fault' che 'offline'
-- **Fix CSS alert nel form permessi**:
-  - Aggiunti stili per .alert-warning e badge
+# Avvia
+./furviogest -port 8080
+```
 
-## TODO - Prossima sessione
-1. **TEST Alert Guasti/AP nel Dettaglio Permesso**:
-   - Verificare che gli alert appaiano correttamente per Mega Andrea
-   - Verificare che i link funzionino
-2. **Revisione Rapporto di Intervento** (priorità alta da backlog)
+### Ripristino da Backup
+1. Avvia FurvioGest
+2. Vai su /backup
+3. Clicca "Carica Backup"
+4. Seleziona file .zip
+5. Conferma ripristino
+6. Il server si riavvierà automaticamente
+

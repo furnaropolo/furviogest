@@ -27,7 +27,9 @@ type BackupConfig struct {
 	NasPassword   string
 	RetentionDays int
 	OraBackup     string
-	UpdatedAt     time.Time
+	UpdatedAt          time.Time
+	NasConfigAbilitato bool
+	NasConfigRetention int
 }
 
 // BackupLog rappresenta un log di backup
@@ -721,13 +723,16 @@ func pulisciVecchiBackupNAS(config BackupConfig) {
 func getBackupConfig() BackupConfig {
 	var config BackupConfig
 	config.RetentionDays = 7 // default
+	config.NasConfigRetention = 3 // default
 
 	database.DB.QueryRow(`
 		SELECT id, nas_abilitato, COALESCE(nas_path,''), COALESCE(nas_username,''),
-		       COALESCE(nas_password,''), retention_days, COALESCE(ora_backup,'00:00'), updated_at
+		       COALESCE(nas_password,''), retention_days, COALESCE(ora_backup,'00:00'), updated_at,
+		       COALESCE(nas_config_abilitato, 0), COALESCE(nas_config_retention, 3)
 		FROM backup_sistema_config WHERE id = 1
 	`).Scan(&config.ID, &config.NasAbilitato, &config.NasPath, &config.NasUsername,
-		&config.NasPassword, &config.RetentionDays, &config.OraBackup, &config.UpdatedAt)
+		&config.NasPassword, &config.RetentionDays, &config.OraBackup, &config.UpdatedAt,
+		&config.NasConfigAbilitato, &config.NasConfigRetention)
 
 	return config
 }
@@ -822,6 +827,12 @@ func APIBackupAutomatico(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Backup configurazioni rete su NAS se abilitato
+	config := getBackupConfig()
+	if config.NasConfigAbilitato {
+		go eseguiBackupConfigNAS(config)
+	}
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
@@ -887,4 +898,183 @@ func GetUltimoBackupErrore() string {
 	}
 
 	return ""
+}
+
+// SalvaConfigBackupNAS salva la configurazione del backup configurazioni rete su NAS
+func SalvaConfigBackupNAS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/backup", http.StatusSeeOther)
+		return
+	}
+
+	r.ParseForm()
+	
+	nasConfigAbilitato := 0
+	if r.FormValue("nas_config_abilitato") == "1" {
+		nasConfigAbilitato = 1
+	}
+	
+	nasConfigRetention, _ := strconv.Atoi(r.FormValue("nas_config_retention"))
+	if nasConfigRetention < 1 {
+		nasConfigRetention = 3
+	}
+	if nasConfigRetention > 30 {
+		nasConfigRetention = 30
+	}
+
+	_, err := database.DB.Exec(`
+		UPDATE backup_sistema_config 
+		SET nas_config_abilitato = ?, nas_config_retention = ?, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = 1
+	`, nasConfigAbilitato, nasConfigRetention)
+
+	if err != nil {
+		log.Println("Errore salvataggio config backup NAS:", err)
+	}
+
+	http.Redirect(w, r, "/backup", http.StatusSeeOther)
+}
+
+// DisabilitaConfigBackupNAS disabilita il backup configurazioni rete su NAS
+func DisabilitaConfigBackupNAS(w http.ResponseWriter, r *http.Request) {
+	_, err := database.DB.Exec(`
+		UPDATE backup_sistema_config 
+		SET nas_config_abilitato = 0, updated_at = CURRENT_TIMESTAMP 
+		WHERE id = 1
+	`)
+
+	if err != nil {
+		log.Println("Errore disabilitazione config backup NAS:", err)
+	}
+
+	http.Redirect(w, r, "/backup", http.StatusSeeOther)
+}
+
+// eseguiBackupConfigNAS copia i backup delle configurazioni di rete su NAS
+func eseguiBackupConfigNAS(config BackupConfig) {
+	log.Println("[BACKUP CONFIG NAS] Avvio backup configurazioni rete su NAS")
+
+	// Directory locale dei backup configurazioni
+	configBackupDir := filepath.Join(dataDir, "backups")
+
+	// Monta NAS
+	mountPoint := "/tmp/nas_config_mount_" + fmt.Sprintf("%d", time.Now().Unix())
+	os.MkdirAll(mountPoint, 0755)
+	defer os.RemoveAll(mountPoint)
+
+	// Mount comando
+	mountCmd := exec.Command("mount", "-t", "cifs", config.NasPath, mountPoint,
+		"-o", fmt.Sprintf("username=%s,password=%s,vers=3.0", config.NasUsername, config.NasPassword))
+	
+	if err := mountCmd.Run(); err != nil {
+		log.Printf("[BACKUP CONFIG NAS] Errore mount NAS: %v", err)
+		return
+	}
+	defer exec.Command("umount", mountPoint).Run()
+
+	// Crea directory destinazione sul NAS
+	nasConfigDir := filepath.Join(mountPoint, "config_navi")
+	os.MkdirAll(nasConfigDir, 0755)
+
+	// Trova tutte le sottodirectory nave_X
+	entries, err := os.ReadDir(configBackupDir)
+	if err != nil {
+		log.Printf("[BACKUP CONFIG NAS] Errore lettura directory: %v", err)
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "nave_") {
+			continue
+		}
+
+		// Estrai ID nave e verifica se ferma
+		naveIDStr := strings.TrimPrefix(entry.Name(), "nave_")
+		naveID, err := strconv.ParseInt(naveIDStr, 10, 64)
+		if err != nil {
+			continue
+		}
+		
+		// Salta navi ferme per lavori
+		var ferma int
+		database.DB.QueryRow("SELECT ferma_per_lavori FROM navi WHERE id = ?", naveID).Scan(&ferma)
+		if ferma == 1 {
+			log.Printf("[BACKUP CONFIG NAS] Nave %d ferma per lavori, skip", naveID)
+			continue
+		}
+
+		naveDir := filepath.Join(configBackupDir, entry.Name())
+		nasNaveDir := filepath.Join(nasConfigDir, entry.Name())
+		os.MkdirAll(nasNaveDir, 0755)
+
+		// Copia i file di backup
+		files, _ := os.ReadDir(naveDir)
+		for _, f := range files {
+			if f.IsDir() {
+				continue
+			}
+			srcPath := filepath.Join(naveDir, f.Name())
+			dstPath := filepath.Join(nasNaveDir, f.Name())
+
+			// Copia file
+			src, err := os.Open(srcPath)
+			if err != nil {
+				continue
+			}
+			dst, err := os.Create(dstPath)
+			if err != nil {
+				src.Close()
+				continue
+			}
+			io.Copy(dst, src)
+			src.Close()
+			dst.Close()
+		}
+
+		// Applica retention: mantieni solo gli ultimi N file per tipo
+		applicaRetentionNAS(nasNaveDir, config.NasConfigRetention)
+	}
+
+	log.Println("[BACKUP CONFIG NAS] Backup completato")
+}
+
+// applicaRetentionNAS mantiene solo gli ultimi N backup per ogni apparato
+func applicaRetentionNAS(dir string, retention int) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	// Raggruppa file per prefisso (nome apparato)
+	groups := make(map[string][]os.DirEntry)
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		// Nome file: ac_NOMEAC_2025-12-14_10-00-00.txt o switch_NOME_2025-12-14.txt
+		parts := strings.Split(f.Name(), "_")
+		if len(parts) >= 2 {
+			prefix := parts[0] + "_" + parts[1] // es. "ac_AC-MEA-01" o "switch_SW1"
+			groups[prefix] = append(groups[prefix], f)
+		}
+	}
+
+	// Per ogni gruppo, mantieni solo gli ultimi N
+	for _, group := range groups {
+		if len(group) <= retention {
+			continue
+		}
+
+		// Ordina per data modifica (più vecchi prima)
+		sort.Slice(group, func(i, j int) bool {
+			infoI, _ := group[i].Info()
+			infoJ, _ := group[j].Info()
+			return infoI.ModTime().Before(infoJ.ModTime())
+		})
+
+		// Elimina i più vecchi
+		for i := 0; i < len(group)-retention; i++ {
+			os.Remove(filepath.Join(dir, group[i].Name()))
+		}
+	}
 }

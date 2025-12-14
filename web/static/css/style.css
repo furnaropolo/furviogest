@@ -597,3 +597,44 @@ body {
     margin-bottom: 0.5rem;
 }
 .badge-info { background-color: #17a2b8; color: white; }
+
+/* Menu con emoji grandi sotto il testo */
+.navbar-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    padding: 0.4rem 0.7rem !important;
+    line-height: 1.3 !important;
+    min-width: 70px;
+}
+.menu-icon {
+    font-size: 1.6rem !important;
+    display: block !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin-top: 0.15rem;
+}
+.menu-text {
+    font-size: 0.85rem;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: block !important;
+    text-align: center !important;
+    width: 100% !important;
+}
+.navbar-brand a {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+}
+/* Dropdown items con emoji a sinistra */
+.dropdown-item {
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+}

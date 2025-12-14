@@ -39,7 +39,7 @@
                     <table class="table table-sm mb-0">
                         <tr><th style="width:120px">IP:</th><td><code>{{.Data.AC.IP}}:{{.Data.AC.SSHPort}}</code></td></tr>
                         <tr><th>Username:</th><td>{{.Data.AC.SSHUser}}</td></tr>
-                        <tr><th>Note:</th><td>{{.Data.AC.Note}}</td></tr>
+                        <tr><th>Licenze AP:</th><td>{{.Data.AC.LicenzeUtilizzate}} / {{.Data.AC.LicenzeTotali}}</td></tr>
                         {{if .Data.AC.UltimoCheck}}<tr><th>Ultimo Check:</th><td>{{.Data.AC.UltimoCheck}}</td></tr>{{end}}
                         {{if .Data.AC.UltimoBackup}}<tr><th>Ultimo Backup:</th><td>{{.Data.AC.UltimoBackup}}</td></tr>{{end}}
                     </table>
@@ -49,6 +49,7 @@
                         <button id="btnTestAC" class="btn btn-outline-info btn-sm" onclick="testSSHAC('{{.Data.AC.IP}}', {{.Data.AC.SSHPort}}, '{{.Data.AC.SSHUser}}', '{{.Data.AC.SSHPass}}')"><i class="bi bi-plug me-1"></i>Test SSH</button>
                         <button class="btn btn-outline-success btn-sm" onclick="scanAP()" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}><i class="bi bi-broadcast me-1"></i>Scan AP</button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="backupConfig('ac', {{.Data.AC.ID}})"><i class="bi bi-download me-1"></i>Backup Config</button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="rilevaLicenze({{.Data.AC.ID}})"><i class="bi bi-key me-1"></i>Rileva Licenze</button>
                         <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAC"><i class="bi bi-pencil me-1"></i>Modifica</button>
                         <a href="/navi/ac/elimina/{{.Data.Nave.ID}}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Eliminare AC e tutti gli AP?')"><i class="bi bi-trash me-1"></i>Elimina</a>
                     </div>
@@ -243,9 +244,13 @@
                             <label class="form-label">Password SSH *</label>
                             <input type="password" class="form-control" name="ssh_pass" id="ac_ssh_pass" value="{{if .Data.AC}}{{.Data.AC.SSHPass}}{{end}}" required>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label">Note</label>
-                            <input type="text" class="form-control" name="note" value="{{if .Data.AC}}{{.Data.AC.Note}}{{end}}">
+                        <div class="col-md-6">
+                            <label class="form-label">Licenze AP Totali</label>
+                            <input type="number" class="form-control" name="licenze_totali" value="{{if .Data.AC}}{{.Data.AC.LicenzeTotali}}{{end}}" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Licenze AP Utilizzate</label>
+                            <input type="number" class="form-control" name="licenze_utilizzate" value="{{if .Data.AC}}{{.Data.AC.LicenzeUtilizzate}}{{end}}" min="0">
                         </div>
                     </div>
                 </div>
@@ -493,6 +498,32 @@ function editSwitch(id, marca, modello, ip, port, user, pass, note) {
     document.getElementById('sw_ssh_pass').value = pass;
     document.getElementById('sw_note').value = note;
     new bootstrap.Modal(document.getElementById('modalSwitch')).show();
+}
+
+// Rileva licenze AP dall AC
+function rilevaLicenze(acID) {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Rilevamento...';
+    btn.disabled = true;
+    
+    fetch('/api/rete/ac-licenze?ac_id=' + acID, { method: 'GET' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Errore: ' + data.error);
+            } else {
+                alert('Licenze rilevate: ' + data.licenze_utilizzate + ' / ' + data.licenze_totali);
+                location.reload();
+            }
+        })
+        .catch(err => {
+            alert('Errore di connessione: ' + err);
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
 }
 </script>
 {{end}}

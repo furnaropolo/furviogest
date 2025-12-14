@@ -5,9 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=4">
     <!-- Flatpickr per date in formato europeo -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -23,37 +24,37 @@
             <div class="navbar-start">
                 {{if eq .Session.Ruolo "amministrazione"}}
                 <!-- Menu per Amministrazione -->
-                <a href="/amministrazione" class="navbar-item">Dashboard</a>
-                <a href="/amministrazione/magazzino" class="navbar-item">Giacenza Magazzino</a>
-                <a href="/amministrazione/rapporti" class="navbar-item">Rapporti</a>
-                <a href="/amministrazione/note-spese" class="navbar-item">Note Spese</a>
-                <a href="/amministrazione/trasferte" class="navbar-item">Trasferte</a>
-                <a href="/amministrazione/riepilogo" class="navbar-item">Riepilogo Mensile</a>
+                <a href="/amministrazione" class="navbar-item"><span class="menu-text">Dashboard</span><br><span class="menu-icon">🏠</span></a>
+                <a href="/amministrazione/magazzino" class="navbar-item"><span class="menu-text">Giacenza<br>Magazzino</span><br><span class="menu-icon">📦</span></a>
+                <a href="/amministrazione/rapporti" class="navbar-item"><span class="menu-text">Rapporti</span><br><span class="menu-icon">📋</span></a>
+                <a href="/amministrazione/note-spese" class="navbar-item"><span class="menu-text">Note Spese</span><br><span class="menu-icon">🧾</span></a>
+                <a href="/amministrazione/trasferte" class="navbar-item"><span class="menu-text">Trasferte</span><br><span class="menu-icon">📅</span></a>
+                <a href="/amministrazione/riepilogo" class="navbar-item"><span class="menu-text">Riepilogo<br>Mensile</span><br><span class="menu-icon">📊</span></a>
                 {{else}}
                 <!-- Menu per Tecnico e Guest -->
-                <a href="/" class="navbar-item">Dashboard</a>
+                <a href="/" class="navbar-item"><span class="menu-text">Dashboard</span><br><span class="menu-icon">🏠</span></a>
                 <div class="navbar-dropdown"><!-- TRASFERTE -->
-                    <a href="#" class="navbar-item dropdown-toggle">Anagrafiche</a>
+                    <a href="#" class="navbar-item dropdown-toggle"><span class="menu-text">Anagrafiche</span><br><span class="menu-icon">📒</span></a>
                     <div class="dropdown-content">
-                        <a href="/tecnici" class="dropdown-item">Tecnici</a>
-                        <a href="/fornitori" class="dropdown-item">Fornitori</a>
-                        <a href="/porti" class="dropdown-item">Porti</a>
-                        <a href="/automezzi" class="dropdown-item">Automezzi</a>
-                        <a href="/compagnie" class="dropdown-item">Compagnie</a>
-                        <a href="/navi" class="dropdown-item">Navi</a>
-                        <a href="/clienti" class="dropdown-item">Clienti</a>
+                        <a href="/tecnici" class="dropdown-item">👷 Tecnici</a>
+                        <a href="/fornitori" class="dropdown-item">🚚 Fornitori</a>
+                        <a href="/porti" class="dropdown-item">⚓ Porti</a>
+                        <a href="/automezzi" class="dropdown-item">🚗 Automezzi</a>
+                        <a href="/compagnie" class="dropdown-item">🏢 Compagnie</a>
+                        <a href="/navi" class="dropdown-item">🚢 Navi</a>
+                        <a href="/clienti" class="dropdown-item">👤 Clienti</a>
                     </div>
                 </div>
-                <a href="/magazzino" class="navbar-item">Magazzino</a>
-                <a href="/ddt-fatture" class="navbar-item">DDT/Fatture</a>
-                <a href="/archivio-pdf" class="navbar-item">Archivio PDF</a>
-                <a href="/ddt-uscita" class="navbar-item">DDT Uscita</a>
-                <a href="/attrezzi" class="navbar-item">Attrezzi</a>
-                <a href="/permessi" class="navbar-item">Permessi</a>
-                <a href="/rapporti" class="navbar-item">Rapporti</a>
-                <a href="/calendario-trasferte" class="navbar-item">Trasferte e Spese</a>
+                <a href="/magazzino" class="navbar-item"><span class="menu-text">Magazzino</span><br><span class="menu-icon">📦</span></a>
+                <a href="/ddt-fatture" class="navbar-item"><span class="menu-text">DDT/<br>Fatture</span><br><span class="menu-icon">📄</span></a>
+                <a href="/archivio-pdf" class="navbar-item"><span class="menu-text">Archivio<br>PDF</span><br><span class="menu-icon">📁</span></a>
+                <a href="/ddt-uscita" class="navbar-item"><span class="menu-text">DDT<br>Uscita</span><br><span class="menu-icon">📤</span></a>
+                <a href="/attrezzi" class="navbar-item"><span class="menu-text">Attrezzi</span><br><span class="menu-icon">🛠️</span></a>
+                <a href="/permessi" class="navbar-item"><span class="menu-text">Permessi</span><br><span class="menu-icon">🛡️</span></a>
+                <a href="/rapporti" class="navbar-item"><span class="menu-text">Rapporti</span><br><span class="menu-icon">📋</span></a>
+                <a href="/calendario-trasferte" class="navbar-item"><span class="menu-text">Trasferte<br>e Spese</span><br><span class="menu-icon">📅</span></a>
                 {{if .Session.IsTecnico}}
-                <a href="/amministrazione" class="navbar-item">Amministrazione</a>
+                <a href="/amministrazione" class="navbar-item"><span class="menu-text">Amministrazione</span><br><span class="menu-icon">💼</span></a>
                 {{end}}
                 {{end}}
             </div>
@@ -65,17 +66,33 @@
                     </span>
                 </span>
                 {{if .Session.IsTecnico}}
-                <a href="/backup" class="navbar-item">Backup</a>
-                <a href="/impostazioni" class="navbar-item">Impostazioni</a>
+                <a href="/backup" class="navbar-item"><span class="menu-text">Backup</span><br><span class="menu-icon">☁️</span></a>
+                <a href="/impostazioni" class="navbar-item"><span class="menu-text">Impostazioni</span><br><span class="menu-icon">⚙️</span></a>
                 {{end}}
-                <a href="/cambio-password" class="navbar-item">Cambia Password</a>
-                <a href="/logout" class="navbar-item btn-logout">Esci</a>
+                <a href="/cambio-password" class="navbar-item"><span class="menu-text">Cambia<br>Password</span><br><span class="menu-icon">🔑</span></a>
+                <a href="/logout" class="navbar-item btn-logout"><span class="menu-text">Esci</span><br><span class="menu-icon">🚪</span></a>
             </div>
         </div>
     </nav>
     {{end}}
 
     <main class="container">
+        {{if .Session}}
+        <div class="nav-buttons mb-3" id="navButtons">
+            <button type="button" class="btn btn-outline-secondary me-2" onclick="history.back()" title="Indietro">
+                <i class="bi bi-arrow-left fs-4"></i>
+            </button>
+            <a href="{{if eq .Session.Ruolo "amministrazione"}}/amministrazione{{else}}/{{end}}" class="btn btn-outline-primary" title="Dashboard">
+                <i class="bi bi-house-door-fill fs-4"></i>
+            </a>
+        </div>
+        <script>
+        // Nascondi pulsanti navigazione nella dashboard
+        if (window.location.pathname === '/' || window.location.pathname === '/amministrazione') {
+            document.getElementById('navButtons').style.display = 'none';
+        }
+        </script>
+        {{end}}
         {{if .Error}}
         <div class="alert alert-error">
             {{.Error}}

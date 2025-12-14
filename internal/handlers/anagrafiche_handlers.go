@@ -637,10 +637,30 @@ func NuovoAutomezzo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Gestione upload libretto
+	var librettoPath string
+	file, header, err := r.FormFile("libretto")
+	if err == nil {
+		defer file.Close()
+		// Crea nome file univoco
+		ext := filepath.Ext(header.Filename)
+		newFileName := fmt.Sprintf("libretto_%s_%d%s", targa, time.Now().Unix(), ext)
+		uploadDir := filepath.Join("web", "static", "uploads", "libretti")
+		os.MkdirAll(uploadDir, 0755)
+		uploadPath := filepath.Join(uploadDir, newFileName)
+		
+		dst, err := os.Create(uploadPath)
+		if err == nil {
+			defer dst.Close()
+			io.Copy(dst, file)
+			librettoPath = "uploads/libretti/" + newFileName
+		}
+	}
+
 	_, err = database.DB.Exec(`
-		INSERT INTO automezzi (targa, marca, modello, note)
-		VALUES (?, ?, ?, ?)
-	`, targa, marca, modello, note)
+		INSERT INTO automezzi (targa, marca, modello, note, libretto_path)
+		VALUES (?, ?, ?, ?, ?)
+	`, targa, marca, modello, note, librettoPath)
 
 	if err != nil {
 		data.Error = "Errore durante il salvataggio (targa già esistente?)"
@@ -718,6 +738,38 @@ func ModificaAutomezzo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Gestione upload libretto
+	file, header, fileErr := r.FormFile("libretto")
+	if fileErr == nil {
+		defer file.Close()
+		// Crea nome file univoco
+		ext := filepath.Ext(header.Filename)
+		newFileName := fmt.Sprintf("libretto_%s_%d%s", targa, time.Now().Unix(), ext)
+		uploadDir := filepath.Join("web", "static", "uploads", "libretti")
+		os.MkdirAll(uploadDir, 0755)
+		uploadPath := filepath.Join(uploadDir, newFileName)
+		
+		dst, createErr := os.Create(uploadPath)
+		if createErr == nil {
+			defer dst.Close()
+			io.Copy(dst, file)
+			librettoPath := "uploads/libretti/" + newFileName
+			// Aggiorna con nuovo libretto
+			_, err = database.DB.Exec(`
+				UPDATE automezzi SET targa = ?, marca = ?, modello = ?, note = ?, libretto_path = ?, updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+			`, targa, marca, modello, note, librettoPath, id)
+			if err != nil {
+				data.Error = "Errore durante il salvataggio"
+				renderTemplate(w, "automezzi_form.html", data)
+				return
+			}
+			http.Redirect(w, r, "/automezzi", http.StatusSeeOther)
+			return
+		}
+	}
+
+	// Aggiorna senza modificare libretto
 	_, err = database.DB.Exec(`
 		UPDATE automezzi SET targa = ?, marca = ?, modello = ?, note = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?

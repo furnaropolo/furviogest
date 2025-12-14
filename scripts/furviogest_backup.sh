@@ -3,7 +3,7 @@
 # Eseguito da cron ogni giorno a mezzanotte
 # Chiama l'API interna per eseguire il backup
 
-LOG_FILE="/var/log/furviogest_backup.log"
+LOG_FILE="/home/ies/furviogest/backup_cron.log"
 API_URL="http://127.0.0.1:8080/api/backup/automatico"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Avvio backup automatico" >> "$LOG_FILE"
