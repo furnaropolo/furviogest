@@ -6,7 +6,7 @@
     <div class="header-actions">
         {{if .Session.IsTecnico}}
         <a href="/orari/upload" class="btn btn-secondary">Upload Orari Corsica</a>
-        <a href="/navi/nuovo" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuova Nave</a>
+        <a href="/navi/nuovo" class="btn btn-primary">➕ Nuova Nave</a>
         {{end}}
     </div>
 </div>
@@ -23,14 +23,14 @@
 <!-- Pulsanti Compagnie -->
 <div class="compagnie-buttons mb-4">
     <button class="btn btn-compagnia active" data-compagnia="all" onclick="showCompagnia('all')">
-        <i class="bi bi-grid-3x3-gap"></i> Tutte
+        📋 Tutte
     </button>
     {{range .Data}}
     <button class="btn btn-compagnia" data-compagnia="{{.ID}}" onclick="showCompagnia({{.ID}})">
         {{if .Logo}}
         <img src="/compagnie/logo/{{.ID}}" alt="{{.Nome}}" class="btn-logo">
         {{else}}
-        <i class="bi bi-building"></i>
+        🏢
         {{end}}
         {{.Nome}} <span class="badge bg-primary">{{len .Navi}}</span>
     </button>
@@ -56,7 +56,7 @@
                 <img src="/navi/foto/{{.ID}}" alt="{{.Nome}}" class="nave-thumb">
                 {{else}}
                 <div class="nave-thumb-placeholder">
-                    <i class="bi bi-ship"></i>
+                    🚢
                 </div>
                 {{end}}
                 <div class="nave-status">
@@ -73,20 +73,21 @@
                 {{if .FermaPerLavori}}
                 <div class="lavori-info mt-2">
                     {{if .DataInizioLavori}}
-                    <small><i class="bi bi-calendar"></i> Dal: {{.DataInizioLavori.Format "02/01/2006"}}</small>
+                    <small>📅 Dal: {{.DataInizioLavori.Format "02/01/2006"}}</small>
                     {{end}}
                     {{if .DataFineLavoriPrev}}
-                    <small><i class="bi bi-calendar-check"></i> Fine: {{.DataFineLavoriPrev.Format "02/01/2006"}}</small>
+                    <small>✅ Fine: {{.DataFineLavoriPrev.Format "02/01/2006"}}</small>
                     {{end}}
                 </div>
                 {{end}}
             </div>
             <div class="nave-card-footer">
-                <a href="/navi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli"><i class="bi bi-info-circle"></i></a>
-                <a href="/navi/rete/{{.ID}}" class="btn btn-sm btn-primary" title="Rete"><i class="bi bi-wifi"></i></a>
-                <a href="/guasti-nave/{{.ID}}" class="btn btn-sm btn-danger" title="Guasti"><i class="bi bi-exclamation-triangle"></i></a>
+                <a href="/navi/dettaglio/{{.ID}}" class="btn btn-sm btn-info" title="Dettagli">ℹ️</a>
+                <a href="/navi/rete/{{.ID}}" class="btn btn-sm btn-primary" title="Rete">📶</a>
+                <a href="/navi/dettaglio/{{.ID}}#servers" class="btn btn-sm btn-success" title="Apparati">🖥️</a>
+                <a href="/guasti-nave/{{.ID}}" class="btn btn-sm btn-danger" title="Guasti">⚠️</a>
                 {{if $.Session.IsTecnico}}
-                <a href="/navi/modifica/{{.ID}}" class="btn btn-sm btn-secondary" title="Modifica"><i class="bi bi-pencil"></i></a>
+                <a href="/navi/modifica/{{.ID}}" class="btn btn-sm btn-secondary" title="Modifica">✏️</a>
                 {{end}}
             </div>
         </div>

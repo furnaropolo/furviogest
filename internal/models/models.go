@@ -430,6 +430,19 @@ type DisegnoNave struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type ServerNave struct {
+	ID          int64     `json:"id"`
+	NaveID      int64     `json:"nave_id"`
+	Nome        string    `json:"nome"`
+	IndirizzoIP string    `json:"indirizzo_ip"`
+	Porta       int       `json:"porta"`
+	Protocollo  string    `json:"protocollo"`
+	Username    string    `json:"username"`
+	Password    string    `json:"password"`
+	Note        string    `json:"note"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type OrarioNave struct {
 	ID                int64     `json:"id"`
 	NaveID            int64     `json:"nave_id"`

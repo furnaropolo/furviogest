@@ -22,6 +22,7 @@ type OrariNaveData struct {
 	Soste    []models.SostaNave
 	Porti    []models.Porto
 	Disegni  []models.DisegnoNave
+	Servers  []models.ServerNave
 }
 
 // DettaglioNave mostra gli orari e le soste di una nave specifica
@@ -192,12 +193,25 @@ func DettaglioNave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Carica server nave
+	var servers []models.ServerNave
+	rowsServers, _ := database.DB.Query("SELECT id, nave_id, nome, indirizzo_ip, porta, protocollo, username, password, note, created_at FROM server_nave WHERE nave_id = ? ORDER BY nome", naveID)
+	if rowsServers != nil {
+		defer rowsServers.Close()
+		for rowsServers.Next() {
+			var s models.ServerNave
+			rowsServers.Scan(&s.ID, &s.NaveID, &s.Nome, &s.IndirizzoIP, &s.Porta, &s.Protocollo, &s.Username, &s.Password, &s.Note, &s.CreatedAt)
+			servers = append(servers, s)
+		}
+	}
+
 	pageData := OrariNaveData{
 		Nave:  nave,
 		Orari: orari,
 		Soste: soste,
 		Porti:    porti,
 		Disegni:  disegni,
+		Servers:  servers,
 	}
 
 	data.Data = pageData
@@ -526,5 +540,94 @@ func EliminaDisegnoNave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	database.DB.Exec("DELETE FROM disegni_nave WHERE id = ?", disegnoID)
+	http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+}
+
+
+// AggiungiServerNave aggiunge un server/VM alla nave
+func AggiungiServerNave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	naveID, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	nome := strings.TrimSpace(r.FormValue("nome"))
+	indirizzoIP := strings.TrimSpace(r.FormValue("indirizzo_ip"))
+	porta, _ := strconv.Atoi(r.FormValue("porta"))
+	if porta == 0 {
+		porta = 443
+	}
+	protocollo := r.FormValue("protocollo")
+	if protocollo == "" {
+		protocollo = "https"
+	}
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := strings.TrimSpace(r.FormValue("password"))
+	note := strings.TrimSpace(r.FormValue("note"))
+
+	database.DB.Exec("INSERT INTO server_nave (nave_id, nome, indirizzo_ip, porta, protocollo, username, password, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		naveID, nome, indirizzoIP, porta, protocollo, username, password, note)
+
+	http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+}
+
+// EliminaServerNave elimina un server
+func EliminaServerNave(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 5 {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	naveID, _ := strconv.ParseInt(pathParts[3], 10, 64)
+	serverID, _ := strconv.ParseInt(pathParts[4], 10, 64)
+
+	database.DB.Exec("DELETE FROM server_nave WHERE id = ? AND nave_id = ?", serverID, naveID)
+
+	http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
+}
+
+// ModificaServerNave modifica un server esistente
+func ModificaServerNave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 5 {
+		http.Redirect(w, r, "/navi", http.StatusSeeOther)
+		return
+	}
+
+	naveID, _ := strconv.ParseInt(pathParts[3], 10, 64)
+	serverID, _ := strconv.ParseInt(pathParts[4], 10, 64)
+
+	nome := strings.TrimSpace(r.FormValue("nome"))
+	indirizzoIP := strings.TrimSpace(r.FormValue("indirizzo_ip"))
+	porta, _ := strconv.Atoi(r.FormValue("porta"))
+	if porta == 0 {
+		porta = 443
+	}
+	protocollo := r.FormValue("protocollo")
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := strings.TrimSpace(r.FormValue("password"))
+	note := strings.TrimSpace(r.FormValue("note"))
+
+	database.DB.Exec("UPDATE server_nave SET nome=?, indirizzo_ip=?, porta=?, protocollo=?, username=?, password=?, note=? WHERE id=? AND nave_id=?",
+		nome, indirizzoIP, porta, protocollo, username, password, note, serverID, naveID)
+
 	http.Redirect(w, r, fmt.Sprintf("/navi/dettaglio/%d", naveID), http.StatusSeeOther)
 }
