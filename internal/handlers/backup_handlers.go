@@ -950,33 +950,17 @@ func DisabilitaConfigBackupNAS(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/backup", http.StatusSeeOther)
 }
 
-// eseguiBackupConfigNAS copia i backup delle configurazioni di rete su NAS
+// eseguiBackupConfigNAS copia i backup delle configurazioni di rete su NAS via smbclient
 func eseguiBackupConfigNAS(config BackupConfig) {
 	log.Println("[BACKUP CONFIG NAS] Avvio backup configurazioni rete su NAS")
 
 	// Directory locale dei backup configurazioni
 	configBackupDir := filepath.Join(dataDir, "backups")
 
-	// Monta NAS
-	mountPoint := "/tmp/nas_config_mount_" + fmt.Sprintf("%d", time.Now().Unix())
-	os.MkdirAll(mountPoint, 0755)
-	defer os.RemoveAll(mountPoint)
+	// Parse NAS path per ottenere share e subdir
+	share, subdir := parseNASPath(config.NasPath)
 
-	// Mount comando
-	mountCmd := exec.Command("mount", "-t", "cifs", config.NasPath, mountPoint,
-		"-o", fmt.Sprintf("username=%s,password=%s,vers=3.0", config.NasUsername, config.NasPassword))
-	
-	if err := mountCmd.Run(); err != nil {
-		log.Printf("[BACKUP CONFIG NAS] Errore mount NAS: %v", err)
-		return
-	}
-	defer exec.Command("umount", mountPoint).Run()
-
-	// Crea directory destinazione sul NAS
-	nasConfigDir := filepath.Join(mountPoint, "config_navi")
-	os.MkdirAll(nasConfigDir, 0755)
-
-	// Trova tutte le sottodirectory nave_X
+	// Trova tutte le sottodirectory
 	entries, err := os.ReadDir(configBackupDir)
 	if err != nil {
 		log.Printf("[BACKUP CONFIG NAS] Errore lettura directory: %v", err)
@@ -984,58 +968,132 @@ func eseguiBackupConfigNAS(config BackupConfig) {
 	}
 
 	for _, entry := range entries {
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "nave_") {
+		if !entry.IsDir() {
 			continue
 		}
 
-		// Estrai ID nave e verifica se ferma
-		naveIDStr := strings.TrimPrefix(entry.Name(), "nave_")
-		naveID, err := strconv.ParseInt(naveIDStr, 10, 64)
-		if err != nil {
-			continue
-		}
-		
-		// Salta navi ferme per lavori
-		var ferma int
-		database.DB.QueryRow("SELECT ferma_per_lavori FROM navi WHERE id = ?", naveID).Scan(&ferma)
-		if ferma == 1 {
-			log.Printf("[BACKUP CONFIG NAS] Nave %d ferma per lavori, skip", naveID)
+		dirName := entry.Name()
+		var nasSubdir string
+		var skipBackup bool
+
+		// Determina tipo directory e sottocartella NAS
+		if strings.HasPrefix(dirName, "nave_") {
+			// Estrai ID nave e verifica se ferma
+			naveIDStr := strings.TrimPrefix(dirName, "nave_")
+			naveID, err := strconv.ParseInt(naveIDStr, 10, 64)
+			if err != nil {
+				continue
+			}
+			
+			// Salta navi ferme per lavori
+			var ferma int
+			database.DB.QueryRow("SELECT ferma_per_lavori FROM navi WHERE id = ?", naveID).Scan(&ferma)
+			if ferma == 1 {
+				log.Printf("[BACKUP CONFIG NAS] Nave %d ferma per lavori, skip", naveID)
+				skipBackup = true
+			}
+			if subdir != "" {
+				nasSubdir = subdir + "/config_navi"
+			} else {
+				nasSubdir = "config_navi"
+			}
+
+		} else if strings.HasPrefix(dirName, "ufficio_") {
+			if subdir != "" {
+				nasSubdir = subdir + "/config_uffici"
+			} else {
+				nasSubdir = "config_uffici"
+			}
+
+		} else if strings.HasPrefix(dirName, "sala_server_") {
+			if subdir != "" {
+				nasSubdir = subdir + "/config_sale_server"
+			} else {
+				nasSubdir = "config_sale_server"
+			}
+
+		} else {
+			// Directory non riconosciuta, skip
 			continue
 		}
 
-		naveDir := filepath.Join(configBackupDir, entry.Name())
-		nasNaveDir := filepath.Join(nasConfigDir, entry.Name())
-		os.MkdirAll(nasNaveDir, 0755)
+		if skipBackup {
+			continue
+		}
 
-		// Copia i file di backup
-		files, _ := os.ReadDir(naveDir)
+		// Directory sorgente locale
+		srcDir := filepath.Join(configBackupDir, dirName)
+
+		// Copia i file su NAS via smbclient
+		files, _ := os.ReadDir(srcDir)
 		for _, f := range files {
 			if f.IsDir() {
 				continue
 			}
-			srcPath := filepath.Join(naveDir, f.Name())
-			dstPath := filepath.Join(nasNaveDir, f.Name())
-
-			// Copia file
-			src, err := os.Open(srcPath)
-			if err != nil {
-				continue
-			}
-			dst, err := os.Create(dstPath)
-			if err != nil {
-				src.Close()
-				continue
-			}
-			io.Copy(dst, src)
-			src.Close()
-			dst.Close()
+			localPath := filepath.Join(srcDir, f.Name())
+			
+			// Crea directory sul NAS e copia file
+			cmdStr := fmt.Sprintf("mkdir %s; mkdir %s/%s; cd %s/%s; put %s %s", 
+				nasSubdir, nasSubdir, dirName, nasSubdir, dirName, localPath, f.Name())
+			
+			cmd := exec.Command("smbclient", share,
+				"-U", config.NasUsername+"%"+config.NasPassword,
+				"-c", cmdStr)
+			cmd.Run() // Ignora errori mkdir se directory esiste già
 		}
 
-		// Applica retention: mantieni solo gli ultimi N file per tipo
-		applicaRetentionNAS(nasNaveDir, config.NasConfigRetention)
+		// Applica retention via smbclient
+		lsCmd := fmt.Sprintf("cd %s/%s; ls *.cfg", nasSubdir, dirName)
+		cmd := exec.Command("smbclient", share,
+			"-U", config.NasUsername+"%"+config.NasPassword,
+			"-c", lsCmd)
+		output, _ := cmd.CombinedOutput()
+		
+		applicaRetentionNASviaSMB(share, nasSubdir, dirName, config.NasUsername, config.NasPassword, string(output), config.NasConfigRetention)
+		log.Printf("[BACKUP CONFIG NAS] Backup completato per %s", dirName)
 	}
 
 	log.Println("[BACKUP CONFIG NAS] Backup completato")
+}
+
+// applicaRetentionNASviaSMB elimina i file vecchi su NAS via smbclient
+func applicaRetentionNASviaSMB(nasShare, nasSubdir, dirName, username, password, lsOutput string, retention int) {
+	// Parse output e raggruppa per apparato
+	lines := strings.Split(lsOutput, "\n")
+	groups := make(map[string][]string)
+	
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasSuffix(line, ".cfg") {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) == 0 {
+			continue
+		}
+		filename := parts[0]
+		// Estrai prefisso (es. "ac_AC" o "switch_SW-CAN29-229")
+		nameParts := strings.Split(filename, "_")
+		if len(nameParts) >= 2 {
+			prefix := nameParts[0] + "_" + nameParts[1]
+			groups[prefix] = append(groups[prefix], filename)
+		}
+	}
+	
+	// Per ogni gruppo, mantieni solo gli ultimi N (ordinati alfabeticamente = cronologicamente)
+	for _, fileList := range groups {
+		if len(fileList) <= retention {
+			continue
+		}
+		sort.Strings(fileList)
+		// Elimina i più vecchi (primi nell'ordine alfabetico dato il formato data nel nome)
+		for i := 0; i < len(fileList)-retention; i++ {
+			delCmd := fmt.Sprintf("cd %s/%s; del %s", nasSubdir, dirName, fileList[i])
+			exec.Command("smbclient", nasShare,
+				"-U", username+"%"+password,
+				"-c", delCmd).Run()
+		}
+	}
 }
 
 // applicaRetentionNAS mantiene solo gli ultimi N backup per ogni apparato

@@ -236,6 +236,18 @@ furviogest/
 
 ## Changelog
 
+### 2025-12-15 (sessione 17)
+- **Backup Configurazioni Rete su NAS - Uffici e Sale Server**:
+  - Esteso backup automatico su NAS per includere uffici e sale server
+  - Nuove cartelle NAS: config_uffici/ e config_sale_server/
+  - Stessa retention configurabile (default 3 backup per apparato)
+  - Usa smbclient invece di mount (non richiede privilegi root)
+  - Struttura NAS:
+    - config_navi/nave_X/ (esistente)
+    - config_uffici/ufficio_X/ (NUOVO)
+    - config_sale_server/sala_server_X/ (NUOVO)
+
+
 ### 2025-12-14 (sessione 16)
 - **Fix Backup Automatico**:
   - Corretto script cron (CRLF -> LF)
