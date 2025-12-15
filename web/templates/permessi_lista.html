@@ -45,7 +45,7 @@
                         <span class="badge badge-warning">Fine Lavori</span>
                     {{end}}
                 </td>
-                <td><strong>{{.NomeNave}}</strong></td>
+                <td><strong>{{.NomeNave}}</strong>{{if gt .NumNavi 1}} <span class="badge badge-info" title="{{.NumNavi}} navi totali">+{{sub .NumNavi 1}}</span>{{end}}</td>
                 <td>{{.NomePorto}}</td>
                 <td>{{.NomeTecnico}}</td>
                 <td>

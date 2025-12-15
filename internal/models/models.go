@@ -237,6 +237,7 @@ type RichiestaPermesso struct {
 	SostaPorto        string    `json:"sosta_porto,omitempty"`
 	NomePorto       string             `json:"nome_porto,omitempty"`
 	NomeTecnico     string             `json:"nome_tecnico,omitempty"`
+	NumNavi         int                `json:"num_navi,omitempty"`
 }
 
 // TecnicoPermesso associa tecnici a una richiesta permesso

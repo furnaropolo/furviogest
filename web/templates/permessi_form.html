@@ -7,35 +7,46 @@
 <!-- Alert AP Fault (nascosto di default) -->
 <div id="apFaultAlert" class="alert alert-danger" style="display: none;">
     <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Attenzione!</strong>
-    Su questa nave ci sono <strong id="apFaultCount">0</strong> Access Point in stato FAULT:<br><small id="apFaultDetails"></small>
-    <a href="#" id="apFaultLink" target="_blank">Visualizza dettagli</a>
+    Su queste navi ci sono Access Point in stato FAULT:<br><small id="apFaultDetails"></small>
 </div>
 <!-- Alert Guasti Nave (nascosto di default) -->
 <div id="guastiAlert" class="alert alert-warning" style="display: none;">
     <strong><i class="bi bi-exclamation-triangle-fill me-2"></i>Guasti Segnalati!</strong>
-    Su questa nave ci sono <strong id="guastiCount">0</strong> guasti aperti:
+    Su queste navi ci sono guasti aperti:
     <ul id="guastiList" class="mb-1 mt-2"></ul>
-    <a href="#" id="guastiLink" target="_blank" class="btn btn-sm btn-warning">Gestisci Guasti</a>
 </div>
 
-<form method="POST" class="form-card">
+<form method="POST" class="form-card" id="permessoForm">
     <div class="form-section">
-        <h3>Dati Intervento</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label for="nave_id">Nave *</label>
-                <select name="nave_id" id="nave_id" required class="form-control">
-                    <option value="">-- Seleziona Nave --</option>
-                    {{$permesso := .Data.Permesso}}
-                    {{range .Data.Navi}}
-                    <option value="{{.ID}}" {{if $permesso}}{{if eq $permesso.NaveID .ID}}selected{{end}}{{end}}>
-                        {{.NomeCompagnia}} - {{.Nome}} {{if .IMO}}(IMO: {{.IMO}}){{end}}
-                    </option>
-                    {{end}}
-                </select>
-            </div>
+        <h3>Navi * <small style="font-weight: normal; color: #666;">(seleziona una o più navi della stessa compagnia)</small></h3>
 
+        <div id="naviContainer">
+            {{$permesso := .Data.Permesso}}
+            {{$naviSelezionate := .Data.NaviSelezionate}}
+            {{range $compagnia, $naviList := .Data.NaviPerCompagnia}}
+            <div class="compagnia-group" data-compagnia="{{$compagnia}}">
+                <h4 class="compagnia-title">{{$compagnia}}</h4>
+                <div class="checkbox-grid navi-grid">
+                    {{range $naviList}}
+                    <label class="checkbox-item nave-checkbox" data-compagnia="{{.CompagniaID}}" data-nave-id="{{.ID}}">
+                        <input type="checkbox" name="navi_ids" value="{{.ID}}"
+                               data-compagnia-id="{{.CompagniaID}}"
+                               data-nome="{{.Nome}}"
+                               {{range $naviSelezionate}}{{if eq . $.ID}}checked{{end}}{{end}}>
+                        <span>{{.Nome}} {{if .IMO}}<small>(IMO: {{.IMO}})</small>{{end}}</span>
+                    </label>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+        <small class="form-help" id="naviInfo">Seleziona le navi per cui richiedere il permesso</small>
+    </div>
+
+    <div class="form-section">
+        <h3>Porto e Date</h3>
+
+        <div class="form-row">
             <div class="form-group">
                 <label for="porto_id">Porto *</label>
                 <select name="porto_id" id="porto_id" required class="form-control">
@@ -50,11 +61,7 @@
                 <small class="form-help" id="portoInfo"></small>
             </div>
         </div>
-    </div>
 
-    <div class="form-section">
-        <h3>Periodo e Durata</h3>
-        
         <div class="form-row">
             <div class="form-group">
                 <label for="tipo_durata">Tipo Durata *</label>
@@ -83,7 +90,7 @@
                        value="{{if $permesso}}{{if $permesso.DataFine}}{{$permesso.DataFine.Format "2006-01-02"}}{{end}}{{end}}">
             </div>
         </div>
-        
+
         <div class="form-row" style="margin-top: 15px;">
             <div class="form-group">
                 <label class="checkbox-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
@@ -93,7 +100,7 @@
                     <span>Rientro in giornata</span>
                 </label>
                 <small class="form-help" style="margin-top: 5px; display: block;">
-                    Deseleziona se i tecnici dovranno pernottare fuori sede (genera automaticamente foglio trasferta)
+                    Deseleziona se i tecnici dovranno pernottare fuori sede
                 </small>
             </div>
         </div>
@@ -102,7 +109,7 @@
     <div class="form-section">
         <h3>Tecnici *</h3>
         <p class="form-help">Seleziona i tecnici che parteciperanno all'intervento</p>
-        
+
         <div class="checkbox-grid">
             {{$tecniciSel := .Data.TecniciSelezionati}}
             {{range .Data.Tecnici}}
@@ -117,7 +124,7 @@
 
     <div class="form-section">
         <h3>Veicolo</h3>
-        
+
         <div class="form-row">
             <div class="form-group">
                 <label for="automezzo_id">Automezzo Aziendale</label>
@@ -143,17 +150,17 @@
 
     <div class="form-section">
         <h3>Descrizione Intervento *</h3>
-        <p class="form-help">Descrivi i lavori da effettuare sulla nave (questa informazione sarà inclusa nell'email all'agenzia)</p>
+        <p class="form-help">Descrivi i lavori da effettuare (questa informazione sarà inclusa nell'email all'agenzia)</p>
         <div class="form-group">
             <textarea name="descrizione_intervento" id="descrizione_intervento" class="form-control" rows="4" required
-                      placeholder="Es: Intervento di manutenzione sistema WiFi ponte comando. Necessario accesso sala radio e ponte di comando.">{{if $permesso}}{{$permesso.DescrizioneIntervento}}{{end}}</textarea>
+                      placeholder="Es: Intervento di manutenzione sistema WiFi. Necessario accesso sala radio e ponte di comando.">{{if $permesso}}{{$permesso.DescrizioneIntervento}}{{end}}</textarea>
         </div>
     </div>
 
     <div class="form-section">
         <h3>Note</h3>
         <div class="form-group">
-            <textarea name="note" id="note" class="form-control" rows="4" 
+            <textarea name="note" id="note" class="form-control" rows="4"
                       placeholder="Note aggiuntive per la richiesta...">{{if $permesso}}{{$permesso.Note}}{{end}}</textarea>
         </div>
     </div>
@@ -167,66 +174,182 @@
 </form>
 
 <script>
-// Controlla AP fault quando si seleziona una nave
-document.getElementById('nave_id').addEventListener('change', function() {
-    const naveID = this.value;
-    const apAlert = document.getElementById('apFaultAlert');
+// Gestione selezione navi - filtra per compagnia
+let compagniaSelezionata = null;
+let alertCheckAborted = false;
+
+document.querySelectorAll('input[name="navi_ids"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const compagniaID = this.getAttribute('data-compagnia-id');
+        const checkedBoxes = document.querySelectorAll('input[name="navi_ids"]:checked');
+
+        const apFaultAlert = document.getElementById('apFaultAlert');
+        const guastiAlert = document.getElementById('guastiAlert');
+
+        if (checkedBoxes.length === 0) {
+            // Nessuna nave selezionata - abilita tutte
+            compagniaSelezionata = null;
+            alertCheckAborted = true; // Annulla eventuali check in corso
+            document.querySelectorAll('.nave-checkbox').forEach(label => {
+                label.classList.remove('disabled');
+                label.querySelector('input').disabled = false;
+            });
+            document.getElementById('naviInfo').textContent = 'Seleziona le navi per cui richiedere il permesso';
+            if (apFaultAlert) apFaultAlert.style.display = 'none';
+            if (guastiAlert) guastiAlert.style.display = 'none';
+        } else {
+            // Almeno una nave selezionata - blocca altre compagnie
+            compagniaSelezionata = checkedBoxes[0].getAttribute('data-compagnia-id');
+            document.querySelectorAll('.nave-checkbox').forEach(label => {
+                const input = label.querySelector('input');
+                const thisCompagnia = input.getAttribute('data-compagnia-id');
+                if (thisCompagnia !== compagniaSelezionata) {
+                    label.classList.add('disabled');
+                    input.disabled = true;
+                    input.checked = false;
+                } else {
+                    label.classList.remove('disabled');
+                    input.disabled = false;
+                }
+            });
+
+            // Aggiorna info
+            const nomiNavi = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-nome')).join(', ');
+            document.getElementById('naviInfo').innerHTML = '<strong>Navi selezionate:</strong> ' + nomiNavi;
+
+            // Controlla AP fault e guasti per tutte le navi selezionate
+            alertCheckAborted = false;
+            checkNaviAlerts();
+        }
+    });
+});
+
+// Controlla AP fault e guasti per le navi selezionate
+function checkNaviAlerts() {
+    const checkedBoxes = document.querySelectorAll('input[name="navi_ids"]:checked');
+    const apFaultAlert = document.getElementById('apFaultAlert');
     const guastiAlert = document.getElementById('guastiAlert');
-    
-    if (!naveID) {
-        apAlert.style.display = 'none';
+
+    if (!apFaultAlert || !guastiAlert) return;
+
+    let allApFaults = [];
+    let allGuasti = [];
+    let pending = checkedBoxes.length * 2;
+
+    if (checkedBoxes.length === 0) {
+        apFaultAlert.style.display = 'none';
         guastiAlert.style.display = 'none';
         return;
     }
-    
-    // Check AP Fault
-    fetch('/api/rete/ap-fault?nave_id=' + naveID)
-        .then(r => r.json())
-        .then(data => {
-            if (data.count > 0) {
-                document.getElementById('apFaultCount').textContent = data.count;
-                document.getElementById('apFaultLink').href = '/navi/rete/' + naveID;
-                apAlert.style.display = 'block';
-                let details = data.ap_list.map(ap => "<b>" + ap.name + "</b>").join(", ");
-                document.getElementById("apFaultDetails").innerHTML = details;
-            } else {
-                apAlert.style.display = 'none';
-            }
-        })
-        .catch(() => { apAlert.style.display = 'none'; });
-    
-    // Check Guasti Aperti
-    fetch('/api/guasti-nave?nave_id=' + naveID)
-        .then(r => r.json())
-        .then(data => {
-            if (data.count > 0) {
-                document.getElementById('guastiCount').textContent = data.count;
-                document.getElementById('guastiLink').href = '/guasti-nave/' + naveID;
-                let list = data.guasti.map(g => "<li><span class=\"badge bg-" + (g.gravita === 'alta' ? 'danger' : (g.gravita === 'media' ? 'warning text-dark' : 'secondary')) + " me-2\">" + g.gravita.toUpperCase() + "</span>" + g.descrizione + "</li>").join("");
-                document.getElementById('guastiList').innerHTML = list;
-                guastiAlert.style.display = 'block';
-            } else {
-                guastiAlert.style.display = 'none';
-            }
-        })
-        .catch(() => { guastiAlert.style.display = 'none'; });
-});
 
+    checkedBoxes.forEach(cb => {
+        const naveID = cb.value;
+        const naveNome = cb.getAttribute('data-nome');
+
+        // Check AP Fault
+        fetch('/api/rete/ap-fault?nave_id=' + naveID)
+            .then(r => r.json())
+            .then(data => {
+                if (!alertCheckAborted && data.count > 0) {
+                    allApFaults.push({nave: naveNome, count: data.count, aps: data.ap_list || []});
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
+                pending--;
+                if (pending === 0 && !alertCheckAborted) updateAlerts();
+            });
+
+        // Check Guasti
+        fetch('/api/guasti-nave?nave_id=' + naveID)
+            .then(r => r.json())
+            .then(data => {
+                if (!alertCheckAborted && data.count > 0) {
+                    allGuasti.push({nave: naveNome, guasti: data.guasti || []});
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
+                pending--;
+                if (pending === 0 && !alertCheckAborted) updateAlerts();
+            });
+    });
+
+    function updateAlerts() {
+        const apFaultAlert = document.getElementById('apFaultAlert');
+        const guastiAlert = document.getElementById('guastiAlert');
+
+        if (!apFaultAlert || !guastiAlert) return;
+
+        // AP Fault Alert
+        if (allApFaults.length > 0) {
+            let details = allApFaults.map(f =>
+                '<b>' + f.nave + '</b>: ' + (f.aps.length > 0 ? f.aps.map(ap => ap.name).join(', ') : f.count + ' AP')
+            ).join('<br>');
+            const detailsEl = document.getElementById('apFaultDetails');
+            if (detailsEl) detailsEl.innerHTML = details;
+            apFaultAlert.style.display = 'block';
+        } else {
+            apFaultAlert.style.display = 'none';
+        }
+
+        // Guasti Alert
+        if (allGuasti.length > 0) {
+            let list = allGuasti.map(g =>
+                g.guasti.map(guasto =>
+                    '<li><b>' + g.nave + '</b>: ' + guasto.descrizione + '</li>'
+                ).join('')
+            ).join('');
+            const listEl = document.getElementById('guastiList');
+            if (listEl) listEl.innerHTML = list;
+            guastiAlert.style.display = 'block';
+        } else {
+            guastiAlert.style.display = 'none';
+        }
+    }
+}
+
+// Validazione form - almeno una nave selezionata
+document.getElementById('permessoForm').addEventListener('submit', function(e) {
+    const checkedNavi = document.querySelectorAll('input[name="navi_ids"]:checked');
+    if (checkedNavi.length === 0) {
+        e.preventDefault();
+        alert('Seleziona almeno una nave');
+        return false;
+    }
+
+    const checkedTecnici = document.querySelectorAll('input[name="tecnici"]:checked');
+    if (checkedTecnici.length === 0) {
+        e.preventDefault();
+        alert('Seleziona almeno un tecnico');
+        return false;
+    }
+
+    // Verifica data_fine se richiesta
+    const tipoDurata = document.getElementById('tipo_durata').value;
+    const dataFine = document.getElementById('data_fine');
+    if (tipoDurata !== 'fine_lavori' && !dataFine.value) {
+        e.preventDefault();
+        alert('Inserisci la data di fine');
+        dataFine.focus();
+        return false;
+    }
+});
 
 // Gestione visibilità data fine in base al tipo durata
 document.getElementById('tipo_durata').addEventListener('change', function() {
     const dataFineGroup = document.getElementById('dataFineGroup');
     const dataFineInput = document.getElementById('data_fine');
-    
+
     if (this.value === 'fine_lavori') {
         dataFineGroup.style.display = 'none';
         dataFineInput.removeAttribute('required');
         dataFineInput.value = '';
     } else {
         dataFineGroup.style.display = 'block';
-        dataFineInput.setAttribute('required', 'required');
-        
-        // Se giornaliera, imposta data fine = data inizio
+        // NON usiamo required HTML5 per evitare "invalid form control is not focusable"
+        // La validazione è gestita nel submit handler
+
         if (this.value === 'giornaliera') {
             const dataInizio = document.getElementById('data_inizio').value;
             if (dataInizio) {
@@ -250,9 +373,9 @@ document.getElementById('porto_id').addEventListener('change', function() {
     const agenzia = option.getAttribute('data-agenzia');
     const email = option.getAttribute('data-email');
     const info = document.getElementById('portoInfo');
-    
+
     if (agenzia || email) {
-        info.innerHTML = '<strong>Agenzia:</strong> ' + (agenzia || 'N/D') + 
+        info.innerHTML = '<strong>Agenzia:</strong> ' + (agenzia || 'N/D') +
                         (email ? ' - <a href="mailto:' + email + '">' + email + '</a>' : '');
     } else {
         info.innerHTML = '';
@@ -260,13 +383,60 @@ document.getElementById('porto_id').addEventListener('change', function() {
 });
 
 // Inizializza stato al caricamento
-document.getElementById('tipo_durata').dispatchEvent(new Event('change'));
-document.getElementById('porto_id').dispatchEvent(new Event('change'));
-// Controlla AP fault se nave già selezionata (in modifica)
-document.getElementById('nave_id').dispatchEvent(new Event('change'));
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('tipo_durata').dispatchEvent(new Event('change'));
+    document.getElementById('porto_id').dispatchEvent(new Event('change'));
+
+    // Se in modifica, trigger controllo navi
+    const checkedNavi = document.querySelectorAll('input[name="navi_ids"]:checked');
+    if (checkedNavi.length > 0) {
+        checkedNavi[0].dispatchEvent(new Event('change'));
+    }
+});
 </script>
 
 <style>
+.compagnia-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color, #007bff);
+}
+.compagnia-title {
+    margin: 0 0 10px 0;
+    color: var(--primary-color, #007bff);
+    font-size: 1.1rem;
+}
+.navi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+}
+.nave-checkbox {
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    transition: all 0.2s;
+}
+.nave-checkbox:hover:not(.disabled) {
+    border-color: var(--primary-color, #007bff);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.nave-checkbox.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.nave-checkbox input:checked + span {
+    font-weight: bold;
+    color: var(--primary-color, #007bff);
+}
+.nave-checkbox small {
+    color: #666;
+    display: block;
+    margin-top: 2px;
+}
 .alert-danger {
     background-color: #f8d7da;
     border: 1px solid #f5c6cb;
@@ -274,10 +444,6 @@ document.getElementById('nave_id').dispatchEvent(new Event('change'));
     padding: 15px;
     border-radius: 5px;
     margin-bottom: 20px;
-}
-.alert-danger a {
-    color: #721c24;
-    font-weight: bold;
 }
 .alert-warning {
     background-color: #fff3cd;
@@ -287,24 +453,9 @@ document.getElementById('nave_id').dispatchEvent(new Event('change'));
     border-radius: 5px;
     margin-bottom: 20px;
 }
-.alert-warning a {
-    color: #856404;
-    font-weight: bold;
-}
 .alert-warning ul {
     margin-bottom: 10px;
     padding-left: 20px;
 }
-.badge {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.8em;
-    display: inline-block;
-}
-.bg-danger { background-color: #dc3545; color: white; }
-.bg-warning { background-color: #ffc107; color: #333; }
-.bg-secondary { background-color: #6c757d; color: white; }
-.text-dark { color: #333 !important; }
-.me-2 { margin-right: 8px; }
 </style>
 {{end}}

@@ -349,8 +349,9 @@ func UploadOrariPage(w http.ResponseWriter, r *http.Request) {
 		FROM upload_orari u
 		JOIN compagnie c ON u.compagnia_id = c.id
 		JOIN utenti ut ON u.caricato_da = ut.id
+		WHERE u.id IN (SELECT MAX(id) FROM upload_orari GROUP BY compagnia_id)
 		ORDER BY u.data_upload DESC
-		LIMIT 20
+		
 	`)
 	defer rows.Close()
 

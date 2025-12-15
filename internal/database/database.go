@@ -201,6 +201,16 @@ func createTables() error {
 		UNIQUE(richiesta_permesso_id, tecnico_id)
 	);
 
+	-- Tabella navi per permesso (supporto multi-nave)
+	CREATE TABLE IF NOT EXISTS navi_permesso (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		richiesta_permesso_id INTEGER NOT NULL,
+		nave_id INTEGER NOT NULL,
+		FOREIGN KEY (richiesta_permesso_id) REFERENCES richieste_permesso(id) ON DELETE CASCADE,
+		FOREIGN KEY (nave_id) REFERENCES navi(id) ON DELETE CASCADE,
+		UNIQUE(richiesta_permesso_id, nave_id)
+	);
+
 	-- Tabella rapporti intervento
 	CREATE TABLE IF NOT EXISTS rapporti_intervento (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

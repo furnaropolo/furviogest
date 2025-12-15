@@ -53,6 +53,9 @@ type PermessoEmailData struct {
 	NomeNave       string
 	IMO            string
 	NomeCompagnia  string
+
+	// Multi-nave
+	Navi           []NaveEmail
 	
 	// Dati porto
 	NomePorto      string
@@ -83,6 +86,12 @@ type TecnicoEmail struct {
 	NomeCognome string
 	Email       string
 	Telefono    string
+}
+
+// NaveEmail dati nave per email (multi-nave)
+type NaveEmail struct {
+	Nome string
+	IMO  string
 }
 
 // GeneraCorpoEmailPermesso genera l'HTML dell'email per richiesta permesso
@@ -122,10 +131,26 @@ func GeneraCorpoEmailPermesso(data PermessoEmailData) (string, error) {
             </div>
             
             <div class="section">
-                <div class="section-title">DATI NAVE</div>
+                <div class="section-title">{{if gt (len .Navi) 1}}NAVI{{else}}DATI NAVE{{end}}</div>
+                {{if gt (len .Navi) 1}}
+                <table>
+                    <tr>
+                        <th>Nave</th>
+                        <th>IMO</th>
+                    </tr>
+                    {{range .Navi}}
+                    <tr>
+                        <td>{{.Nome}}</td>
+                        <td>{{if .IMO}}{{.IMO}}{{else}}-{{end}}</td>
+                    </tr>
+                    {{end}}
+                </table>
+                <div class="data-row" style="margin-top:10px;"><span class="label">Compagnia:</span> {{.NomeCompagnia}}</div>
+                {{else}}
                 <div class="data-row"><span class="label">Nave:</span> {{.NomeNave}}</div>
                 {{if .IMO}}<div class="data-row"><span class="label">IMO:</span> {{.IMO}}</div>{{end}}
                 <div class="data-row"><span class="label">Compagnia:</span> {{.NomeCompagnia}}</div>
+                {{end}}
             </div>
             
             <div class="section">
@@ -204,8 +229,20 @@ func GeneraCorpoEmailPermesso(data PermessoEmailData) (string, error) {
 
 // GeneraOggettoEmailPermesso genera l'oggetto dell'email
 func GeneraOggettoEmailPermesso(nomeNave, nomePorto string, dataInizio time.Time) string {
-	return fmt.Sprintf("Richiesta Permesso Accesso Porto - %s - %s - %s", 
+	return fmt.Sprintf("Richiesta Permesso Accesso Porto - %s - %s - %s",
 		nomeNave, nomePorto, dataInizio.Format("02/01/2006"))
+}
+
+// GeneraOggettoEmailPermessoMultiNave genera l'oggetto dell'email per multi-nave
+func GeneraOggettoEmailPermessoMultiNave(nomiNavi []string, nomePorto string, dataInizio time.Time) string {
+	var naviStr string
+	if len(nomiNavi) <= 4 {
+		naviStr = strings.Join(nomiNavi, ", ")
+	} else {
+		naviStr = strings.Join(nomiNavi[:2], ", ") + fmt.Sprintf(" e altre %d", len(nomiNavi)-2)
+	}
+	return fmt.Sprintf("Richiesta Permesso Accesso Porto - %s - %s - %s",
+		naviStr, nomePorto, dataInizio.Format("02/01/2006"))
 }
 
 // InviaEmail invia un'email tramite SMTP

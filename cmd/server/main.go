@@ -212,6 +212,7 @@ func main() {
 	mux.Handle("/permessi/nuovo", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.NuovoPermesso))))
 	mux.Handle("/permessi/modifica/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.ModificaPermesso))))
 	mux.Handle("/permessi/elimina/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.EliminaPermesso))))
+	mux.Handle("/permessi/segna-inviata/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.SegnaEmailInviata))))
 	mux.Handle("/permessi/dettaglio/", middleware.RequireAuth(http.HandlerFunc(handlers.DettaglioPermesso)))
 	mux.Handle("/permessi/anteprima-email/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.AnteprimaEmailPermesso))))
 	mux.Handle("/permessi/invia-email/", middleware.RequireAuth(middleware.RequireTecnico(http.HandlerFunc(handlers.InviaEmailPermesso))))

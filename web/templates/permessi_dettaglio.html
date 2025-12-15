@@ -51,17 +51,28 @@
 
 <div class="detail-grid">
     <div class="detail-card">
-        <h3>Informazioni Nave</h3>
+        <h3>{{if gt (len .Data.Navi) 1}}Navi{{else}}Informazioni Nave{{end}}</h3>
         <dl>
             <dt>Compagnia</dt>
             <dd>{{.Data.Compagnia.Nome}}</dd>
 
+            {{if gt (len .Data.Navi) 1}}
+            <dt>Navi ({{len .Data.Navi}})</dt>
+            <dd>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                {{range .Data.Navi}}
+                    <li><strong>{{.Nome}}</strong>{{if .IMO}} <small>(IMO: {{.IMO}})</small>{{end}}</li>
+                {{end}}
+                </ul>
+            </dd>
+            {{else}}
             <dt>Nave</dt>
             <dd><strong>{{.Data.Nave.Nome}}</strong></dd>
 
             {{if .Data.Nave.IMO}}
             <dt>IMO</dt>
             <dd>{{.Data.Nave.IMO}}</dd>
+            {{end}}
             {{end}}
         </dl>
     </div>
@@ -186,7 +197,11 @@
     {{if $.Session.IsTecnico}}
     {{if not .Data.EmailInviata}}
     <a href="/permessi/anteprima-email/{{.Data.ID}}" class="btn btn-success">
-        Anteprima & Invia Email
+        Anteprima & Scarica Email
+	</a>
+    <a href="/permessi/segna-inviata/{{.Data.ID}}" class="btn btn-outline-success"
+       onclick="return confirm('Confermi di aver inviato la mail?')">
+        Segna come Inviata
     </a>
     {{end}}
     <a href="/permessi/modifica/{{.Data.ID}}" class="btn btn-warning">Modifica</a>

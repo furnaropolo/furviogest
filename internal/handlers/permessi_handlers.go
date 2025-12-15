@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"html/template"
 	"furviogest/internal/email"
 	"furviogest/internal/middleware"
@@ -31,6 +32,7 @@ type PermessoConDettagli struct {
 	Automezzo  *models.Automezzo
 	Porto      models.Porto
 	Nave       models.Nave
+	Navi       []models.Nave // Multi-nave
 	Compagnia  models.Compagnia
 }
 
@@ -43,7 +45,8 @@ func ListaPermessi(w http.ResponseWriter, r *http.Request) {
 			   rp.targa_esterna, rp.tipo_durata, rp.data_inizio, rp.data_fine,
 			   rp.note, rp.email_inviata, rp.data_invio_email, rp.created_at,
 			   n.nome as nome_nave, p.nome as nome_porto, 
-			   u.nome || ' ' || u.cognome as nome_tecnico
+			   u.nome || ' ' || u.cognome as nome_tecnico,
+			   (SELECT COUNT(*) FROM navi_permesso WHERE richiesta_permesso_id = rp.id) as num_navi
 		FROM richieste_permesso rp
 		JOIN navi n ON rp.nave_id = n.id
 		JOIN porti p ON rp.porto_id = p.id
@@ -67,7 +70,7 @@ func ListaPermessi(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&p.ID, &p.NaveID, &p.PortoID, &p.TecnicoCreatore, &automezzoID,
 			&targaEsterna, &p.TipoDurata, &p.DataInizio, &dataFine,
 			&note, &p.EmailInviata, &dataInvioEmail, &p.CreatedAt,
-			&p.NomeNave, &p.NomePorto, &p.NomeTecnico)
+			&p.NomeNave, &p.NomePorto, &p.NomeTecnico, &p.NumNavi)
 		if err != nil {
 			continue
 		}
@@ -106,6 +109,7 @@ func NuovoPermesso(w http.ResponseWriter, r *http.Request) {
 	// Carica navi con compagnia
 	navi, _ := caricaNavi()
 	formData["Navi"] = navi
+	formData["NaviPerCompagnia"] = raggruppaNaviPerCompagnia(navi)
 
 	// Carica porti
 	porti, _ := caricaPorti()
@@ -129,12 +133,24 @@ func NuovoPermesso(w http.ResponseWriter, r *http.Request) {
 	// POST - salva il permesso
 	r.ParseForm()
 
-	naveID, err := strconv.ParseInt(r.FormValue("nave_id"), 10, 64)
-	if err != nil {
-		data.Error = "Seleziona una nave"
+	// Parse navi_ids (multi-nave)
+	naviIDsStr := r.Form["navi_ids"]
+	if len(naviIDsStr) == 0 {
+		data.Error = "Seleziona almeno una nave"
 		renderTemplate(w, "permessi_form.html", data)
 		return
 	}
+
+	var naviIDs []int64
+	for _, idStr := range naviIDsStr {
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err == nil {
+			naviIDs = append(naviIDs, id)
+		}
+	}
+
+	// Usa la prima nave come nave_id principale (retrocompatibilita)
+	naveID := naviIDs[0]
 
 	portoID, err := strconv.ParseInt(r.FormValue("porto_id"), 10, 64)
 	if err != nil {
@@ -209,6 +225,14 @@ func NuovoPermesso(w http.ResponseWriter, r *http.Request) {
 				VALUES (?, ?)
 			`, permessoID, tecnicoID)
 		}
+	}
+
+	// Inserisci le navi associate (multi-nave)
+	for _, naveIDItem := range naviIDs {
+		database.DB.Exec(`
+			INSERT INTO navi_permesso (richiesta_permesso_id, nave_id)
+			VALUES (?, ?)
+		`, permessoID, naveIDItem)
 	}
 
 
@@ -398,6 +422,33 @@ func ModificaPermesso(w http.ResponseWriter, r *http.Request) {
 }
 
 // EliminaPermesso elimina una richiesta permesso
+// SegnaEmailInviata segna manualmente un permesso come email inviata
+func SegnaEmailInviata(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Redirect(w, r, "/permessi", http.StatusSeeOther)
+		return
+	}
+
+	id, err := strconv.ParseInt(pathParts[3], 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/permessi", http.StatusSeeOther)
+		return
+	}
+
+	_, err = database.DB.Exec(`
+		UPDATE richieste_permesso 
+		SET email_inviata = 1, data_invio_email = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`, id)
+
+	if err != nil {
+		log.Printf("Errore aggiornamento stato email: %v", err)
+	}
+
+	http.Redirect(w, r, "/permessi/dettaglio/"+pathParts[3], http.StatusSeeOther)
+}
+
 func EliminaPermesso(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 4 {
@@ -521,6 +572,27 @@ func DettaglioPermesso(w http.ResponseWriter, r *http.Request) {
 	`, p.NaveID).Scan(&dettagli.Nave.ID, &dettagli.Nave.Nome, &dettagli.Nave.IMO,
 		&dettagli.Compagnia.ID, &dettagli.Compagnia.Nome, &dettagli.Compagnia.EmailDestinatari)
 
+	// Carica tutte le navi associate (multi-nave)
+	naviRows, _ := database.DB.Query(`
+		SELECT n.id, n.nome, COALESCE(n.imo, '')
+		FROM navi n
+		JOIN navi_permesso np ON n.id = np.nave_id
+		WHERE np.richiesta_permesso_id = ?
+		ORDER BY n.nome
+	`, id)
+	if naviRows != nil {
+		defer naviRows.Close()
+		for naviRows.Next() {
+			var nave models.Nave
+			naviRows.Scan(&nave.ID, &nave.Nome, &nave.IMO)
+			dettagli.Navi = append(dettagli.Navi, nave)
+		}
+	}
+	// Se non ci sono navi in navi_permesso (permesso vecchio), usa la nave singola
+	if len(dettagli.Navi) == 0 {
+		dettagli.Navi = append(dettagli.Navi, dettagli.Nave)
+	}
+
 	// Carica AP Faults
 	dettagli.APFaults = getAPFaultsForPermesso(p.NaveID)
 
@@ -534,7 +606,7 @@ func DettaglioPermesso(w http.ResponseWriter, r *http.Request) {
 // Funzioni helper per caricare dati dropdown
 func caricaNavi() ([]models.Nave, error) {
 	rows, err := database.DB.Query(`
-		SELECT n.id, n.nome, n.imo, c.nome as nome_compagnia
+		SELECT n.id, n.nome, n.imo, n.compagnia_id, c.nome as nome_compagnia
 		FROM navi n
 		JOIN compagnie c ON n.compagnia_id = c.id
 		ORDER BY c.nome, n.nome
@@ -548,13 +620,22 @@ func caricaNavi() ([]models.Nave, error) {
 	for rows.Next() {
 		var n models.Nave
 		var imo sql.NullString
-		rows.Scan(&n.ID, &n.Nome, &imo, &n.NomeCompagnia)
+		rows.Scan(&n.ID, &n.Nome, &imo, &n.CompagniaID, &n.NomeCompagnia)
 		if imo.Valid {
 			n.IMO = imo.String
 		}
 		navi = append(navi, n)
 	}
 	return navi, nil
+}
+
+// raggruppaNaviPerCompagnia raggruppa le navi per nome compagnia
+func raggruppaNaviPerCompagnia(navi []models.Nave) map[string][]models.Nave {
+	result := make(map[string][]models.Nave)
+	for _, n := range navi {
+		result[n.NomeCompagnia] = append(result[n.NomeCompagnia], n)
+	}
+	return result
 }
 
 func caricaPorti() ([]models.Porto, error) {
@@ -681,16 +762,32 @@ func AnteprimaEmailPermesso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oggetto := email.GeneraOggettoEmailPermesso(permesso.Nave.Nome, permesso.Porto.Nome, permesso.DataInizio)
+	// Genera oggetto con multi-nave
+	var nomiNavi []string
+	for _, n := range permesso.Navi {
+		nomiNavi = append(nomiNavi, n.Nome)
+	}
+	oggetto := email.GeneraOggettoEmailPermessoMultiNave(nomiNavi, permesso.Porto.Nome, permesso.DataInizio)
 
 	// Costruisci lista destinatari TO
 	var destTO []string
 	if permesso.Porto.EmailAgenzia != "" {
 		destTO = append(destTO, permesso.Porto.EmailAgenzia)
 	}
-	// Solo per Grimaldi: aggiungi ispettore e master
+	// Solo per Grimaldi: aggiungi ispettore e master (per tutte le navi)
 	inviaATutti := permesso.Compagnia.EmailDestinatari == "tutti"
 	if inviaATutti {
+		for _, nave := range permesso.Navi {
+			if nave.EmailIspettore != "" {
+				destTO = append(destTO, nave.EmailIspettore)
+			}
+			if nave.EmailMaster != "" {
+				destTO = append(destTO, nave.EmailMaster)
+			}
+		}
+	}
+	// Rimuovi duplicati (legacy per retrocompatibilità)
+	if inviaATutti && len(permesso.Navi) == 0 {
 		if permesso.Nave.EmailIspettore != "" {
 			destTO = append(destTO, permesso.Nave.EmailIspettore)
 		}
@@ -701,9 +798,13 @@ func AnteprimaEmailPermesso(w http.ResponseWriter, r *http.Request) {
 	
 	// Costruisci lista CC
 	var destCC []string
-	// Solo per Grimaldi: DDM in CC
-	if inviaATutti && permesso.Nave.EmailDirettoreMacchina != "" {
-		destCC = append(destCC, permesso.Nave.EmailDirettoreMacchina)
+	// Solo per Grimaldi: DDM in CC (per tutte le navi)
+	if inviaATutti {
+		for _, nave := range permesso.Navi {
+			if nave.EmailDirettoreMacchina != "" {
+				destCC = append(destCC, nave.EmailDirettoreMacchina)
+			}
+		}
 	}
 	// Tecnici non mittenti sempre in CC
 	for _, t := range permesso.Tecnici {
@@ -791,7 +892,12 @@ func InviaEmailPermesso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oggetto := email.GeneraOggettoEmailPermesso(permesso.Nave.Nome, permesso.Porto.Nome, permesso.DataInizio)
+	// Genera oggetto con multi-nave
+	var nomiNaviInvia []string
+	for _, n := range permesso.Navi {
+		nomiNaviInvia = append(nomiNaviInvia, n.Nome)
+	}
+	oggetto := email.GeneraOggettoEmailPermessoMultiNave(nomiNaviInvia, permesso.Porto.Nome, permesso.DataInizio)
 
 	var allegati []email.Attachment
 	for _, t := range permesso.Tecnici {
@@ -976,6 +1082,43 @@ func caricaPermessoCompleto(id int64) (*PermessoConDettagli, error) {
 		dettagli.Nave.EmailIspettore = emailIspettore.String
 	}
 
+	// Carica tutte le navi associate (multi-nave)
+	naviRows, err := database.DB.Query(`
+		SELECT n.id, n.nome, n.imo, n.compagnia_id, c.nome as nome_compagnia,
+		       n.email_master, n.email_direttore_macchina, n.email_ispettore
+		FROM navi n
+		JOIN navi_permesso np ON n.id = np.nave_id
+		JOIN compagnie c ON n.compagnia_id = c.id
+		WHERE np.richiesta_permesso_id = ?
+		ORDER BY n.nome
+	`, id)
+	if err == nil {
+		defer naviRows.Close()
+		for naviRows.Next() {
+			var nave models.Nave
+			var imoN, emailM, emailD, emailI sql.NullString
+			naviRows.Scan(&nave.ID, &nave.Nome, &imoN, &nave.CompagniaID, &nave.NomeCompagnia,
+				&emailM, &emailD, &emailI)
+			if imoN.Valid {
+				nave.IMO = imoN.String
+			}
+			if emailM.Valid {
+				nave.EmailMaster = emailM.String
+			}
+			if emailD.Valid {
+				nave.EmailDirettoreMacchina = emailD.String
+			}
+			if emailI.Valid {
+				nave.EmailIspettore = emailI.String
+			}
+			dettagli.Navi = append(dettagli.Navi, nave)
+		}
+	}
+	// Se non ci sono navi in navi_permesso (permesso vecchio), usa la nave singola
+	if len(dettagli.Navi) == 0 {
+		dettagli.Navi = append(dettagli.Navi, dettagli.Nave)
+	}
+
 	return dettagli, nil
 }
 
@@ -995,6 +1138,15 @@ func generaEmailDataPermesso(permesso *PermessoConDettagli, impostazioni *models
 			NomeCognome: t.Cognome + " " + t.Nome,
 			Email:       t.Email,
 			Telefono:    t.Telefono,
+		})
+	}
+
+	// Costruisci lista navi per email
+	var naviEmail []email.NaveEmail
+	for _, n := range permesso.Navi {
+		naviEmail = append(naviEmail, email.NaveEmail{
+			Nome: n.Nome,
+			IMO:  n.IMO,
 		})
 	}
 
@@ -1018,6 +1170,7 @@ func generaEmailDataPermesso(permesso *PermessoConDettagli, impostazioni *models
 		NomeNave:              permesso.Nave.Nome,
 		IMO:                   permesso.Nave.IMO,
 		NomeCompagnia:         permesso.Compagnia.Nome,
+		Navi:                  naviEmail,
 		NomePorto:             permesso.Porto.Nome,
 		CittaPorto:            permesso.Porto.Citta,
 		TipoDurata:            tipoDurata,
@@ -1190,7 +1343,12 @@ func DownloadEMLPermesso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oggetto := email.GeneraOggettoEmailPermesso(permesso.Nave.Nome, permesso.Porto.Nome, permesso.DataInizio)
+	// Genera oggetto con multi-nave
+	var nomiNaviEML []string
+	for _, n := range permesso.Navi {
+		nomiNaviEML = append(nomiNaviEML, n.Nome)
+	}
+	oggetto := email.GeneraOggettoEmailPermessoMultiNave(nomiNaviEML, permesso.Porto.Nome, permesso.DataInizio)
 
 	// Costruisci lista destinatari TO
 	var destTO []string
@@ -1199,18 +1357,25 @@ func DownloadEMLPermesso(w http.ResponseWriter, r *http.Request) {
 	}
 	inviaATutti := permesso.Compagnia.EmailDestinatari == "tutti"
 	if inviaATutti {
-		if permesso.Nave.EmailIspettore != "" {
-			destTO = append(destTO, permesso.Nave.EmailIspettore)
-		}
-		if permesso.Nave.EmailMaster != "" {
-			destTO = append(destTO, permesso.Nave.EmailMaster)
+		// Aggiungi ispettore e master per tutte le navi
+		for _, nave := range permesso.Navi {
+			if nave.EmailIspettore != "" {
+				destTO = append(destTO, nave.EmailIspettore)
+			}
+			if nave.EmailMaster != "" {
+				destTO = append(destTO, nave.EmailMaster)
+			}
 		}
 	}
-	
+
 	// Costruisci lista CC
 	var destCC []string
-	if inviaATutti && permesso.Nave.EmailDirettoreMacchina != "" {
-		destCC = append(destCC, permesso.Nave.EmailDirettoreMacchina)
+	if inviaATutti {
+		for _, nave := range permesso.Navi {
+			if nave.EmailDirettoreMacchina != "" {
+				destCC = append(destCC, nave.EmailDirettoreMacchina)
+			}
+		}
 	}
 	session := middleware.GetSession(r)
 	for _, t := range permesso.Tecnici {
