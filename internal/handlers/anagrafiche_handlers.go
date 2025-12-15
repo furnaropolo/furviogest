@@ -1073,7 +1073,7 @@ func ListaNavi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := database.DB.Query(`
-		SELECT n.id, n.compagnia_id, n.nome, n.imo, n.email_master, n.email_direttore_macchina,
+		SELECT n.id, n.compagnia_id, n.nome, n.imo, COALESCE(n.sigla, '') as sigla, n.email_master, n.email_direttore_macchina,
 		       n.email_ispettore, n.note, n.ferma_per_lavori, n.data_inizio_lavori, 
 		       n.data_fine_lavori_prevista, n.created_at, COALESCE(n.foto, '') as foto, c.nome as nome_compagnia, 
 		       c.id as cid, COALESCE(c.logo, '') as logo
@@ -1109,7 +1109,7 @@ func ListaNavi(w http.ResponseWriter, r *http.Request) {
 		var compagniaID int64
 		var compagniaNome, compagniaLogo string
 		
-		err := rows.Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &emailMaster, &emailDirettore,
+		err := rows.Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &n.Sigla, &emailMaster, &emailDirettore,
 			&emailIspettore, &note, &n.FermaPerLavori, &dataInizioLavori, &dataFineLavori,
 			&n.CreatedAt, &n.Foto, &n.NomeCompagnia, &compagniaID, &compagniaLogo)
 		if err != nil {
@@ -1219,6 +1219,7 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 	telDirettore := strings.TrimSpace(r.FormValue("tel_direttore_macchina"))
 	telIspettore := strings.TrimSpace(r.FormValue("tel_ispettore"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	sigla := strings.TrimSpace(r.FormValue("sigla"))
 	emailDestinatari := r.FormValue("email_destinatari")
 	if emailDestinatari == "" {
 		emailDestinatari = "solo_agenzia"
@@ -1243,11 +1244,11 @@ func NuovaNave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := database.DB.Exec(`
-		INSERT INTO navi (compagnia_id, nome, imo, email_master, email_direttore_macchina,
+		INSERT INTO navi (compagnia_id, nome, imo, email_master, email_direttore_macchina, sigla,
 		                  email_ispettore, tel_master, tel_direttore_macchina, tel_ispettore,
 		                  note, ferma_per_lavori, data_inizio_lavori, data_fine_lavori_prevista)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, compagniaID, nome, imo, emailMaster, emailDirettore, emailIspettore,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, compagniaID, nome, imo, sigla, emailMaster, emailDirettore, emailIspettore,
 	   telMaster, telDirettore, telIspettore, note, fermaPerLavori, dataInizioLavori, dataFineLavoriPrev)
 
 	if err != nil {
@@ -1299,11 +1300,11 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 		var telMaster, telDirettore, telIspettore sql.NullString
 		var dataInizioLavori, dataFineLavori sql.NullTime
 		err := database.DB.QueryRow(`
-			SELECT id, compagnia_id, nome, imo, email_master, email_direttore_macchina,
+			SELECT id, compagnia_id, nome, imo, COALESCE(sigla, '') as sigla, email_master, email_direttore_macchina,
 			       email_ispettore, tel_master, tel_direttore_macchina, tel_ispettore,
 			       note, ferma_per_lavori, data_inizio_lavori, data_fine_lavori_prevista
 			FROM navi WHERE id = ?
-		`, id).Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &emailMaster, &emailDirettore,
+		`, id).Scan(&n.ID, &n.CompagniaID, &n.Nome, &imo, &n.Sigla, &emailMaster, &emailDirettore,
 		            &emailIspettore, &telMaster, &telDirettore, &telIspettore,
 		            &note, &n.FermaPerLavori, &dataInizioLavori, &dataFineLavori)
 
@@ -1359,6 +1360,7 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 	telDirettore := strings.TrimSpace(r.FormValue("tel_direttore_macchina"))
 	telIspettore := strings.TrimSpace(r.FormValue("tel_ispettore"))
 	note := strings.TrimSpace(r.FormValue("note"))
+	sigla := strings.TrimSpace(r.FormValue("sigla"))
 	emailDestinatari := r.FormValue("email_destinatari")
 	if emailDestinatari == "" {
 		emailDestinatari = "solo_agenzia"
@@ -1383,13 +1385,13 @@ func ModificaNave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = database.DB.Exec(`
-		UPDATE navi SET compagnia_id = ?, nome = ?, imo = ?, email_master = ?,
+		UPDATE navi SET compagnia_id = ?, nome = ?, imo = ?, sigla = ?, email_master = ?,
 		       email_direttore_macchina = ?, email_ispettore = ?,
 		       tel_master = ?, tel_direttore_macchina = ?, tel_ispettore = ?,
 		       note = ?, ferma_per_lavori = ?, data_inizio_lavori = ?, data_fine_lavori_prevista = ?,
 		       updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, compagniaID, nome, imo, emailMaster, emailDirettore, emailIspettore,
+	`, compagniaID, nome, imo, sigla, emailMaster, emailDirettore, emailIspettore,
 	   telMaster, telDirettore, telIspettore, note, fermaPerLavori, dataInizioLavori, dataFineLavoriPrev, id)
 
 	if err != nil {

@@ -137,6 +137,7 @@ type Nave struct {
 	SNMPCommunity        string    `json:"snmp_community,omitempty"`
 	Foto             string    `json:"foto,omitempty"`
 	PiantinaPath     string    `json:"piantina_path,omitempty"`
+	Sigla            string    `json:"sigla,omitempty"`
 }
 
 // TipoProdotto indica se il prodotto è per WiFi, GSM o entrambi
@@ -233,6 +234,7 @@ type RichiestaPermesso struct {
 	UpdatedAt       time.Time          `json:"updated_at"`
 	// Campi virtuali
 	NomeNave        string             `json:"nome_nave,omitempty"`
+	SostaPorto        string    `json:"sosta_porto,omitempty"`
 	NomePorto       string             `json:"nome_porto,omitempty"`
 	NomeTecnico     string             `json:"nome_tecnico,omitempty"`
 }
@@ -259,6 +261,7 @@ type RapportoIntervento struct {
 	UpdatedAt       time.Time    `json:"updated_at"`
 	// Campi virtuali
 	NomeNave        string       `json:"nome_nave,omitempty"`
+	SostaPorto        string    `json:"sosta_porto,omitempty"`
 	NomeCompagnia   string       `json:"nome_compagnia,omitempty"`
 	NomePorto       string       `json:"nome_porto,omitempty"`
 }
@@ -371,6 +374,7 @@ type DDT struct {
 	CreatedAt     time.Time `json:"created_at"`
 	// Campi virtuali
 	NomeNave      string    `json:"nome_nave,omitempty"`
+	SostaPorto        string    `json:"sosta_porto,omitempty"`
 	NomeCompagnia string    `json:"nome_compagnia,omitempty"`
 	NomePorto     string    `json:"nome_porto,omitempty"`
 }
@@ -458,6 +462,7 @@ type OrarioNave struct {
 	CreatedAt         time.Time `json:"created_at"`
 	// Campi virtuali
 	NomeNave          string    `json:"nome_nave,omitempty"`
+	SostaPorto        string    `json:"sosta_porto,omitempty"`
 }
 
 // SostaNave rappresenta una sosta programmata di una nave in un porto
@@ -476,6 +481,7 @@ type SostaNave struct {
 	CreatedAt    time.Time `json:"created_at"`
 	// Campi virtuali
 	NomeNave     string    `json:"nome_nave,omitempty"`
+	SostaPorto        string    `json:"sosta_porto,omitempty"`
 	NomePorto    string    `json:"nome_porto,omitempty"`
 }
 
@@ -513,6 +519,7 @@ type ApparatoNave struct {
 	SNMPCommunity string
 	Foto             string    `json:"foto,omitempty"`
 	PiantinaPath     string    `json:"piantina_path,omitempty"`
+	Sigla            string    `json:"sigla,omitempty"`
 	SSHUser       string
 	SSHPass       string
 	SSHPort       int
@@ -550,6 +557,7 @@ type ObserviumConfig struct {
 	SNMPCommunity string
 	Foto             string    `json:"foto,omitempty"`
 	PiantinaPath     string    `json:"piantina_path,omitempty"`
+	Sigla            string    `json:"sigla,omitempty"`
 }
 
 // DeviceDiscovery risultato discovery

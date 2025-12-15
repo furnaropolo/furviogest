@@ -2,7 +2,7 @@
 
 {{define "content"}}
 <div class="page-header">
-    <h1>Upload Orari Corsica Ferries</h1>
+    <h1>📅 Upload Orari Navi</h1>
 </div>
 
 {{if .Error}}
@@ -15,31 +15,41 @@
 
 <div class="grid-2">
     <div class="card">
-        <div class="card-header">Carica Nuovo File</div>
+        <div class="card-header">📤 Carica Nuovo File</div>
         <div class="card-body">
             <div class="alert alert-info">
-                <strong>Nota:</strong> Il caricamento di un nuovo file sostituira' completamente gli orari precedenti.
+                <strong>Nota:</strong> Il caricamento di un nuovo file sostituira completamente gli orari precedenti della compagnia selezionata.
             </div>
             
             <form method="POST" action="/orari/upload" enctype="multipart/form-data" class="form">
                 <div class="form-group">
+                    <label for="compagnia_id">Compagnia</label>
+                    <select id="compagnia_id" name="compagnia_id" required>
+                        <option value="">-- Seleziona Compagnia --</option>
+                        {{range .Data.Compagnie}}
+                        <option value="{{.ID}}">{{.Nome}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label for="file_orari">File XLSX Orari</label>
                     <input type="file" id="file_orari" name="file_orari" accept=".xlsx,.xls" required>
-                    <small class="form-help">Seleziona il file Excel con gli orari delle navi Corsica Ferries</small>
+                    <small class="form-help">Seleziona il file Excel con gli orari</small>
                 </div>
                 
                 <div class="form-group">
                     <label for="note">Note (opzionale)</label>
-                    <textarea id="note" name="note" rows="2" placeholder="Es: Orari estivi 2024"></textarea>
+                    <textarea id="note" name="note" rows="2" placeholder="Es: Orari 2026"></textarea>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">Carica File</button>
+                <button type="submit" class="btn btn-primary">📥 Importa Orari</button>
             </form>
         </div>
     </div>
     
     <div class="card">
-        <div class="card-header">Storico Upload</div>
+        <div class="card-header">📋 Storico Upload</div>
         <div class="card-body">
             {{if .Data.Uploads}}
             <table class="table table-sm">
@@ -47,17 +57,17 @@
                     <tr>
                         <th>Data</th>
                         <th>File</th>
-                        <th>Utente</th>
-                        <th>Note</th>
+                        <th>Compagnia</th>
+                        <th>Stato</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{range .Data.Uploads}}
                     <tr>
-                        <td><small>{{.DataUpload}}</small></td>
+                        <td><small>{{.DataUpload.Format "02/01/2006 15:04"}}</small></td>
                         <td><small>{{.NomeFile}}</small></td>
-                        <td><small>{{.NomeUtente}}</small></td>
-                        <td><small>{{.Note}}</small></td>
+                        <td><small>{{.NomeCompagnia}}</small></td>
+                        <td>{{if .Attivo}}<span class="badge badge-success">Attivo</span>{{else}}<span class="badge badge-secondary">Sostituito</span>{{end}}</td>
                     </tr>
                     {{end}}
                 </tbody>
@@ -70,22 +80,32 @@
 </div>
 
 <div class="card mt-3">
-    <div class="card-header">Formato File Atteso</div>
+    <div class="card-header">📖 Formato File Atteso</div>
     <div class="card-body">
-        <p>Il file XLSX deve contenere le seguenti colonne:</p>
-        <ul>
-            <li><strong>Nome Nave</strong> - Nome della nave</li>
-            <li><strong>Porto Partenza</strong> - Porto di partenza</li>
-            <li><strong>Porto Arrivo</strong> - Porto di destinazione</li>
-            <li><strong>Orario Partenza</strong> - Ora di partenza</li>
-            <li><strong>Orario Arrivo</strong> - Ora di arrivo</li>
-            <li><strong>Giorni</strong> - Giorni della settimana</li>
-        </ul>
+        <p>Il file XLSX deve avere un foglio chiamato <strong>DAYBYDAY</strong> con le seguenti colonne:</p>
+        <table class="table table-sm">
+            <thead>
+                <tr><th>Colonna</th><th>Contenuto</th><th>Esempio</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>A</td><td>Giorno</td><td>Jeudi</td></tr>
+                <tr><td>B</td><td>Data</td><td>2026-01-01</td></tr>
+                <tr><td>C</td><td>Tratta</td><td>Nice - Savone</td></tr>
+                <tr><td>D</td><td>Ora Partenza</td><td>11:00</td></tr>
+                <tr><td>E</td><td>Ora Arrivo</td><td>15:30</td></tr>
+                <tr><td>F</td><td><strong>Sigla Nave</strong></td><td>MEA</td></tr>
+                <tr><td>G</td><td>Stato</td><td>Ouvert / NonCom.</td></tr>
+            </tbody>
+        </table>
+        <div class="alert alert-warning mt-2">
+            <strong>Importante:</strong> Le sigle delle navi devono corrispondere a quelle inserite in Anagrafica Navi.
+            Le righe con stato "NonCom." vengono saltate.
+        </div>
     </div>
 </div>
 
 <div class="mt-3">
-    <a href="/navi" class="btn btn-secondary">Torna alle Navi</a>
+    <a href="/navi" class="btn btn-secondary">← Torna alle Navi</a>
 </div>
 
 <style>
@@ -101,6 +121,19 @@
 }
 .table-sm td, .table-sm th {
     padding: 0.5rem;
+}
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+.badge-success {
+    background: #28a745;
+    color: white;
+}
+.badge-secondary {
+    background: #6c757d;
+    color: white;
 }
 </style>
 {{end}}

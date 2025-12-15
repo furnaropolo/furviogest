@@ -5,22 +5,22 @@
     <h1>{{.Data.Nave.Nome}}</h1>
     <div class="header-actions">
         {{if $.Session.IsTecnico}}
-        <a href="/navi/rete/{{.Data.Nave.ID}}" class="btn btn-info">📶 Rete</a>
-        <a href="#servers" class="btn btn-primary">🖥️ Apparati</a>
-        <a href="/guasti-nave/{{.Data.Nave.ID}}" class="btn btn-danger">⚠️ Guasti</a>
-        <a href="/navi/modifica/{{.Data.Nave.ID}}" class="btn btn-warning">✏️ Modifica</a>
+        <a href="/navi/rete/{{.Data.Nave.ID}}" class="btn btn-info">Rete</a>
+        <a href="#servers" class="btn btn-primary">Apparati</a>
+        <a href="/guasti-nave/{{.Data.Nave.ID}}" class="btn btn-danger">Guasti</a>
+        <a href="/navi/modifica/{{.Data.Nave.ID}}" class="btn btn-warning">Modifica</a>
         {{end}}
-        <a href="/navi" class="btn btn-secondary">📋 Lista Navi</a>
+        <a href="/navi" class="btn btn-secondary">Lista Navi</a>
     </div>
 </div>
 
 <!-- Sezione Disegni Nave -->
 <div class="section-card" style="margin-bottom: 20px;">
     <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
-        <h2>📄 Disegni Nave</h2>
+        <h2>Disegni Nave</h2>
         {{if $.Session.IsTecnico}}
         <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('disegnoForm').style.display=document.getElementById('disegnoForm').style.display=='none'?'block':'none'">
-            ➕ Aggiungi Disegno
+            + Aggiungi Disegno
         </button>
         {{end}}
     </div>
@@ -31,7 +31,7 @@
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <input type="text" name="nome_disegno" placeholder="Nome disegno (es. Schema Rete, Layout AP...)" class="form-control" style="max-width:250px;" required>
                 <input type="file" name="disegno" accept=".pdf" required class="form-control" style="max-width:250px;">
-                <button type="submit" class="btn btn-success">⬆️ Carica</button>
+                <button type="submit" class="btn btn-success">Carica</button>
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('disegnoForm').style.display='none'">Annulla</button>
             </div>
         </form>
@@ -42,13 +42,12 @@
     <div style="display:flex; flex-wrap:wrap; gap:10px; padding:15px 0;">
         {{range .Data.Disegni}}
         <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px; padding:10px 15px; display:flex; align-items:center; gap:10px;">
-            📄
             <div>
                 <a href="/static/{{.Path}}" target="_blank" style="font-weight:500;">{{.Nome}}</a>
                 <div style="font-size:0.8rem; color:#6c757d;">{{.CreatedAt.Format "02/01/2006"}}</div>
             </div>
             {{if $.Session.IsTecnico}}
-            <a href="/navi/elimina-disegno/{{$.Data.Nave.ID}}/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminare questo disegno?')">🗑️</a>
+            <a href="/navi/elimina-disegno/{{$.Data.Nave.ID}}/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminare questo disegno?')">X</a>
             {{end}}
         </div>
         {{end}}
@@ -62,10 +61,10 @@
 <!-- Sezione Server/VM -->
 <div id="servers" class="section-card" style="margin-bottom: 20px;">
     <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
-        <h2>🖥️ Server / VM</h2>
+        <h2>Server / VM</h2>
         {{if $.Session.IsTecnico}}
         <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('serverForm').style.display=document.getElementById('serverForm').style.display=='none'?'block':'none'">
-            ➕ Aggiungi Server
+            + Aggiungi Server
         </button>
         {{end}}
     </div>
@@ -95,7 +94,7 @@
                     <input type="text" name="note" placeholder="Note (opzionale)" class="form-control">
                 </div>
                 <div class="col-md-4 text-end">
-                    <button type="submit" class="btn btn-success">💾 Salva</button>
+                    <button type="submit" class="btn btn-success">Salva</button>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('serverForm').style.display='none'">Annulla</button>
                 </div>
             </div>
@@ -110,8 +109,7 @@
                 <tr>
                     <th>Nome</th>
                     <th>Indirizzo</th>
-                    <th>Note</th>
-                    <th style="width:150px;">Azioni</th>
+                    <th>Azioni</th>
                 </tr>
             </thead>
             <tbody>
@@ -121,11 +119,11 @@
                     <td><code>{{.Protocollo}}://{{.IndirizzoIP}}:{{.Porta}}</code></td>
                     <td>
                         <a href="{{.Protocollo}}://{{.IndirizzoIP}}:{{.Porta}}" target="_blank" class="btn btn-sm btn-success" title="Apri GUI">
-                            🌐 GUI
+                            GUI
                         </a>
                         {{if $.Session.IsTecnico}}
                         <a href="/navi/elimina-server/{{$.Data.Nave.ID}}/{{.ID}}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminare questo server?')" title="Elimina">
-                            🗑️
+                            X
                         </a>
                         {{end}}
                     </td>
@@ -194,6 +192,35 @@
         {{end}}
     </div>
 
+    <!-- Filtri -->
+    {{if or .Data.MesiDisponibili .Data.PortiDisponibili}}
+    <div class="filtri-orari" style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:15px;">
+        <form method="GET" action="/navi/dettaglio/{{.Data.Nave.ID}}" class="form-inline" style="display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
+            <div class="form-group">
+                <label style="margin-right:5px;"><strong>Mese:</strong></label>
+                <select name="filtro_mese" class="form-control" onchange="this.form.submit()">
+                    <option value="">Tutti i mesi</option>
+                    {{range .Data.MesiDisponibili}}
+                    <option value="{{.}}" {{if eq $.Data.FiltroMese .}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="margin-right:5px;"><strong>Porto:</strong></label>
+                <select name="filtro_porto" class="form-control" onchange="this.form.submit()">
+                    <option value="">Tutti i porti</option>
+                    {{range .Data.PortiDisponibili}}
+                    <option value="{{.}}" {{if eq $.Data.FiltroPorto .}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+            {{if or .Data.FiltroMese .Data.FiltroPorto}}
+            <a href="/navi/dettaglio/{{.Data.Nave.ID}}" class="btn btn-secondary btn-sm">Reset Filtri</a>
+            {{end}}
+        </form>
+    </div>
+    {{end}}
+
     {{if $.Session.IsTecnico}}
     <div id="formOrario" class="form-inline-section" style="display:none;">
         <form method="POST" action="/navi/orario/nuovo/{{.Data.Nave.ID}}" class="form-inline">
@@ -241,7 +268,7 @@
                     <th>Ora Part.</th>
                     <th>Arrivo</th>
                     <th>Ora Arr.</th>
-                    <th>Note</th>
+                    <th>Sosta in Porto</th>
                     <th>Fonte</th>
                     {{if $.Session.IsTecnico}}<th>Azioni</th>{{end}}
                 </tr>
@@ -254,7 +281,7 @@
                     <td>{{.OraPartenza}}</td>
                     <td><strong>{{.PortoArrivoNome}}</strong></td>
                     <td>{{.OraArrivo}}</td>
-                    <td>{{.Note}}</td>
+                    <td>{{if .SostaPorto}}<span class="badge badge-info">{{.SostaPorto}}</span>{{else}}-{{end}}</td>
                     <td><span class="badge badge-{{if eq .Fonte "manuale"}}secondary{{else}}info{{end}}">{{.Fonte}}</span></td>
                     {{if $.Session.IsTecnico}}
                     <td>
@@ -266,6 +293,7 @@
             </tbody>
         </table>
     </div>
+    <p class="text-muted" style="margin-top:10px;">Visualizzati {{len .Data.Orari}} orari</p>
     {{else}}
     <p class="text-muted">Nessun orario programmato. {{if $.Session.IsTecnico}}Aggiungi una tratta manualmente o carica il file orari.{{end}}</p>
     {{end}}
@@ -474,6 +502,9 @@ function updatePortoNome(select) {
 }
 .table-compact td, .table-compact th {
     padding: 0.5rem;
+}
+.filtri-orari select {
+    min-width: 150px;
 }
 </style>
 {{end}}
