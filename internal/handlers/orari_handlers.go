@@ -837,6 +837,11 @@ func caricaOrariConFiltri(naveID int64, filtroMese, filtroPorto string) ([]model
 		oraArrivo := orari[i].OraArrivo
 		dataArrivo := orari[i].Data
 
+		// Se ora arrivo < ora partenza, e traversata notturna (arrivo giorno dopo)
+		if orari[i].OraArrivo < orari[i].OraPartenza {
+			dataArrivo = dataArrivo.AddDate(0, 0, 1)
+		}
+
 		for j := i + 1; j < len(orari); j++ {
 			if orari[j].PortoPartenzaNome == portoArrivo {
 				sosta := calcolaSosta(dataArrivo, oraArrivo, orari[j].Data, orari[j].OraPartenza)
