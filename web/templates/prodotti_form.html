@@ -25,7 +25,7 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Codice *</label>
                                 <input type="text" name="codice" class="form-control text-uppercase" required
-                                       value="{{.Data.FormData.Prodotto.Codice}}" {{if .Data.FormData.Prodotto.ID}}readonly{{end}}>
+                                       value="{{if .Data.FormData.Prodotto.ID}}{{.Data.FormData.Prodotto.Codice}}{{else}}{{.Data.ProssimoCodice}}{{end}}" {{if .Data.FormData.Prodotto.ID}}readonly{{end}}>
                             </div>
                             <div class="col-md-8 mb-3">
                                 <label class="form-label">Nome *</label>

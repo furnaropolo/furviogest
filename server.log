@@ -1,50 +1,8 @@
-2025/12/16 10:19:05 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
-2025/12/16 10:19:05 Database inizializzato correttamente
-2025/12/16 10:19:05 Caricamento templates da: /home/ies/furviogest/web/templates
-2025/12/16 10:19:05 [Monitoring] Scheduler monitoraggio settimanale avviato
-2025/12/16 10:19:05 Server FurvioGest avviato su http://localhost:8080
-2025/12/16 10:19:05 Credenziali predefinite: admin / admin
-2025/12/16 10:19:05 IMPORTANTE: Cambiare la password al primo accesso!
-2025/12/16 10:24:42 [RETE] Richiesta URL: /navi/rete/12
-2025/12/16 10:24:42 [RETE] Path dopo trim: 12
-2025/12/16 10:24:42 [RETE] NaveID: 12
-2025/12/16 10:24:42 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
-2025/12/16 10:24:42 [RETE] Rendering template rete_nave.html
-2025/12/16 10:26:19 [NUOVO SWITCH] Hostname recuperato: SW-ME2-01
-2025/12/16 10:26:19 [RETE] Richiesta URL: /navi/rete/12
-2025/12/16 10:26:19 [RETE] Path dopo trim: 12
-2025/12/16 10:26:19 [RETE] NaveID: 12
-2025/12/16 10:26:19 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
-2025/12/16 10:26:19 [RETE] Rendering template rete_nave.html
-2025/12/16 10:26:24 [BACKUP] Richiesta backup: tipo=switch id=53
-2025/12/16 10:26:28 [BACKUP] Switch SW-ME2-01 output len: 4080, err: <nil>
-2025/12/16 10:26:32 [RETE] Richiesta URL: /navi/rete/12
-2025/12/16 10:26:32 [RETE] Path dopo trim: 12
-2025/12/16 10:26:32 [RETE] NaveID: 12
-2025/12/16 10:26:32 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
-2025/12/16 10:26:32 [RETE] Rendering template rete_nave.html
-2025/12/16 10:26:37 [SCAN PORTS] Chiamata ricevuta: /api/rete/scan-ports?switch_id=53
-2025/12/16 10:26:38 [SCAN PORTS] Output ricevuto (len=1982): spawn telnet 10.101.6.241
-Trying 10.101.6.241...
-Connected to 10.101.6.241.
-Escape character is '^]'.
-
-Warning: Telnet is not a secure protocol, and it is recommended to use Stelnet.
-
-Login authentication
-
-
-Username:admin
-admin
-Password:
-Info: The max number of VTY users is 10, and the number
-      of current VTY users on line is 1.
-      The current login time is 2025-12-16 10:26:37+01:00.
-<SW-ME2-01>screen-length 0 temporary
-Info: The configuration takes effect on the current
-2025/12/16 10:26:38 [SCAN PORTS] Risultato: totali=10, libere=3
-2025/12/16 10:26:40 [RETE] Richiesta URL: /navi/rete/12
-2025/12/16 10:26:40 [RETE] Path dopo trim: 12
-2025/12/16 10:26:40 [RETE] NaveID: 12
-2025/12/16 10:26:40 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
-2025/12/16 10:26:40 [RETE] Rendering template rete_nave.html
+2025/12/16 10:35:58 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
+2025/12/16 10:35:58 Database inizializzato correttamente
+2025/12/16 10:35:58 Caricamento templates da: /home/ies/furviogest/web/templates
+2025/12/16 10:35:58 [Monitoring] Scheduler monitoraggio settimanale avviato
+2025/12/16 10:35:58 Server FurvioGest avviato su http://localhost:8080
+2025/12/16 10:35:58 Credenziali predefinite: admin / admin
+2025/12/16 10:35:58 IMPORTANTE: Cambiare la password al primo accesso!
+2025/12/16 10:35:58 Errore avvio server:listen tcp :8080: bind: address already in use

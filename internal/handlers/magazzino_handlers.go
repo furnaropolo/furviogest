@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"database/sql"
 	"encoding/json"
 	"furviogest/internal/database"
@@ -87,7 +88,7 @@ func ListaProdotti(w http.ResponseWriter, r *http.Request) {
 		args = append(args, filtroCategoria)
 	}
 
-	query += " ORDER BY p.categoria, p.tipo, p.nome"
+	query += " ORDER BY CAST(p.codice AS INTEGER) DESC, p.codice"
 
 	rows, err := database.DB.Query(query, args...)
 	if err != nil {
@@ -200,7 +201,12 @@ func NuovoProdotto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		data.Data = map[string]interface{}{"FormData": formData}
+		// Calcola prossimo codice numerico
+		var maxCodice int
+		database.DB.QueryRow(`SELECT COALESCE(MAX(CAST(codice AS INTEGER)), 0) FROM prodotti WHERE codice GLOB '[0-9]*'`).Scan(&maxCodice)
+		prossimoCodice := fmt.Sprintf("%d", maxCodice+1)
+		
+		data.Data = map[string]interface{}{"FormData": formData, "ProssimoCodice": prossimoCodice}
 		renderTemplate(w, "prodotti_form.html", data)
 		return
 	}
