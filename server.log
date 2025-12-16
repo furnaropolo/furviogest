@@ -1,8 +1,116 @@
-2025/12/16 11:15:14 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
-2025/12/16 11:15:14 Database inizializzato correttamente
-2025/12/16 11:15:14 Caricamento templates da: /home/ies/furviogest/web/templates
-2025/12/16 11:15:14 [Monitoring] Scheduler monitoraggio settimanale avviato
-2025/12/16 11:15:14 Server FurvioGest avviato su http://localhost:8080
-2025/12/16 11:15:14 Credenziali predefinite: admin / admin
-2025/12/16 11:15:14 IMPORTANTE: Cambiare la password al primo accesso!
-2025/12/16 11:15:14 Errore avvio server:listen tcp :8080: bind: address already in use
+2025/12/16 11:37:43 Inizializzazione database: /home/ies/furviogest/data/furviogest.db
+2025/12/16 11:37:43 Database inizializzato correttamente
+2025/12/16 11:37:43 Caricamento templates da: /home/ies/furviogest/web/templates
+2025/12/16 11:37:43 [Monitoring] Scheduler monitoraggio settimanale avviato
+2025/12/16 11:37:43 Server FurvioGest avviato su http://localhost:8080
+2025/12/16 11:37:43 Credenziali predefinite: admin / admin
+2025/12/16 11:37:43 IMPORTANTE: Cambiare la password al primo accesso!
+2025/12/16 11:40:45 [RETE] Richiesta URL: /navi/rete/12
+2025/12/16 11:40:45 [RETE] Path dopo trim: 12
+2025/12/16 11:40:45 [RETE] NaveID: 12
+2025/12/16 11:40:45 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
+2025/12/16 11:40:45 [RETE] Rendering template rete_nave.html
+2025/12/16 11:40:50 [BACKUP] Richiesta backup: tipo=switch id=60
+2025/12/16 11:40:54 [BACKUP] Switch SW-ME2-07 output len: 7578, err: <nil>
+2025/12/16 11:40:58 [RETE] Richiesta URL: /navi/rete/12
+2025/12/16 11:40:58 [RETE] Path dopo trim: 12
+2025/12/16 11:40:58 [RETE] NaveID: 12
+2025/12/16 11:40:58 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
+2025/12/16 11:40:58 [RETE] Rendering template rete_nave.html
+2025/12/16 11:41:00 [SCAN PORTS] Chiamata ricevuta: /api/rete/scan-ports?switch_id=60
+2025/12/16 11:41:03 [SCAN PORTS] Output ricevuto (len=3622): spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p 22 admin@10.101.6.247
+admin@10.101.6.247's password: 
+
+Info: The max number of VTY users is 5, the number of current VTY users online is 1, and total number of terminal users online is 1.
+      The current login time is 2025-12-16 11:41:01+01:00.
+<SW-ME2-07>screen-length 0 temporary
+Info: The
+2025/12/16 11:41:03 [SCAN PORTS] Risultato: totali=28, libere=21
+2025/12/16 11:41:05 [RETE] Richiesta URL: /navi/rete/12
+2025/12/16 11:41:05 [RETE] Path dopo trim: 12
+2025/12/16 11:41:05 [RETE] NaveID: 12
+2025/12/16 11:41:05 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
+2025/12/16 11:41:05 [RETE] Rendering template rete_nave.html
+2025/12/16 11:41:26 [SCAN AP] Output raw: spawn ssh -o StrictHostKeyChecking=no -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p 22 admin@10.101.6.20
+admin@10.101.6.20's password: 
+
+Info: Current mode: Standard (working independently).
+Warning: The intelligent upgrade function is disabled. Log in to the web platform and enable this function.
+  -----------------------------------------------------------------------------     
+  User last login information:     
+  -----------------------------------------------------------------------------
+  Access Type: SSH      
+  IP-Address : 192.168.1.39     
+  Time       : 2025-12-16 16:52:17+00:00     
+  -----------------------------------------------------------------------------
+<AC-ME2-01>display ap all
+Total AP information:
+nor   : normal          [53]
+ExtraInfo : Extra information
+------------------------------------------------------------------------------------------------------------------
+ID    MAC            Name  Group   IP           Type             State  STA  Uptime         ExtraInfo Scene
+------------------------------------------------------------------------------------------------------------------
+0     ac5e-146e-bc80 AP-43 default 10.101.6.143 AirEngine5761-11 nor    0    8D:17H:34M:47S -         -    
+1     ac5e-146e-a1e0 AP-26 default 10.101.6.126 AirEngine5761-11 nor    0    8D:17H:38M:57S -         -    
+2     ac5e-146e-d960 AP-06 default 10.101.6.106 AirEngine5761-11 nor    1    8D:17H:39M:15S -         -    
+3     ac5e-146e-dba0 AP-10 default 10.101.6.110 AirEngine5761-11 nor    0    8D:17H:39M:22S -         -    
+4     ac5e-146e-dcc0 AP-32 default 10.101.6.132 AirEngine5761-11 nor    0    8D:17H:39M:56S -         -    
+5     ac5e-146e-cd40 AP-31 default 10.101.6.131 AirEngine5761-11 nor    0    8D:17H:39M:53S -         -    
+6     ac5e-146e-cda0 AP-30 default 10.101.6.130 AirEngine5761-11 nor    0    8D:17H:39M:51S -         -    
+7     ac5e-146e-d8e0 AP-49 default 10.101.6.149 AirEngine5761-11 nor    0    8D:17H:39M:56S -         -    
+8     484c-2911-79d0 AP-51 default 10.101.6.151 AirEngine5761-11 nor    2    8D:17H:39M:16S -         -    
+9     ac5e-1470-6eb0 AP-44 default 10.101.6.144 AirEngine5761-11 nor    0    8D:17H:39M:27S -         -    
+10    ac5e-146e-d8c0 AP-19 default 10.101.6.119 AirEngine5761-11 nor    0    8D:17H:39M:7S  -         -    
+11    ac5e-146e-d240 AP-36 default 10.101.6.136 AirEngine5761-11 nor    0    8D:17H:34M:52S -         -    
+12    ac5e-146e-db20 AP-13 default 10.101.6.113 AirEngine5761-11 nor    0    8D:17H:39M:35S -         -    
+13    ac5e-146e-a500 AP-28 default 10.101.6.128 AirEngine5761-11 nor    0    8D:17H:39M:18S -         -    
+14    ac5e-146e-dae0 AP-46 default 10.101.6.146 AirEngine5761-11 nor    0    8D:17H:39M:35S -         -    
+15    ac5e-146e-d360 AP-07 default 10.101.6.107 AirEngine5761-11 nor    0    8D:17H:39M:2S  -         -    
+16    ac5e-146e-a580 AP-47 default 10.101.6.147 AirEngine5761-11 nor    0    8D:17H:39M:50S -         -    
+17    ac5e-146e-a600 AP-41 default 10.101.6.141 AirEngine5761-11 nor    0    8D:17H:39M:38S -         -    
+18    ac5e-146e-dac0 AP-50 default 10.101.6.150 AirEngine5761-11 nor    0    8D:17H:39M:32S -         -    
+19    ac5e-146e-cb40 AP-08 default 10.101.6.108 AirEngine5761-11 nor    0    8D:17H:39M:32S -         -    
+20    ac5e-146e-be80 AP-52 default 10.101.6.152 AirEngine5761-11 nor    0    8D:17H:39M:51S -         -    
+21    ac5e-146e-dc40 AP-40 default 10.101.6.140 AirEngine5761-11 nor    0    8D:17H:39M:29S -         -    
+22    ac5e-146e-d9c0 AP-39 default 10.101.6.139 AirEngine5761-11 nor    0    8D:17H:34M:52S -         -    
+23    ac5e-1470-70d0 AP-29 default 10.101.6.129 AirEngine5761-11 nor    1    8D:17H:39M:45S -         -    
+24    ac5e-146e-ca40 AP-02 default 10.101.6.102 AirEngine5761-11 nor    0    8D:17H:39M:53S -         -    
+25    ac5e-146e-bca0 AP-16 default 10.101.6.116 AirEngine5761-11 nor    0    8D:17H:39M:56S -         -    
+26    ac5e-146e-d9a0 AP-04 default 10.101.6.104 AirEngine5761-11 nor    0    8D:17H:39M:50S -         -    
+27    ac5e-146e-da40 AP-37 default 10.101.6.137 AirEngine5761-11 nor    0    8D:17H:39M:29S -         -    
+28    ac5e-146e-a540 AP-22 default 10.101.6.122 AirEngine5761-11 nor    0    8D:17H:39M:31S -         -    
+29    ac5e-1470-70b0 AP-45 default 10.101.6.145 AirEngine5761-11 nor    0    8D:17H:39M:32S -         -    
+30    ac5e-146e-bfa0 AP-48 default 10.101.6.148 AirEngine5761-11 nor    0    8D:17H:39M:45S -         -    
+31    ac5e-146e-da00 AP-38 default 10.101.6.138 AirEngine5761-11 nor    0    8D:17H:39M:57S -         -    
+32    ac5e-146e-dc00 AP-09 default 10.101.6.109 AirEngine5761-11 nor    0    8D:17H:39M:56S -         -    
+33    ac5e-146e-d7c0 AP-03 default 10.101.6.103 AirEngine5761-11 nor    0    8D:17H:39M:31S -         -    
+34    90f9-b792-2100 AP-14 default 10.101.6.114 AirEngine5761-11 nor    0    8D:17H:39M:21S -         -    
+35    ac5e-146e-d9e0 AP-05 default 10.101.6.105 AirEngine5761-11 nor    3    8D:17H:39M:31S -         -    
+36    c4d4-38f4-9240 AP-34 default 10.101.6.134 AirEngine5761-11 nor    1    8D:17H:39M:45S -         -    
+37    ac5e-146e-bce0 AP-11 default 10.101.6.111 AirEngine5761-11 nor    0    8D:17H:39M:36S -         -    
+38    c4d4-38f4-d3e0 AP-17 default 10.101.6.117 AirEngine5761-11 nor    0    8D:17H:39M:38S -         -    
+39    ac5e-146e-bf80 AP-12 default 10.101.6.112 AirEngine5761-11 nor    0    8D:17H:39M:50S -         -    
+40    ac5e-1470-71d0 AP-42 default 10.101.6.142 AirEngine5761-11 nor    0    8D:17H:39M:6S  -         -    
+41    ac5e-146e-bd80 AP-15 default 10.101.6.115 AirEngine5761-11 nor    0    8D:16H:10M:25S -         -    
+42    ac5e-146e-a4c0 AP-23 default 10.101.6.123 AirEngine5761-11 nor    0    8D:17H:34M:47S -         -    
+43    ac5e-146e-d760 AP-21 default 10.101.6.121 AirEngine5761-11 nor    0    8D:17H:39M:51S -         -    
+44    ac5e-1470-7030 AP-35 default 10.101.6.135 AirEngine5761-11 nor    1    8D:17H:39M:29S -         -    
+45    ac5e-146e-d780 AP-18 default 10.101.6.118 AirEngine5761-11 nor    0    8D:16H:10M:51S -         -    
+46    ac5e-1470-71f0 AP-25 default 10.101.6.125 AirEngine5761-11 nor    0    8D:17H:34M:55S -         -    
+47    ac5e-146e-da80 AP-01 default 10.101.6.101 AirEngine5761-11 nor    1    8D:17H:39M:0S  -         -    
+48    ac5e-146e-d620 AP-20 default 10.101.6.120 AirEngine5761-11 nor    0    8D:17H:39M:55S -         -    
+  ---- More ----[16D                [16D49    ac5e-1470-7170 AP-33 default 10.101.6.133 AirEngine5761-11 nor    0    8D:17H:39M:27S -         -    
+50    ac5e-1470-6970 AP-24 default 10.101.6.124 AirEngine5761-11 nor    0    8D:17H:39M:35S -         -    
+51    ac5e-146e-a640 AP-27 default 10.101.6.127 AirEngine5761-11 nor    0    8D:17H:39M:46S -         -    
+52    ac5e-1470-6bd0 AP-53 default 10.101.6.153 AirEngine5761-11 nor    1    8D:17H:39M:24S -         -    
+------------------------------------------------------------------------------------------------------------------
+Total: 53
+<AC-ME2-01>quit
+
+  Configuration console exit, please press any key to log on
+Connection to 10.101.6.20 closed.
+2025/12/16 11:41:27 [RETE] Richiesta URL: /navi/rete/12
+2025/12/16 11:41:27 [RETE] Path dopo trim: 12
+2025/12/16 11:41:27 [RETE] NaveID: 12
+2025/12/16 11:41:27 [RETE] Nave trovata: ID=12 Nome=Mega Express Two
+2025/12/16 11:41:27 [RETE] Rendering template rete_nave.html
