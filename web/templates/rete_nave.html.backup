@@ -232,8 +232,8 @@
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="ac_ip" value="{{if .Data.AC}}{{.Data.AC.IP}}{{end}}" placeholder="192.168.1.1" required>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Porta</label>
+                        <div class="col-md-4">
+                            <label class="form-label">Porta SSH</label>
                             <input type="number" class="form-control" name="ssh_port" id="ac_ssh_port" value="{{if .Data.AC}}{{.Data.AC.SSHPort}}{{else}}22{{end}}">
                         </div>
                         <div class="col-md-6">
@@ -286,16 +286,9 @@
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="sw_ip" placeholder="192.168.1.2" required>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Porta</label>
+                        <div class="col-md-4">
+                            <label class="form-label">Porta SSH</label>
                             <input type="number" class="form-control" name="ssh_port" id="sw_ssh_port" value="22">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Protocollo</label>
-                            <select class="form-select" name="protocollo" id="sw_protocollo">
-                                <option value="ssh">SSH</option>
-                                <option value="telnet">Telnet</option>
-                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Username SSH *</label>
@@ -532,14 +525,5 @@ function rilevaLicenze(acID) {
             btn.disabled = false;
         });
 }
-// Cambio automatico porta quando si seleziona protocollo
-document.getElementById("sw_protocollo").addEventListener("change", function() {
-    var portInput = document.getElementById("sw_ssh_port");
-    if (this.value === "telnet") {
-        portInput.value = "23";
-    } else {
-        portInput.value = "22";
-    }
-});
 </script>
 {{end}}

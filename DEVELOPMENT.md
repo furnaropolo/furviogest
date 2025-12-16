@@ -248,6 +248,17 @@ furviogest/
     - config_sale_server/sala_server_X/ (NUOVO)
 
 
+- **Permessi Multi-Nave**:
+  - Supporto per selezionare multiple navi in un singolo permesso
+  - Nuova tabella navi_permesso per associazione N:M
+  - Form con checkboxes raggruppati per compagnia
+  - Filtro automatico: solo navi della stessa compagnia selezionabili
+  - Email unificata con elenco navi in oggetto e corpo
+  - Oggetto: "Richiesta Permesso - NAVE1, NAVE2, NAVE3 - Porto - Data"
+  - Destinatari email aggregati per tutte le navi (ispettore, master, DDM)
+  - Retrocompatibile con permessi singola nave
+
+
 ### 2025-12-14 (sessione 16)
 - **Fix Backup Automatico**:
   - Corretto script cron (CRLF -> LF)

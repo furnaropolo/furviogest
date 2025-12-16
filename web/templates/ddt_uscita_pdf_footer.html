@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 8pt; padding: 0 5mm; }
+        .info-table { width: 100%; border-collapse: collapse; border: 1px solid #ddd; }
+        .info-table td { padding: 3px 5px; border: 1px solid #ddd; }
+        .info-label { color: #666; font-size: 7pt; }
+        .info-value { font-weight: bold; font-size: 8pt; }
+        .signatures-table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        .signatures-table td { width: 45%; padding-top: 20px; border-top: 1px solid #333; text-align: center; font-size: 7pt; color: #666; }
+        .signatures-table td.spacer { width: 10%; border-top: none; }
+    </style>
+</head>
+<body>
+    <table class="info-table">
+        <tr>
+            <td><span class="info-label">Causale trasporto</span><br><span class="info-value">__CAUSALE__</span></td>
+            <td><span class="info-label">Porto</span><br><span class="info-value">__PORTO__</span></td>
+            <td><span class="info-label">Aspetto beni</span><br><span class="info-value">__ASPETTO__</span></td>
+            <td><span class="info-label">N. Colli</span><br><span class="info-value">__COLLI__</span></td>
+        </tr>
+        <tr>
+            <td><span class="info-label">Incaricato trasporto</span><br><span class="info-value">__INCARICATO__</span></td>
+            <td><span class="info-label">Peso</span><br><span class="info-value">__PESO__</span></td>
+            <td colspan="2"><span class="info-label">Data/ora inizio trasporto</span><br><span class="info-value">__DATAORA__</span></td>
+        </tr>
+    </table>
+    <table class="signatures-table">
+        <tr>
+            <td>Firma conducente</td>
+            <td class="spacer"></td>
+            <td>Firma destinatario</td>
+        </tr>
+    </table>
+</body>
+</html>

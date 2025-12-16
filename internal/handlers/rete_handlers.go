@@ -2274,7 +2274,7 @@ func executeSSHCommandAC(ip string, port int, user, pass, command string) (strin
 	// Crea script expect temporaneo
 	script := fmt.Sprintf(`#!/usr/bin/expect -f
 set timeout 30
-spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p %d %s@%s
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -p %d %s@%s
 expect {
     "*assword*" { send "%s\r" }
     timeout { exit 1 }
