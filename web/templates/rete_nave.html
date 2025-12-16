@@ -107,7 +107,7 @@
                                     <button class="btn btn-outline-warning" onclick="scanPorts({{.ID}})" title="Scan Porte" {{if $.Data.Nave.FermaPerLavori}}disabled{{end}}>
                                         <i class="bi bi-ethernet"></i>
                                     </button>
-                                    <button class="btn btn-outline-primary" style="display:none" title="Modifica">
+                                    <button class="btn btn-outline-primary" onclick="editSwitch({{.ID}}, '{{.Nome}}', '{{.Marca}}', '{{.Modello}}', '{{.IP}}', {{.SSHPort}}, '{{.SSHUser}}', '{{.SSHPass}}', '{{.Note}}', '{{.Protocollo}}')" title="Modifica">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <a href="/navi/switch/elimina/{{.ID}}" class="btn btn-outline-danger" onclick="return confirm('Eliminare questo switch?')" title="Elimina">
@@ -282,6 +282,10 @@
                                 <option value="hp">HP</option>
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nome Switch</label>
+                            <input type="text" class="form-control" name="nome" id="sw_nome" placeholder="(auto-rilevato se vuoto)">
+                        </div>
                         <div class="col-md-8">
                             <label class="form-label">Indirizzo IP *</label>
                             <input type="text" class="form-control" name="ip" id="sw_ip" placeholder="192.168.1.2" required>
@@ -353,6 +357,13 @@ function getDefaultCredentials() {
 
 // Pre-compila password AC se vuota
 document.addEventListener('DOMContentLoaded', function() {
+    // Controlla se c'è un warning di connessione
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("warning") === "connessione") {
+        alert("⚠️ Attenzione: impossibile connettersi allo switch.\n\nPossibili cause:\n- Password errata\n- Switch non raggiungibile\n- Protocollo sbagliato (SSH/Telnet)\n\nLo switch è stato aggiunto ma verifica le credenziali.");
+        // Rimuovi il parametro dall'URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
     const acPassField = document.getElementById('ac_ssh_pass');
     if (acPassField && !acPassField.value) {
         const creds = getDefaultCredentials();
@@ -485,7 +496,9 @@ function resetSwitchForm() {
     const creds = getDefaultCredentials();
     document.getElementById('modalSwitchTitle').textContent = 'Aggiungi Switch';
     document.getElementById('formSwitch').action = `/navi/switch/nuovo/${naveID}`;
+    document.getElementById('sw_nome').value = nome;
     document.getElementById('sw_marca').value = 'huawei';
+    document.getElementById('sw_nome').value = '';
     document.getElementById('sw_modello').value = '';
     document.getElementById('sw_ip').value = '';
     document.getElementById('sw_ssh_port').value = '22';
@@ -494,9 +507,10 @@ function resetSwitchForm() {
     document.getElementById('sw_note').value = '';
 }
 
-function editSwitch(id, marca, modello, ip, port, user, pass, note) {
+function editSwitch(id, nome, marca, modello, ip, port, user, pass, note, protocollo) {
     document.getElementById('modalSwitchTitle').textContent = 'Modifica Switch';
     document.getElementById('formSwitch').action = `/navi/switch/modifica/${id}`;
+    document.getElementById('sw_nome').value = nome;
     document.getElementById('sw_marca').value = marca;
     document.getElementById('sw_modello').value = modello;
     document.getElementById('sw_ip').value = ip;
@@ -504,6 +518,7 @@ function editSwitch(id, marca, modello, ip, port, user, pass, note) {
     document.getElementById('sw_ssh_user').value = user;
     document.getElementById('sw_ssh_pass').value = pass;
     document.getElementById('sw_note').value = note;
+    document.getElementById('sw_protocollo').value = protocollo || 'ssh';
     new bootstrap.Modal(document.getElementById('modalSwitch')).show();
 }
 

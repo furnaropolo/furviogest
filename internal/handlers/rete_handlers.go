@@ -314,6 +314,7 @@ func NuovoSwitch(w http.ResponseWriter, r *http.Request) {
 	naveID, _ := strconv.ParseInt(path, 10, 64)
 
 	r.ParseForm()
+	nomeForm := strings.TrimSpace(r.FormValue("nome"))
 	marca := r.FormValue("marca") // huawei o hp
 	modello := strings.TrimSpace(r.FormValue("modello"))
 	ip := strings.TrimSpace(r.FormValue("ip"))
@@ -329,9 +330,14 @@ func NuovoSwitch(w http.ResponseWriter, r *http.Request) {
 		protocollo = "ssh"
 	}
 
-	// Recupera hostname automaticamente dallo switch
-	nome := getSwitchHostname(ip, sshPort, sshUser, sshPass, marca, protocollo)
-	log.Printf("[NUOVO SWITCH] Hostname recuperato: %s", nome)
+	// Usa nome dal form se inserito, altrimenti auto-rileva
+	var nome string
+	if nomeForm != "" {
+		nome = nomeForm
+	} else {
+		nome = getSwitchHostname(ip, sshPort, sshUser, sshPass, marca, protocollo)
+	}
+	log.Printf("[NUOVO SWITCH] Nome: %s", nome)
 
 	_, err := database.DB.Exec(`
 		INSERT INTO switch_nave (nave_id, nome, marca, modello, ip, ssh_port, ssh_user, ssh_pass, note, protocollo)
@@ -343,7 +349,12 @@ func NuovoSwitch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/navi/rete/%d", naveID), http.StatusSeeOther)
+	// Avvisa se connessione fallita (nome fallback)
+	var warn string
+	if strings.HasPrefix(nome, "Switch-") && nomeForm == "" {
+		warn = "&warning=connessione"
+	}
+	http.Redirect(w, r, fmt.Sprintf("/navi/rete/%d?ok=1%s", naveID, warn), http.StatusSeeOther)
 }
 
 // ModificaSwitch gestisce la modifica di uno switch
@@ -361,6 +372,7 @@ func ModificaSwitch(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 	marca := r.FormValue("marca")
+	nome := strings.TrimSpace(r.FormValue("nome"))
 	modello := strings.TrimSpace(r.FormValue("modello"))
 	ip := strings.TrimSpace(r.FormValue("ip"))
 	sshPort, _ := strconv.Atoi(r.FormValue("ssh_port"))
@@ -376,9 +388,9 @@ func ModificaSwitch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := database.DB.Exec(`
-		UPDATE switch_nave SET marca = ?, modello = ?, ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, protocollo = ?, updated_at = CURRENT_TIMESTAMP
+		UPDATE switch_nave SET nome = CASE WHEN ? = ' THEN nome ELSE ? END, marca = ?, modello = ?, ip = ?, ssh_port = ?, ssh_user = ?, ssh_pass = ?, note = ?, protocollo = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, marca, modello, ip, sshPort, sshUser, sshPass, note, protocollo, switchID)
+	`, nome, nome, marca, modello, ip, sshPort, sshUser, sshPass, note, protocollo, switchID)
 
 	if err != nil {
 		http.Error(w, "Errore salvataggio: "+err.Error(), http.StatusInternalServerError)
@@ -2274,7 +2286,7 @@ func executeSSHCommandAC(ip string, port int, user, pass, command string) (strin
 	// Crea script expect temporaneo
 	script := fmt.Sprintf(`#!/usr/bin/expect -f
 set timeout 30
-spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o KexAlgorithms=+diffie-hellman-group14-sha1 -o HostKeyAlgorithms=+ssh-rsa -p %d %s@%s
+spawn ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o KexAlgorithms=+diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1 -o HostKeyAlgorithms=+ssh-rsa -o ConnectTimeout=30 -p %d %s@%s
 expect {
     "*assword*" { send "%s\r" }
     timeout { exit 1 }
