@@ -24,3 +24,5 @@ CLAUDE_RULES.md
 *.db
 furviogest.db
 gestionale.db
+*.db.bak*
+data/*.bak*
