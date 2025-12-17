@@ -593,8 +593,8 @@ func DisableNAS(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseNASPath separa share e sottocartella dal percorso NAS
-// Input: //192.168.1.15/Operational/Ciccio/furvio
-// Output: share=//192.168.1.15/Operational, subdir=Ciccio/furvio
+// Input: //192.168.1.100/NAS/backup/furviogest
+// Output: share=//192.168.1.100/NAS, subdir=backup/furviogest
 func parseNASPath(fullPath string) (share string, subdir string) {
 	// Rimuovi // iniziale per il parsing
 	path := strings.TrimPrefix(fullPath, "//")

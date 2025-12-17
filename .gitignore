@@ -21,3 +21,6 @@ Thumbs.db
 backups/
 furviogest_server
 CLAUDE_RULES.md
+*.db
+furviogest.db
+gestionale.db
