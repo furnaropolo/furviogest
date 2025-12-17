@@ -26,3 +26,5 @@ furviogest.db
 gestionale.db
 *.db.bak*
 data/*.bak*
+*.bak
+*.bak2
