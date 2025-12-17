@@ -1,49 +1,25 @@
 # FurvioGest
 
-Sistema gestionale web per la gestione di interventi di manutenzione WiFi/GSM su navi.
+Sistema gestionale completo per il monitoraggio di reti navali e la gestione operativa di interventi tecnici.
 
 ## Descrizione
 
-FurvioGest è un'applicazione web sviluppata per gestire tutte le attività legate agli interventi tecnici su imbarcazioni, inclusi:
+FurvioGest è un'applicazione web sviluppata in Go per la gestione delle operazioni IT su navi Ro-Pax. Nasce dall'esigenza di centralizzare e semplificare le attività quotidiane di un IT System Administrator che gestisce infrastrutture di rete su più imbarcazioni.
 
-- **Gestione anagrafiche**: tecnici, fornitori, porti, automezzi, compagnie navali e navi
-- **Magazzino**: prodotti con giacenza, movimenti carico/scarico, attrezzi con tracciamento posizione
-- **Apparati nave**: gestione router, switch, access point, firewall con credenziali SSH/HTTP
-- **Richieste permessi porto**: generazione automatica email con allegati per l'accesso ai porti
-- **Calendario trasferte**: pianificazione giornate lavorative con calcolo automatico festivi
-- **Note spese**: gestione spese con riepilogo mensile e calcolo rimborsi
-- **Rapporti intervento**: documentazione degli interventi effettuati
-- **DDT**: generazione documenti di trasporto
+## Funzionalita
 
-## Funzionalità Principali
+- **Monitoraggio Reti Navali** - Dashboard per il controllo dello stato delle reti WiFi/GSM a bordo
+- **Gestione Magazzino** - Inventario hardware e software con tracking delle scorte
+- **Gestione Interventi** - Registrazione e tracciamento degli interventi tecnici effettuati
+- **Gestione Trasferte** - Pianificazione e storico delle trasferte sulle navi
+- **Note Spese** - Gestione delle spese di viaggio e rimborsi
 
-### Richiesta Permessi Porto
-- Creazione richiesta con selezione nave, porto, tecnici e automezzo
-- Anteprima email prima dell'invio
-- Invio automatico all'agenzia portuale con allegati (documenti tecnici + libretto automezzo)
-- Gestione destinatari personalizzata per compagnia
+## Tecnologie
 
-### Calendario Trasferte
-- Visualizzazione mensile a griglia (stile foglio presenze)
-- Codifica colori per tipo giornata:
-  - Bianco = Ufficio
-  - Giallo = Trasferta Giornaliera
-  - Verde = Trasferta con Pernotto
-  - Rosso = Trasferta Festiva
-  - Blu = Ferie
-  - Viola = Permesso
-- Calcolo automatico festivi nazionali italiani
-
-### Note Spese Integrate
-- Inserimento spese per giornata (carburante, vitto/alloggio, pedaggi, materiali)
-- Distinzione carta aziendale / personale (da rimborsare)
-- Riepilogo mensile con totali per categoria
-- Stampa/PDF e invio email
-
-## Requisiti
-
-- Go 1.21+
-- SQLite3
+- **Backend**: Go
+- **Database**: SQLite
+- **Frontend**: HTML/CSS/JavaScript
+- **Template Engine**: Go html/template
 
 ## Installazione
 
@@ -52,48 +28,37 @@ FurvioGest è un'applicazione web sviluppata per gestire tutte le attività lega
 git clone https://github.com/furnaropolo/furviogest.git
 cd furviogest
 
-# Scarica le dipendenze
-go mod tidy
+# Compila il progetto
+go build -o furviogest ./cmd/server
 
 # Avvia il server
-go run cmd/server/main.go
+./furviogest
 ```
 
-Il server sarà disponibile su http://localhost:8080
+Il server sara disponibile su `http://localhost:8080`
 
-## Credenziali Default
-
-- **Username**: admin
-- **Password**: admin
-
-## Stack Tecnologico
-
-- **Backend**: Go (Golang)
-- **Database**: SQLite
-- **Frontend**: HTML/CSS/JavaScript + Go Templates
-- **Datepicker**: Flatpickr (locale italiano)
-- **Email**: SMTP (compatibile Gmail con App Password)
-
-## Struttura Progetto
+## Struttura del Progetto
 
 ```
 furviogest/
-├── cmd/server/          # Entry point applicazione
+├── cmd/
+│   └── server/          # Entry point dell'applicazione
 ├── internal/
-│   ├── database/        # Connessione e setup DB
-│   ├── handlers/        # Handler HTTP
-│   ├── middleware/      # Autenticazione e middleware
-│   └── models/          # Strutture dati
-├── web/
-│   ├── static/          # CSS, JS, immagini
-│   └── templates/       # Template HTML
-└── data/                # Database e uploads
+│   ├── handlers/        # HTTP handlers
+│   ├── models/          # Modelli dati
+│   └── database/        # Gestione database
+├── templates/           # Template HTML
+├── static/              # File statici (CSS, JS, immagini)
+└── data/
+    └── furviogest.db    # Database SQLite
 ```
-
-## Documentazione Sviluppo
-
-Per dettagli sullo stato di sviluppo, funzionalità implementate e changelog, vedere [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Licenza
 
-Progetto privato - Tutti i diritti riservati
+Questo progetto e rilasciato con licenza MIT.
+
+## Autore
+
+**Francesco Politano**
+- GitHub: [@furnaropolo](https://github.com/furnaropolo)
+- LinkedIn: [francesco-politano-b9161920](https://linkedin.com/in/francesco-politano-b9161920)
