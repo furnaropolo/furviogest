@@ -279,9 +279,9 @@
             <a href="/calendario-trasferte?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="action-btn btn-back">
                 &#8592; Indietro
             </a>
-            <button onclick="window.print()" class="action-btn btn-print">
-                Stampa
-            </button>
+            <a href="/download-pdf-note-spese?anno={{.Data.Anno}}&mese={{.Data.Mese}}&tecnico={{.Data.TecnicoID}}" class="action-btn btn-print">
+                Scarica PDF
+            </a>
             <button onclick="inviaEmail()" class="action-btn btn-email">
                 Invia Email
             </button>

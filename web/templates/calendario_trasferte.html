@@ -451,9 +451,14 @@
     opacity: 0.8;
 }
 .calendario-grid .giorno.weekend {
-    background: #f9f9f9;
+    background: #ffe0e0 !important;
+    color: #dc3545;
+
 }
 .calendario-grid .giorno.festivo {
+    background: #ffcccc !important;
+    color: #dc3545;
+    font-weight: bold;
     border-left: 3px solid #dc3545;
 }
 .calendario-grid .giorno-vuoto {
@@ -667,8 +672,8 @@ function clickGiorno(data, tecID, giorno) {
         }
     } else {
         // Modalita normale - apri modale solo se il giorno ha dati
-        var hasDati = cella.classList.contains("has-data");
-        if (hasDati) {
+        // Apri modale per qualsiasi giorno (anche vuoti)
+        if (true) { // Sempre aperto per permettere inserimento
             apriModaleGiorno(data, tecID);
         }
     }
@@ -797,7 +802,7 @@ function salvaTrasfertaMultipla() {
         .then(function(r) { return r.json(); })
         .then(function(resp) {
             if (resp.success) {
-                alert('Spesa salvata!');
+                // Salvataggio silenzioso - alert rimosso
                 salvaSequenziale(index + 1);
             } else {
                 alert('Errore nel salvataggio del giorno ' + date[index]);
@@ -926,7 +931,7 @@ function salvaGiornata() {
     .then(r => r.json())
     .then(resp => {
         if (resp.success) {
-                alert('Spesa salvata!');
+                // Salvataggio silenzioso - alert rimosso
             giornataCorrente = giornataCorrente || {};
             giornataCorrente.ID = resp.giornata_id;
             document.getElementById('sezioneSpese').style.display = 'block';
@@ -1002,7 +1007,7 @@ function aggiungiSpesa() {
     .then(r => r.json())
     .then(resp => {
         if (resp.success) {
-                alert('Spesa salvata!');
+                // Salvataggio silenzioso - alert rimosso
             // Ricarica spese
             fetch('/api/calendario/giornata?data=' + giornataCorrente.Data + '&tecnico_id=' + giornataCorrente.TecnicoID, {credentials: 'same-origin'})
                 .then(r => r.json())
@@ -1032,7 +1037,7 @@ function eliminaSpesa(spesaID) {
     .then(r => r.json())
     .then(resp => {
         if (resp.success) {
-                alert('Spesa salvata!');
+                // Salvataggio silenzioso - alert rimosso
             // Ricarica spese
             fetch('/api/calendario/giornata?data=' + giornataCorrente.Data + '&tecnico_id=' + giornataCorrente.TecnicoID, {credentials: 'same-origin'})
                 .then(r => r.json())
@@ -1065,7 +1070,7 @@ function eliminaGiornata() {
     .then(function(r) { return r.json(); })
     .then(function(resp) {
         if (resp.success) {
-                alert('Spesa salvata!');
+                // Salvataggio silenzioso - alert rimosso
             chiudiModale();
             location.reload();
         } else {

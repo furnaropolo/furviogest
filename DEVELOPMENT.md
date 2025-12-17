@@ -429,3 +429,84 @@ go build -o furviogest ./cmd/server
 5. Conferma ripristino
 6. Il server si riavvierà automaticamente
 
+
+---
+
+## FUNZIONALITÀ BLINDATE - NON MODIFICARE
+
+### Calendario Trasferte e Inserimento Pernotti (BLINDATO 2025-12-17)
+
+**File coinvolti - NON TOCCARE:**
+-  (template + JavaScript)
+-  (backend)
+
+**Funzionalità verificate e funzionanti:**
+1. ✅ Selezione multipla giorni con pulsante "Nuova Trasferta"
+2. ✅ Click su singolo giorno (anche vuoto) per inserire giornata
+3. ✅ Salvataggio trasferte con pernotto (range di giorni)
+4. ✅ Conteggio automatico pernotti (giorni consecutivi - 1 = notti)
+5. ✅ Alert "Giornata salvata!" solo quando appropriato
+
+**Correzioni applicate (2025-12-17):**
+- Rimosso blocco click su giorni vuoti (riga 669-672)
+- Rimossi 5 alert "Spesa salvata!" errati (righe 800, 929, 1005, 1035, 1068)
+- Mantenuto alert "Giornata salvata!" corretto
+
+**REGOLA ASSOLUTA:** Nessuna modifica a questi file senza esplicita autorizzazione dell'utente.
+
+
+---
+
+## FUNZIONALITA BLINDATE - NON MODIFICARE
+
+### Calendario Trasferte e Inserimento Pernotti (BLINDATO 2025-12-17)
+
+**File coinvolti - NON TOCCARE:**
+- web/templates/calendario_trasferte.html (template + JavaScript)
+- internal/handlers/calendario_trasferte_handlers.go (backend)
+
+**Funzionalita verificate e funzionanti:**
+1. Selezione multipla giorni con pulsante "Nuova Trasferta"
+2. Click su singolo giorno (anche vuoto) per inserire giornata
+3. Salvataggio trasferte con pernotto (range di giorni)
+4. Conteggio automatico pernotti (giorni consecutivi - 1 = notti)
+5. Alert "Giornata salvata!" solo quando appropriato
+
+**Correzioni applicate (2025-12-17):**
+- Rimosso blocco click su giorni vuoti (riga 669-672)
+- Rimossi 5 alert "Spesa salvata!" errati (righe 800, 929, 1005, 1035, 1068)
+- Mantenuto alert "Giornata salvata!" corretto
+
+**REGOLA ASSOLUTA:** Nessuna modifica a questi file senza esplicita autorizzazione.
+
+
+### Stile Visivo Weekend e Festivi (BLINDATO 2025-12-17)
+
+**File coinvolto - NON TOCCARE:**
+- web/templates/calendario_trasferte.html (CSS righe 453-463)
+
+**Stile applicato:**
+- Weekend (Sab/Dom): sfondo rosa chiaro (#ffe0e0), numeri rossi
+- Festivi: sfondo rosa intenso (#ffcccc), numeri rossi grassetto, bordino laterale rosso
+
+**REGOLA ASSOLUTA:** Nessuna modifica a questo CSS senza esplicita autorizzazione.
+
+
+### Generazione PDF con wkhtmltopdf (BLINDATO 2025-12-17)
+
+**File coinvolti - NON TOCCARE:**
+- web/templates/stampa_trasferte.html (riga 280-284)
+- web/templates/stampa_note_spese.html (riga 282-286)
+- internal/handlers/calendario_stampa_email.go (funzioni DownloadPDFTrasferte, DownloadPDFNoteSpese)
+
+**Funzionalita:**
+- Pulsante "Scarica PDF" nelle pagine anteprima
+- PDF generato da wkhtmltopdf (NON dal browser)
+- Nessun URL stampato nel documento
+
+**Correzione applicata (2025-12-17):**
+- Sostituito window.print() con link a /download-pdf-trasferte e /download-pdf-note-spese
+- wkhtmltopdf genera PDF pulito senza header/footer del browser
+
+**REGOLA ASSOLUTA:** Nessuna modifica a questi file senza esplicita autorizzazione.
+
