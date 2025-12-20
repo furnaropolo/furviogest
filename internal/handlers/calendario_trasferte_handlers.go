@@ -457,8 +457,9 @@ func calcolaRiepilogoMese(tecnicoID int64, anno, mese int) map[string]float64 {
 	}
 	riepilogo["giorni_lavorativi"] = float64(giorniLavorativi)
 	
-	// Giorni ufficio = giorni lavorativi - giorni con altri tipi (escluso ufficio)
-	altriGiorni := int(riepilogo["giorni_trasferta_giornaliera"] + riepilogo["giorni_trasferta_pernotto"] + riepilogo["giorni_trasferta_festiva"] + riepilogo["giorni_ferie"] + riepilogo["giorni_permesso"])
+	// Giorni ufficio = giorni lavorativi - giorni con altri tipi (escluso ufficio e trasferta_festiva)
+	// NOTA: trasferta_festiva NON viene sottratta perché è un giorno non lavorativo (weekend/festivo)
+	altriGiorni := int(riepilogo["giorni_trasferta_giornaliera"] + riepilogo["giorni_trasferta_pernotto"] + riepilogo["giorni_ferie"] + riepilogo["giorni_permesso"])
 	riepilogo["giorni_ufficio"] = float64(giorniLavorativi - altriGiorni)
 
 	// Calcola pernottamenti effettivi (notti, non giorni)
