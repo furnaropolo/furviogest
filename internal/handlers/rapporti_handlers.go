@@ -1336,9 +1336,9 @@ func RapportoDownloadPDF(w http.ResponseWriter, r *http.Request) {
 		SitoWeb        string
 		LogoPath       string
 	}
-	database.DB.QueryRow(`SELECT COALESCE(ragione_sociale,), COALESCE(partita_iva,), COALESCE(indirizzo,),
-		COALESCE(cap,), COALESCE(citta,), COALESCE(provincia,), COALESCE(telefono,),
-		COALESCE(email,), COALESCE(sito_web,), COALESCE(logo_path,) FROM impostazioni_azienda WHERE id=1`).Scan(
+	database.DB.QueryRow(`SELECT COALESCE(ragione_sociale,''), COALESCE(partita_iva,''), COALESCE(indirizzo,''),
+		COALESCE(cap,''), COALESCE(citta,''), COALESCE(provincia,''), COALESCE(telefono,''),
+		COALESCE(email,''), COALESCE(sito_web,''), COALESCE(logo_path,'') FROM impostazioni_azienda WHERE id=1`).Scan(
 		&azienda.RagioneSociale, &azienda.PartitaIVA, &azienda.Indirizzo,
 		&azienda.CAP, &azienda.Citta, &azienda.Provincia, &azienda.Telefono,
 		&azienda.Email, &azienda.SitoWeb, &azienda.LogoPath)
@@ -1400,6 +1400,7 @@ func RapportoDownloadPDF(w http.ResponseWriter, r *http.Request) {
 	cwd, _ := os.Getwd()
 	cmd := exec.Command("wkhtmltopdf",
 		"--enable-local-file-access",
+		"--print-media-type",
 		"--page-size", "A4",
 		"--margin-top", "10mm",
 		"--margin-bottom", "10mm",
